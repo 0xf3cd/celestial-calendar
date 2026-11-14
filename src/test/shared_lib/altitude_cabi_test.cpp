@@ -269,14 +269,31 @@ TEST(AltitudeCAbi, LateUnresolvedConditionFailsTheWholeWindowQuery) {
   EXPECT_TRUE(same_bytes(slots, before));
 }
 
-TEST(AltitudeCAbi, ExclusiveCalendarEndHasNumericalRatherThanInputFailure) {
+TEST(AltitudeCAbi, UnsupportedWeatherIsInvalidAndLeavesOutputUntouched) {
+  auto input = condition();
+  input.refraction_code = CELESTIAL_REFRACTION_BENNETT;
+  input.level_deg = 10.0;
+  input.temperature_c = -91.0;
+  input.pressure_hpa = 1013.25;
   auto slots = sentinels();
   const auto before = slots;
   uint32_t count = 99;
-  EXPECT_EQ(celestial_upper_transits(CELESTIAL_TARGET_SUN, 0.0, 0.0, 0.0, 13689325.25, 13689325.5, &count, slots.data(), 16), 0U);
-  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_COMPUTATION);
+  EXPECT_EQ(events(&input, &count, slots.data(), 16), 0U);
   EXPECT_EQ(count, 0U);
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
   EXPECT_TRUE(same_bytes(slots, before));
+}
+
+TEST(AltitudeCAbi, ExclusiveCalendarEndSucceedsWithTheSameCountFillProtocol) {
+  auto slots = sentinels();
+  uint32_t count = 99;
+  const auto written = celestial_upper_transits(CELESTIAL_TARGET_SUN, 0.0, 0.0, 0.0, 13689325.25, 13689325.5, &count, slots.data(), 16);
+  EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_NONE);
+  EXPECT_EQ(written, count);
+  for (uint32_t index = 0; index < written; ++index) {
+    EXPECT_GE(slots.at(index).jde_tt, 13689325.25);
+    EXPECT_LT(slots.at(index).jde_tt, 13689325.5);
+  }
 }
 
 TEST(AltitudeCAbi, OnlySelectedPhysicalProvidersRestrictAdmission) {

@@ -428,6 +428,11 @@ static_assert(ALGO4_END_JDE_TT == 2440587.5 + static_cast<double>(
 
 namespace algo5 {
 
+/** @brief Decimal-year branch joins with a value discontinuity, including the inherited algo2 segments. */
+inline constexpr std::array<int32_t, 12> DISCONTINUITY_YEARS {
+  -500, 500, 1600, 1700, 1800, 1860, 1900, 1920, 1941, 1961, 1986, 2005,
+};
+
 // Algo5 is algo4's successor, retrained on the 2026-11 data refresh.
 // Generation record: https://github.com/0xf3cd/AstroTime-Analysis/blob/5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814/DeltaT/algo5/record.json
 // The model is based on:

@@ -48,9 +48,9 @@ Each JavaScript block below is a standalone ES module for `example.mjs` in your 
 <a id="examples"></a>
 ## Examples
 
-For complete interval altitude events, upper transits and intersections such as
+For interval altitude events, upper transits and intersections such as
 “Mars above 20° while the Sun is below −18°”, see [altitude events and observing windows](../../docs/ALTITUDE_EVENTS.md).
-The queries take explicit JDE(TT) intervals and fail as a whole when a complete census cannot be certified.
+The queries take explicit JDE(TT) intervals. Sampled searches can miss events without reporting an error.
 
 For full scalar disk sizes in arcseconds, use `diameter.query` with an optional
 WGS84 observer. See [apparent diameters](../../docs/APPARENT_DIAMETERS.md) for radius

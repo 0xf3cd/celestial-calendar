@@ -13,12 +13,16 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <numeric>
 #include <stdexcept>
+#include <vector>
 #include <gtest/gtest.h>
 #include "altitude_events.hpp"
 #include "planet_rise_set_reference_data.hpp"
 #include "ymd.hpp"
+#include "../random.hpp"
 
 namespace astro::observer::test {
 namespace {
@@ -73,10 +77,10 @@ TEST(AltitudeEventRegression, SouthernHemisphereCrossingsMatchTheirTopocentricSi
   }
 }
 
-TEST(AltitudeEventRegression, ClosePairNoneAndUnresolvedContactRemainDistinct) {
+TEST(AltitudeEventRegression, ClosePairsNoneAndDetectedContactRemainDistinct) {
   // Pluto over [2451545,2451545.25], site (30, -77): stored-series replay at 80/112 decimal digits,
   // 2026-11-11, no random seed. The rounded probe level is 48.605252016244656 degrees;
-  // offsets -0.04/+0.01 give pair/none, while 0/-0.01 remain unresolved at the fixed resolution.
+  // offsets -0.04/-0.01 give pairs, +0.01 gives none, and the rounded maximum is a near contact.
   const auto pair = altitude_events(make_site(), geometric_condition(ephemeris::Target::PLUTO, 48.565252016244656), 2451545.0, 2451545.25);
   ASSERT_EQ(pair.events.size(), 2U);
   EXPECT_EQ(pair.events.at(0).direction, ephemeris::EventDirection::INCREASING);
@@ -85,9 +89,13 @@ TEST(AltitudeEventRegression, ClosePairNoneAndUnresolvedContactRemainDistinct) {
   const auto none = altitude_events(make_site(), geometric_condition(ephemeris::Target::PLUTO, 48.615252016244656), 2451545.0, 2451545.25);
   EXPECT_TRUE(none.events.empty());
   EXPECT_FALSE(none.condition.initially_satisfied);
-  for (const double level : { 48.605252016244656, 48.595252016244656 }) {
-    EXPECT_THROW((void)altitude_events(make_site(), geometric_condition(ephemeris::Target::PLUTO, level), 2451545.0, 2451545.25), std::runtime_error);
-  }
+  const auto closer = altitude_events(make_site(), geometric_condition(ephemeris::Target::PLUTO, 48.595252016244656), 2451545.0, 2451545.25);
+  ASSERT_EQ(closer.events.size(), 2U);
+  EXPECT_LT(closer.events.back().jde_tt - closer.events.front().jde_tt, detail::altitude_events::SAMPLE_STEP_TT_DAYS);
+  EXPECT_THROW(
+    (void)altitude_events(make_site(), geometric_condition(ephemeris::Target::PLUTO, 48.605252016244656), 2451545.0, 2451545.25),
+    std::runtime_error
+  );
 }
 
 TEST(AltitudeEventRegression, FalseConditionDoesNotHideAnUnresolvedCompanion) {
@@ -172,29 +180,86 @@ TEST(AltitudeEventRegression, IntervalCensusMatchesTheRetainedHorizonsEventBrack
   }
 }
 
-TEST(AltitudeEventRegression, RoundedZeroMidpointRetainsTheBracketAndChargesQuarterSamples) {
-  namespace ae = detail::altitude_events;
-  namespace search = astro::detail::event_search;
-  ae::Altitude provider {
-    .target = ephemeris::Target::SUN, .observer = make_site(), .level_sine = 0.0, .residual_error = 0x1p-40,
-    .envelope = { .start_jde_tt = 2451545.0, .end_jde_tt = 2451545.25 }, .meridian = false,
-  };
-  const double middle = 2451545.125;
-  const auto observed = provider.observe(middle);
-  provider.level_sine = observed.up / observed.q;
-  EXPECT_EQ(search::sign(provider(middle)), 0);
-  search::Budget budget { .evaluations_remaining = 100, .candidates_remaining = 100 };
-  const search::Candidate candidate {
-    .left = search::sample(provider, provider.envelope.start_jde_tt, budget),
-    .right = search::sample(provider, provider.envelope.end_jde_tt, budget), .isolation = search::Isolation::UNIQUE,
-  };
-  const auto prepared = ae::prepare_refinement(provider, candidate, { .first_derivative = 100.0, .second_derivative = 1000.0 }, budget, 0x1p-20);
-  EXPECT_LT(prepared.left.jde_tt, middle);
-  EXPECT_GT(prepared.right.jde_tt, middle);
-  EXPECT_GT(prepared.left.jde_tt, candidate.left.jde_tt);
-  EXPECT_LT(prepared.right.jde_tt, candidate.right.jde_tt);
-  EXPECT_LT(budget.evaluations_remaining, 95U);
-  EXPECT_EQ(search::sign(prepared.left.evaluated), search::sign(candidate.left.evaluated));
-  EXPECT_EQ(search::sign(prepared.right.evaluated), search::sign(candidate.right.evaluated));
+TEST(AltitudeEventRegression, SplitsAtReturnedClosePairEventsPreserveTimesAndInitialSides) {
+  const auto site = make_site();
+  const auto condition = geometric_condition(ephemeris::Target::PLUTO, 48.595252016244656);
+  const auto whole = altitude_events(site, condition, 2451545.0, 2451545.25);
+  ASSERT_EQ(whole.events.size(), 2U);
+  for (std::size_t index = 0; index < whole.events.size(); ++index) {
+    const auto event = whole.events.at(index);
+    const auto part = altitude_events(site, condition, event.jde_tt, 2451545.25);
+    ASSERT_EQ(part.events.size(), whole.events.size() - index);
+    EXPECT_DOUBLE_EQ(part.events.front().jde_tt, event.jde_tt);
+    EXPECT_EQ(part.condition.initially_satisfied, event.direction == ephemeris::EventDirection::INCREASING);
+    EXPECT_EQ(instantaneous_altitude(site, ephemeris::Target::PLUTO, event.jde_tt) > 48.595252016244656,
+              part.condition.initially_satisfied);
+  }
+  const std::array conditions { condition };
+  const auto windows = observing_windows(site, conditions, 2451545.0, 2451545.25);
+  ASSERT_EQ(windows.windows.size(), 1U);
+  EXPECT_DOUBLE_EQ(windows.windows.front().start_jde_tt, whole.events.front().jde_tt);
+  EXPECT_DOUBLE_EQ(windows.windows.front().end_jde_tt, whole.events.back().jde_tt);
+}
+
+TEST(AltitudeEventRegression, SeededQueriesMatchFinerGridCrossingsAndWindowTruth) {
+  // Same ephemerides, independent one-minute sign scan through observe(); this checks the search,
+  // not physical accuracy or completeness. Seed 42 by default. Refine reference roots to 2^-23 day,
+  // then allow one production bracket width plus that reference width in the time comparison.
+  constexpr double REFERENCE_RESOLUTION = 0x1p-23;
+  for (uint32_t trial = 0; trial < 30; ++trial) {
+    const auto target = static_cast<ephemeris::Target>(trial % 10);
+    const auto site = make_site(util::random(-75.0, 75.0), util::random(-180.0, 180.0));
+    const double start = util::random(2451545.0, 2460000.0);
+    const double end = start + 1.0;
+    const double level = util::random(-20.0, 40.0);
+    const auto condition = geometric_condition(target, level);
+    const auto result = altitude_events(site, condition, start, end);
+    const std::array conditions { condition };
+    const auto windows = observing_windows(site, conditions, start, end);
+    const auto above = [&](const double at) { return instantaneous_altitude(site, target, at) > level; };
+    SCOPED_TRACE(testing::Message() << "trial=" << trial << " target=" << trial % 10 << " start=" << start);
+
+    std::vector<AltitudeEvent> reference;
+    double previous = start;
+    bool previous_above = above(start);
+    EXPECT_EQ(result.condition.initially_satisfied, previous_above);
+    for (uint32_t minute = 1; minute <= 1440; ++minute) {
+      const double at = start + (static_cast<double>(minute) / 1440.0);
+      const bool current_above = above(at);
+      if (previous_above != current_above) {
+        double left = previous;
+        double right = at;
+        while (right - left > REFERENCE_RESOLUTION) {
+          const double middle = std::midpoint(left, right);
+          if (above(middle) == previous_above) {
+            left = middle;
+          } else {
+            right = middle;
+          }
+        }
+        reference.push_back({
+          .jde_tt = right, .condition_index = 0,
+          .direction = current_above ? ephemeris::EventDirection::INCREASING : ephemeris::EventDirection::DECREASING,
+        });
+      }
+      const bool near_event = std::ranges::any_of(result.events, [&](const AltitudeEvent& event) {
+        return std::abs(event.jde_tt - at) <= detail::altitude_events::TIME_RESOLUTION_TT_DAYS;
+      });
+      if (at < end and not near_event) {
+        const bool in_window = std::ranges::any_of(windows.windows, [&](const ObservingWindow& window) {
+          return window.start_jde_tt <= at and at < window.end_jde_tt;
+        });
+        EXPECT_EQ(in_window, current_above);
+      }
+      previous = at;
+      previous_above = current_above;
+    }
+    ASSERT_EQ(result.events.size(), reference.size());
+    for (std::size_t index = 0; index < reference.size(); ++index) {
+      EXPECT_EQ(result.events.at(index).direction, reference.at(index).direction);
+      EXPECT_NEAR(result.events.at(index).jde_tt, reference.at(index).jde_tt,
+                  detail::altitude_events::TIME_RESOLUTION_TT_DAYS + REFERENCE_RESOLUTION);
+    }
+  }
 }
 } // namespace astro::observer::test

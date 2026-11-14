@@ -13,6 +13,7 @@
 #pragma once
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -21,8 +22,8 @@
 #include <utility>
 #include <vector>
 
-#include "altitude_event_certificate.hpp"
 #include "altitude_event_windows.hpp"
+#include "delta_t.hpp"
 #include "ephemeris.hpp"
 #include "ephemeris_events.hpp"
 #include "event_search.hpp"
@@ -32,8 +33,7 @@
 
 namespace astro::observer::detail::altitude_events {
 
-namespace certificates = astro::detail::altitude_bounds;
-
+/** @brief Select the result to compose from the shared interval search. */
 enum class Kind : uint8_t { ALTITUDE, TRANSITS, WINDOWS };
 
 /** @brief Decoded condition storage; convention 2 is geometric and carries no atmospheric computation. */
@@ -45,7 +45,7 @@ struct Request {
   earth::refraction::Params params;
 };
 
-/** @brief A complete query result, published only after every condition and proof piece succeeds. */
+/** @brief Query result, published only after every condition has finished successfully. */
 struct Computed {
   std::vector<Condition> conditions;
   Result composed;
@@ -53,16 +53,13 @@ struct Computed {
 };
 
 inline constexpr std::size_t MAX_CONDITIONS = 2048;
-inline constexpr double TIME_RESOLUTION_TT_DAYS = 0x1p-20;
-inline constexpr double LEVEL_RESOLUTION_DEGREES = 0x1p-30;
-inline constexpr double RADIANS_PER_DEGREE_UPPER = 0x1.1df46a2529d3ap-6;
 
-/** @brief One fresh budget shared by all conditions and proof pieces of a complete query. */
+/** @brief One fresh budget shared by all conditions, inverse levels and root searches. */
 [[nodiscard]] inline auto query_budget() -> search::Budget {
   return { .evaluations_remaining = 8192, .candidates_remaining = 2048 };
 }
 
-/** @brief Validate one physical target against the actual position domain, not certificate availability. */
+/** @brief Validate one physical target against its position domain. */
 inline auto validate_target(const uint32_t target, const search::Interval query) -> void {
   if (target > 9) {
     throw std::invalid_argument { "A physical target is required" };
@@ -87,6 +84,7 @@ inline auto validate_query(
   if ((kind == Kind::ALTITUDE and requests.size() != 1) or (kind == Kind::TRANSITS and not requests.empty())) {
     throw std::invalid_argument { "The query has the wrong condition shape" };
   }
+
   astro::observer::detail::validate(observer);
   const bool valid_interval = std::isfinite(query.start_jde_tt) and std::isfinite(query.end_jde_tt)
     and query.start_jde_tt < query.end_jde_tt;
@@ -115,7 +113,7 @@ inline auto validate_query(
         throw std::invalid_argument { "Geometric levels must be strictly between -90 and 90 degrees" };
       }
     } else {
-      earth::refraction::detail::validate_params(request.params);
+      refraction::detail::validate_params(request.params);
       if (static_cast<uint32_t>(request.params.model) != request.convention) {
         throw std::invalid_argument { "The requested refraction convention and model disagree" };
       }
@@ -123,142 +121,102 @@ inline auto validate_query(
   }
 }
 
-/** @brief Complete canonical-quarter coverage and its origin-preserving closed proof pieces. */
+/** @brief The target/calendar sample domain, with its excluded upper bound moved inward by one ULP. */
+[[nodiscard]] inline auto sample_domain(const uint32_t target) -> Domain {
+  const auto provider = ephemeris::target_facts(static_cast<ephemeris::Target>(target)).position_domain;
+  return {
+    .first = provider.has_value() ? std::max(1867522.5, provider->at(0)) : 1867522.5,
+    .last = search::lower(provider.has_value() ? std::min(13689325.5, provider->at(1)) : 13689325.5),
+  };
+}
+
+/** @brief Fixed-grid pieces separated at actual ALGO5 model discontinuities. */
 struct Schedule {
-  search::Interval census;
-  std::vector<certificates::ClockPiece> pieces;
+  std::vector<Grid> pieces;
+  std::size_t sample_count;
 };
 
-/** @brief Include the admitted preceding quarter only for an exactly aligned query start. */
+/** @brief Plan every sample before observing a target; no stencil crosses a model jump. */
 [[nodiscard]] inline auto schedule(
-  const Kind kind,
-  const search::Interval query,
-  const std::span<const Request> requests,
   const uint32_t target,
-  search::Budget& budget
+  const search::Interval query,
+  const std::size_t maximum_samples
 ) -> Schedule {
-  const search::Interval census {
-    .start_jde_tt = 2451545.0 + (std::floor((query.start_jde_tt - 2451545.0) * 4.0) / 4.0),
-    .end_jde_tt = 2451545.0 + (std::ceil((query.end_jde_tt - 2451545.0) * 4.0) / 4.0),
-  };
-  double admitted_start = 1867522.5;
-  const auto include_domain = [&](const uint32_t code) {
-    const auto domain = ephemeris::target_facts(static_cast<ephemeris::Target>(code)).position_domain;
-    if (domain.has_value()) {
-      admitted_start = std::max(admitted_start, domain->at(0));
+  const auto domain = sample_domain(target);
+  Schedule result { .pieces = {}, .sample_count = 0 };
+
+  const auto append = [&](const Domain branch) {
+    if (branch.first >= query.end_jde_tt or branch.last < query.start_jde_tt) {
+      return;
     }
-  };
-  if (kind == Kind::TRANSITS) {
-    include_domain(target);
-  }
-  for (const auto& request : requests) {
-    include_domain(request.target);
-  }
-  const double visited_start = query.start_jde_tt == census.start_jde_tt
-    ? std::max(admitted_start, census.start_jde_tt - 0.25) : census.start_jde_tt;
-  const double cell_count = (census.end_jde_tt - visited_start) * 4.0;
-  if (not std::isfinite(cell_count) or cell_count > static_cast<double>(budget.candidates_remaining)) {
-    throw std::runtime_error { "The canonical-cell work budget is exhausted" };
-  }
 
-  std::vector<certificates::ClockPiece> pieces;
-  for (uint32_t index = 0; index < static_cast<uint32_t>(cell_count); ++index) {
-    const double left = visited_start + (static_cast<double>(index) / 4.0);
-    const auto partition = certificates::clock_pieces(left, left + 0.25, budget.candidates_remaining - pieces.size());
-    for (const auto& piece : partition) {
-      pieces.push_back(piece);
+    const search::Interval part {
+      .start_jde_tt = std::max(query.start_jde_tt, branch.first),
+      .end_jde_tt = std::min(query.end_jde_tt, search::upper(branch.last)),
+    };
+    auto planned = grid(part, branch, maximum_samples - result.sample_count);
+    result.sample_count += planned.times.size();
+    result.pieces.push_back(std::move(planned));
+  };
+
+  double first = domain.first;
+  for (const int32_t year : delta_t::algo5::DISCONTINUITY_YEARS) {
+    if (year < 401) {
+      continue;
     }
+    const double join = julian_day::tt_to_jde(
+      calendar::Datetime { std::chrono::year { year } / std::chrono::January / 1, 0.0 }
+    );
+    if (join <= domain.first or join > domain.last) {
+      continue;
+    }
+    append({ .first = first, .last = search::lower(join) });
+    first = join;
   }
-  budget.candidates_remaining -= pieces.size();
-  return { .census = census, .pieces = std::move(pieces) };
+  append({ .first = first, .last = domain.last });
+  return result;
 }
 
-/** @brief Bound altitude and meridian objectives with the same complete source/site certificate. */
-[[nodiscard]] inline auto trajectory_bounds(const certificates::ObserverInputs& input) -> search::Bounds {
-  const auto composed = certificates::observer_c2::compose(input.source, input.site, 1.0);
-  return {
-    .first_derivative = std::max(composed.first, composed.local_vector.at(1)),
-    .second_derivative = std::max(composed.second, composed.local_vector.at(2)),
-  };
+/** @brief Resolve only atmospheric thresholds; geometric conditions require no inverse work. */
+[[nodiscard]] inline auto resolve_level(const Request& request, search::Budget& budget) -> double {
+  return request.convention == 2 ? request.level : inverse(request.level, request.params, budget);
 }
 
-/** @brief Resolve a level only after reserving its full possible inverse charge from the query budget. */
-[[nodiscard]] inline auto resolve_level(const Request& request, search::Budget& budget) -> Level {
-  if (request.convention == 2) {
-    return { .geometric_degrees = request.level, .error_degrees = 0.0, .evaluation_charge = 0 };
-  }
-  const auto certificate = certificates::REFRACTION.at(request.convention);
-  const std::size_t maximum_charge = request.convention == 0 ? 1 : SAEMUNDSSON_INVERSE_MAX_CHARGE;
-  if (budget.evaluations_remaining < maximum_charge) {
-    throw std::runtime_error { "The shared inverse budget is exhausted" };
-  }
-  const auto level = inverse(
-    request.level,
-    request.params,
-    certificate.map_error,
-    certificate.residual_error,
-    certificate.slope_lower,
-    LEVEL_RESOLUTION_DEGREES
-  );
-  if (level.evaluation_charge > maximum_charge) {
-    throw std::runtime_error { "The inverse exceeded its reserved work" };
-  }
-  budget.evaluations_remaining -= level.evaluation_charge;
-  return level;
-}
-
-/** @brief Seed from the containing quarter; retain preceding-piece companions without adopting its seed. */
-[[nodiscard]] inline auto condition_census(
+/** @brief Search each smooth branch and reject a condition-side change across a clock jump. */
+[[nodiscard]] inline auto condition_events(
   const Request& request,
   const Observer& observer,
-  const search::Interval query,
   const Schedule& scheduled,
   search::Budget& budget
 ) -> Condition {
-  const auto level = resolve_level(request, budget);
-  const double sine_transport = search::upper(RADIANS_PER_DEGREE_UPPER * level.error_degrees);
-  Condition condition {
-    .complete = true, .seed_above = false, .above = request.above, .events = {}, .level = level, .residual_error = 0.0,
-  };
-  bool need_seed = true;
+  const double level = resolve_level(request, budget);
+  Condition condition { .seed_above = false, .above = request.above, .events = {}, .geometric_degrees = level };
+  bool first = true;
+  bool previous_side = false;
   for (const auto& piece : scheduled.pieces) {
-    const auto inputs = certificates::observer_for_piece(request.target, observer.location.latitude.deg(), observer.elevation.km(), piece);
-    const auto bounds = trajectory_bounds(inputs);
-    const double residual_error = search::upper(inputs.value_error + search::upper(inputs.q_upper * sine_transport));
-    condition.residual_error = std::max(condition.residual_error, residual_error);
-    const search::Interval interval { .start_jde_tt = piece.start_jde_tt, .end_jde_tt = piece.end_jde_tt };
     const Altitude provider {
-      .target = static_cast<ephemeris::Target>(request.target), .observer = observer,
-      .level_sine = std::sin(toolbox::AngleDeg { level.geometric_degrees }.rad()),
-      .residual_error = residual_error, .envelope = interval, .meridian = false,
+      .target = static_cast<ephemeris::Target>(request.target),
+      .observer = observer,
+      .level_sine = std::sin(toolbox::AngleDeg { level }.rad()),
+      .domain = piece.domain,
+      .meridian = false,
     };
-    if (need_seed and piece.start_jde_tt >= scheduled.census.start_jde_tt) {
-      const int32_t seed = search::sign(search::sample(provider, scheduled.census.start_jde_tt, budget).evaluated);
-      if (seed == 0) {
-        throw std::runtime_error { "The dynamic window seed is unresolved" };
-      }
-      condition.seed_above = seed > 0;
-      need_seed = false;
+    const auto found = scan(provider, piece, true, budget);
+
+    if (first) {
+      condition.seed_above = found.initially_above;
+      first = false;
+    } else if (previous_side != found.initially_above) {
+      throw std::runtime_error { "Altitude crossing coincides with a Delta T model join" };
     }
-    if (piece.collar) {
-      const auto left = search::sample(provider, interval.start_jde_tt, budget);
-      const auto right = search::sample(provider, interval.end_jde_tt, budget);
-      static_cast<void>(certify_clock_collar(left, right, bounds.first_derivative, piece.jump));
-    } else {
-      for (const auto& event : events(provider, interval, bounds, budget, TIME_RESOLUTION_TT_DAYS)) {
-        if (piece.start_jde_tt >= scheduled.census.start_jde_tt or event.jde_tt >= query.start_jde_tt) {
-          condition.events.push_back({
-            .jde_tt = event.jde_tt, .change = event.increasing ? 1 : -1, .origin_start_jde_tt = piece.start_jde_tt,
-          });
-        }
-      }
-    }
+    previous_side = found.finally_above;
+    condition.events.insert(condition.events.end(), found.events.begin(), found.events.end());
   }
   return condition;
 }
 
-/** @brief Certify every meridian root, then retain only upper (forward-side) passages in the half-open query. */
-[[nodiscard]] inline auto transit_census(
+/** @brief Retain forward-side meridian crossings in the requested half-open interval. */
+[[nodiscard]] inline auto transit_events(
   const uint32_t target,
   const Observer& observer,
   const search::Interval query,
@@ -266,36 +224,42 @@ struct Schedule {
   search::Budget& budget
 ) -> std::vector<double> {
   std::vector<double> times;
+  bool first = true;
+  bool previous_side = false;
   for (const auto& piece : scheduled.pieces) {
-    const auto inputs = certificates::observer_for_piece(target, observer.location.latitude.deg(), observer.elevation.km(), piece);
-    const auto bounds = trajectory_bounds(inputs);
-    const search::Interval interval { .start_jde_tt = piece.start_jde_tt, .end_jde_tt = piece.end_jde_tt };
     const Altitude provider {
-      .target = static_cast<ephemeris::Target>(target), .observer = observer, .level_sine = 0.0,
-      .residual_error = inputs.value_error, .envelope = interval, .meridian = true,
+      .target = static_cast<ephemeris::Target>(target),
+      .observer = observer,
+      .level_sine = 0.0,
+      .domain = piece.domain,
+      .meridian = true,
     };
-    if (piece.collar) {
-      const auto left = search::sample(provider, interval.start_jde_tt, budget);
-      const auto right = search::sample(provider, interval.end_jde_tt, budget);
-      static_cast<void>(certify_clock_collar(left, right, bounds.first_derivative, piece.jump));
-    } else {
-      for (const auto& event : events(provider, interval, bounds, budget, TIME_RESOLUTION_TT_DAYS)) {
-        search::charge_evaluation(event.jde_tt, budget);
-        const auto observed = provider.observe(event.jde_tt);
-        const double allowance = search::upper(inputs.value_error + search::upper(bounds.first_derivative * TIME_RESOLUTION_TT_DAYS));
-        if (std::fabs(observed.forward) <= allowance) {
-          throw std::runtime_error { "The meridian forward side is unresolved" };
-        }
-        if (observed.forward > allowance and query.start_jde_tt <= event.jde_tt and event.jde_tt < query.end_jde_tt) {
-          times.push_back(event.jde_tt);
-        }
+    const auto found = scan(provider, piece, false, budget);
+
+    if (not first and previous_side != found.initially_above) {
+      throw std::runtime_error { "Meridian crossing coincides with a Delta T model join" };
+    }
+    first = false;
+    previous_side = found.finally_above;
+
+    for (const auto& event : found.events) {
+      if (event.jde_tt < query.start_jde_tt or event.jde_tt >= query.end_jde_tt) {
+        continue;
+      }
+      search::charge_evaluation(event.jde_tt, budget);
+      const double forward = provider.observe(event.jde_tt).forward;
+      if (std::abs(forward) <= CONTACT_RESIDUAL) {
+        throw std::runtime_error { "The meridian forward side is unresolved" };
+      }
+      if (forward > 0.0) {
+        times.push_back(event.jde_tt);
       }
     }
   }
   return times;
 }
 
-/** @brief Use one caller-owned budget for admission, proof pieces, inverses and every actual observation. */
+/** @brief Validate, preflight sample work, search every condition, then compose the requested result. */
 [[nodiscard]] inline auto compute(
   const Kind kind,
   const Observer& observer,
@@ -306,21 +270,30 @@ struct Schedule {
 ) -> Computed {
   validate_query(kind, observer, query, requests, target);
   ephemeris::detail::validate_event_environment();
-  if (kind == Kind::WINDOWS and requests.empty()) {
-    Computed result { .conditions = {}, .composed = { .states = {}, .windows = {}, .companion_events = 0, .reported_events = {} }, .transit_times = {} };
-    result.composed.windows.push_back({ .start_jde_tt = query.start_jde_tt, .end_jde_tt = query.end_jde_tt });
-    return result;
-  }
-  const auto scheduled = schedule(kind, query, requests, target, budget);
+
   if (kind == Kind::TRANSITS) {
-    return { .conditions = {}, .composed = {}, .transit_times = transit_census(target, observer, query, scheduled, budget) };
+    const auto planned = schedule(target, query, budget.evaluations_remaining);
+    return { .conditions = {}, .composed = {}, .transit_times = transit_events(target, observer, query, planned, budget) };
+  }
+
+  std::vector<Schedule> plans;
+  std::size_t sample_count = 0;
+  for (const auto& request : requests) {
+    auto planned = schedule(request.target, query, budget.evaluations_remaining - sample_count);
+    sample_count += planned.sample_count;
+    plans.push_back(std::move(planned));
   }
 
   std::vector<Condition> conditions;
-  for (const auto& request : requests) {
-    conditions.push_back(condition_census(request, observer, query, scheduled, budget));
+  double scan_start = query.start_jde_tt;
+  double scan_end = query.end_jde_tt;
+  for (std::size_t index = 0; index < requests.size(); ++index) {
+    const auto& planned = plans.at(index);
+    scan_start = std::min(scan_start, planned.pieces.front().start);
+    scan_end = std::max(scan_end, planned.pieces.back().end);
+    conditions.push_back(condition_events(requests[index], observer, planned, budget));
   }
-  auto composed = windows(conditions, query.start_jde_tt, query.end_jde_tt, scheduled.census.start_jde_tt, scheduled.census.end_jde_tt);
+  auto composed = windows(conditions, query.start_jde_tt, query.end_jde_tt, scan_start, scan_end);
   return { .conditions = std::move(conditions), .composed = std::move(composed), .transit_times = {} };
 }
 

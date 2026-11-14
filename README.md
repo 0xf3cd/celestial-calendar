@@ -290,8 +290,8 @@ OS version floor is declared.
   [`planet.hpp`](src/astro/planet.hpp).
 - [Topocentric observer queries](docs/OBSERVER.md) for the Sun, Moon and planets are available in C++, C, Python
   and JavaScript.
-- [Complete interval altitude events, upper transits and observing windows](docs/ALTITUDE_EVENTS.md) are available
-  in C++, C, Python and JavaScript/TypeScript, with whole-query numerical failure when completeness cannot be certified.
+- [Interval altitude events, upper transits and observing windows](docs/ALTITUDE_EVENTS.md) are available
+  in C++, C, Python and JavaScript/TypeScript. These sampled searches can miss events without reporting an error.
 - [Apparent angular diameters](docs/APPARENT_DIAMETERS.md) for the Sun, Moon and planets, using geocentric or
   topocentric distance, are available in C++, C, Python and JavaScript.
 - A chart snapshot at one instant: from an explicitly scaled UTC/UT1 civil input, a ΔT model and a site/house

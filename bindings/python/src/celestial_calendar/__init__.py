@@ -753,11 +753,13 @@ def _altitude_records(export: str, prefix: tuple, observer: Observer, start: flo
 def altitude_events(
   observer: Observer, condition: AltitudeCondition, start_jde_tt: float, end_jde_tt: float
 ) -> AltitudeEvents:
-  """Return a complete centre-altitude census and initial state over [start,end) in JDE(TT).
+  """Return detected centre-altitude crossings and initial state over [start,end) in JDE(TT).
 
   Sun, Moon and eight planets use fixed ALGO5/IAU1980. Start events are included and
-  already reflected in initially_satisfied; end events are excluded. An unresolved
-  count, unavailable certificate or exhausted work raises CelestialError without partial results.
+  already reflected in initially_satisfied; end events are excluded. Sampling can miss events
+  without an error, and no TANGENT events are returned. Detected near contacts, failed refinement
+  or exhausted work raise CelestialError without partial results. Weather outside [-90,60] C
+  or [300,1100] hPa raises ValueError.
   """
   requested, inputs = _altitude_inputs((condition,), "altitude_events")
   return _altitude_records(
@@ -774,9 +776,9 @@ def altitude_events(
 def upper_transits(
   observer: Observer, target: Target, start_jde_tt: float, end_jde_tt: float
 ) -> tuple[UpperTransit, ...]:
-  """Return all upper meridian passages in [start,end) JDE(TT), or an empty tuple.
+  """Return detected upper meridian passages in [start,end) JDE(TT), or an empty tuple.
 
-  The physical-target, domain and failure contract is altitude_events()'s. At a geographic
+  The sampling limits, physical-target, domain and failure contract match altitude_events(). At a geographic
   pole the meridian is defined by the supplied longitude; no altitude level or weather is used.
   """
   checked = _enum(target, Target, "target")
@@ -797,8 +799,9 @@ def observing_windows(
   """Intersect centre-altitude conditions, retaining their states and companion events.
 
   Windows are maximal positive-duration spans in [start,end) JDE(TT), not strict point
-  sets at isolated equalities. An empty conjunction returns the whole interval. An unresolved
-  condition fails the entire query, even when another condition would make the intersection empty.
+  sets at isolated equalities. They are reconstructed from detected crossings, so the sampling
+  limits of altitude_events() also apply here. An empty conjunction returns the whole interval.
+  Failure in any condition fails the entire query, even when the intersection would be empty.
   """
   requested, inputs = _altitude_inputs(conditions, "observing_windows")
   return _altitude_records(

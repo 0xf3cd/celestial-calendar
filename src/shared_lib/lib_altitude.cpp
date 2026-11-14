@@ -113,7 +113,7 @@ struct Prepared {
       record.sense_code = static_cast<uint32_t>(request.above);
       record.initially_satisfied = computed.composed.states[index].initially_satisfied;
       record.requested_level_deg = request.level;
-      record.geometric_level_deg = computed.conditions[index].level.geometric_degrees;
+      record.geometric_level_deg = computed.conditions[index].geometric_degrees;
       if (request.convention != 2) {
         record.temperature_c = request.params.temperature_c;
         record.pressure_hpa = request.params.pressure_hpa;
@@ -125,12 +125,8 @@ struct Prepared {
       const auto& event = computed.composed.reported_events[index];
       record.tag = CELESTIAL_ALTITUDE_RECORD_EVENT;
       record.condition_index = event.condition;
-      record.direction_code = CELESTIAL_EVENT_DIRECTION_TANGENT;
-      if (event.change > 0) {
-        record.direction_code = CELESTIAL_EVENT_DIRECTION_INCREASING;
-      } else if (event.change < 0) {
-        record.direction_code = CELESTIAL_EVENT_DIRECTION_DECREASING;
-      }
+      record.direction_code = event.change > 0
+        ? CELESTIAL_EVENT_DIRECTION_INCREASING : CELESTIAL_EVENT_DIRECTION_DECREASING;
       record.jde_tt = event.jde_tt;
       return;
     }

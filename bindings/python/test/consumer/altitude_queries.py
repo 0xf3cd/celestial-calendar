@@ -8,7 +8,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-"""Complete altitude queries, raw C parity and malformed/allocation failure controls."""
+"""Sampled altitude queries, raw C parity and malformed/allocation failure controls."""
 
 import ctypes
 import math
@@ -113,6 +113,21 @@ def run_real():
   assert len(transits) == len(records) == 1
   assert transits[0].jde_tt == records[0].jde_tt and transits[0].target is c.Target.MARS
   assert transits[0].source == c.ModelKey(c.ModelKind.POSITION_SOURCE, 3)
+  critical_site = replace(SITE, latitude_deg=30.0)
+  close_pair = replace(CONDITION, target=c.Target.PLUTO, level=c.GeometricLevel(48.595252016244656))
+  pair = c.altitude_events(critical_site, close_pair, START, START + 0.25)
+  assert [event.direction for event in pair.events] == [c.EventDirection.INCREASING, c.EventDirection.DECREASING]
+  for target, start, end in (
+    (c.Target.SUN, 1867522.5, 1867522.75),
+    (c.Target.SUN, 13689325.25, 13689325.5),
+    (c.Target.PLUTO, 2409543.5, 2409543.75),
+    (c.Target.PLUTO, 2488069.25, 2488069.5),
+  ):
+    selected = replace(CONDITION, target=target)
+    result = c.altitude_events(critical_site, selected, start, end)
+    encoded = _altitude.encode_condition(selected)
+    records = raw_records("celestial_altitude_events", (ctypes.byref(encoded),), critical_site, start, end)
+    assert [event.jde_tt for event in result.events] == [record.jde_tt for record in records[1:]]
   print("PASS altitude physical targets, raw C parity, poles, refraction, start replay and equal-time intersections")
 
 
@@ -138,8 +153,10 @@ def run_errors():
     replace(CONDITION, level=c.RefractedLevel(10.0, c.RefractionParams(c.RefractionModel.BENNETT, -273.0))),
   ):
     raises(ValueError, lambda condition=condition: c.altitude_events(SITE, condition, START, END))
-  outside_proof = replace(CONDITION, level=c.RefractedLevel(10.0, c.RefractionParams(c.RefractionModel.BENNETT, -91.0)))
-  assert raises(c.CelestialError, lambda: c.altitude_events(SITE, outside_proof, START, END)).recorded
+  outside_weather = replace(
+    CONDITION, level=c.RefractedLevel(10.0, c.RefractionParams(c.RefractionModel.BENNETT, -91.0))
+  )
+  raises(ValueError, lambda: c.altitude_events(SITE, outside_weather, START, END))
   for condition in (
     None,
     replace(CONDITION, target="sun"),
@@ -240,8 +257,7 @@ def run_protocol():
   tangent = _abi.CelestialAltitudeRecord(tag=1, direction_code=2, jde_tt=START + 0.5)
   stream = (fixture()[0], tangent, _abi.CelestialAltitudeRecord(tag=2, jde_tt=START, end_jde_tt=END))
   with bindings(celestial_observing_windows=CountFill(stream), celestial_last_error_kind=lambda: 0):
-    result = c.observing_windows(SITE, (CONDITION,), START, END)
-    assert result.events[0].direction is c.EventDirection.TANGENT and len(result.windows) == 1
+    assert not raises(c.CelestialError, lambda: c.observing_windows(SITE, (CONDITION,), START, END)).recorded
   print("PASS altitude count/fill disagreement, native failures at either pass and every record-field corruption")
 
 

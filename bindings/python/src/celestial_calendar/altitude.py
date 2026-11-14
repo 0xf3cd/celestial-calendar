@@ -7,7 +7,7 @@
 # Repo : https://github.com/0xf3cd/celestial-calendar
 # SPDX-License-Identifier: MIT
 
-"""Typed centre-altitude conditions and complete interval-query result decoders."""
+"""Typed centre-altitude conditions and interval-query result decoders."""
 
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ class AltitudeConditionState:
 
 @dataclass(frozen=True)
 class AltitudeEvent:
-  """Centre-altitude crossing/contact in JDE(TT), associated with its zero-based condition index."""
+  """Centre-altitude crossing in JDE(TT), associated with its zero-based condition index."""
 
   jde_tt: float
   condition_index: int
@@ -77,7 +77,7 @@ class AltitudeEvent:
 
 @dataclass(frozen=True)
 class AltitudeEvents:
-  """Complete single-condition state and events over the requested half-open TT interval."""
+  """Single-condition state and detected crossings over the requested half-open TT interval."""
 
   condition: AltitudeConditionState
   events: tuple[AltitudeEvent, ...]
@@ -93,7 +93,7 @@ class ObservingWindow:
 
 @dataclass(frozen=True)
 class ObservingWindows:
-  """Complete condition states, companion events and maximal intersected observing spans."""
+  """Condition states, detected crossings and maximal reconstructed observing spans."""
 
   conditions: tuple[AltitudeConditionState, ...]
   events: tuple[AltitudeEvent, ...]
@@ -199,8 +199,6 @@ def _windows(
       continue
     was_active = unsatisfied == 0
     for event in group:
-      if event.direction is EventDirection.TANGENT:
-        continue
       index = event.condition_index
       above = event.direction is EventDirection.INCREASING
       value = above if states[index].condition.sense is AltitudeSense.ABOVE else not above
@@ -274,7 +272,10 @@ def decode_conditions(
       key = (time, record.condition_index)
       if not 0 <= record.condition_index < len(requested) or not start <= time < end or key <= previous:
         raise ValueError("altitude event has invalid association, interval or order")
-      events.append(AltitudeEvent(time, record.condition_index, decode_direction(record.direction_code)))
+      direction = decode_direction(record.direction_code)
+      if direction is EventDirection.TANGENT:
+        raise ValueError("altitude event must be a crossing")
+      events.append(AltitudeEvent(time, record.condition_index, direction))
       previous = key
     elif record.tag == constant("ALTITUDE_RECORD_WINDOW") and windows:
       _unused(record, {"jde_tt", "end_jde_tt"})

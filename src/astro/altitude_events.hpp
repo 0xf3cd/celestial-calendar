@@ -13,7 +13,7 @@
 #pragma once
 
 /** @file
- * @brief Complete interval altitude events, upper transits and observing windows.
+ * @brief Sampled interval altitude events, upper transits and observing windows.
  * @note Inputs and reported times use JDE(TT); observer rotation uses fixed ALGO5 and IAU1980.
  *       Levels refer to body centres. Existing rise_set::sun geometric constants supply the
  *       fixed -50 arcminute sunrise/sunset convention and the three twilight levels.
@@ -70,14 +70,14 @@ struct AltitudeConditionState {
   bool initially_satisfied;
 };
 
-/** @brief One condition's altitude crossing/contact in JDE(TT), associated by zero-based condition index. */
+/** @brief One condition's altitude crossing in JDE(TT), associated by zero-based condition index. */
 struct AltitudeEvent {
   double jde_tt;
   uint32_t condition_index;
   ephemeris::EventDirection direction;
 };
 
-/** @brief Complete single-condition result over the requested half-open TT interval. */
+/** @brief Single-condition state and detected crossings over the requested half-open TT interval. */
 struct AltitudeEvents {
   AltitudeConditionState condition;
   std::vector<AltitudeEvent> events;
@@ -89,7 +89,7 @@ struct ObservingWindow {
   double end_jde_tt;
 };
 
-/** @brief Complete condition states, companion events and maximal intersected observing windows. */
+/** @brief Condition states, detected crossings and maximal reconstructed observing windows. */
 struct ObservingWindows {
   std::vector<AltitudeConditionState> conditions;
   std::vector<AltitudeEvent> events;
@@ -130,7 +130,7 @@ namespace detail::altitude_events {
   }, condition.level);
 }
 
-/** @brief Attach physical-source and fixed-clock metadata to a completely resolved condition. */
+/** @brief Attach physical-source and fixed-clock metadata to a resolved condition. */
 [[nodiscard]] inline auto condition_state(
   const AltitudeCondition& requested,
   const Condition& resolved,
@@ -138,22 +138,21 @@ namespace detail::altitude_events {
 ) -> AltitudeConditionState {
   return {
     .condition = requested, .source = ephemeris::source_of(requested.target), .delta_t_model = delta_t::Model::ALGO5,
-    .geometric_level = toolbox::AngleDeg { resolved.level.geometric_degrees },
+    .geometric_level = toolbox::AngleDeg { resolved.geometric_degrees },
     .initially_satisfied = state.initially_satisfied != 0,
   };
 }
 
-/** @brief Translate a complete-census side change to the existing angular-event direction. */
+/** @brief Translate a crossing's side change to the shared event direction. */
 [[nodiscard]] inline auto event_direction(const int32_t change) -> ephemeris::EventDirection {
   switch (change) {
     case -1: return ephemeris::EventDirection::DECREASING;
-    case 0: return ephemeris::EventDirection::TANGENT;
     case 1: return ephemeris::EventDirection::INCREASING;
     default: throw std::runtime_error { "A completed altitude event has an invalid side change" };
   }
 }
 
-/** @brief Project the chronological, condition-associated complete census. */
+/** @brief Project detected crossings in chronological then condition-index order. */
 [[nodiscard]] inline auto reported_events(const Result& composed) -> std::vector<AltitudeEvent> {
   std::vector<AltitudeEvent> result;
   result.reserve(composed.reported_events.size());
@@ -169,11 +168,13 @@ namespace detail::altitude_events {
 } // namespace detail::altitude_events
 
 /**
- * @brief Find the complete altitude-event census for one physical target over [start,end) in TT.
+ * @brief Find centre-altitude crossings for one physical target over [start,end) in TT.
  * @note Events at start are included and already reflected in initially_satisfied; events at end are excluded.
- *       Rounded residual zero alone does not establish a tangent. Unresolved event counts fail the whole query.
+ *       Sampling can miss events without an error; success does not guarantee completeness.
+ *       No TANGENT events are returned. Detected near contacts fail the whole query.
  * @throw std::invalid_argument For malformed inputs or queries outside the calendar/physical-provider domain.
- * @throw std::runtime_error For unavailable numerical certificates, unresolved counts or exhausted work.
+ *       Refraction requires weather in [-90,60] degrees Celsius and [300,1100] hPa.
+ * @throw std::runtime_error For detected numerical ambiguity, failed refinement or exhausted work.
  */
 [[nodiscard]] inline auto altitude_events(
   const Observer& observer,
@@ -199,10 +200,11 @@ namespace detail::altitude_events {
 }
 
 /**
- * @brief Find every upper meridian passage over [start,end) in JDE(TT).
+ * @brief Find upper meridian passages over [start,end) in JDE(TT).
  * @note No altitude level, refraction or above/below condition applies to this query.
+ *       Sampling can miss passages without an error, as with @ref altitude_events.
  * @throw std::invalid_argument For malformed observer, nonphysical target or out-of-domain interval.
- * @throw std::runtime_error For unavailable certificates, unresolved passage side/count or exhausted work.
+ * @throw std::runtime_error For an unresolved passage side, failed refinement or exhausted work.
  */
 [[nodiscard]] inline auto upper_transits(
   const Observer& observer,
@@ -231,11 +233,12 @@ namespace detail::altitude_events {
 }
 
 /**
- * @brief Intersect complete altitude conditions over [start,end) and retain their companion events.
+ * @brief Intersect altitude conditions over [start,end) and retain their detected crossings.
  * @note Windows are maximal positive-duration operational spans, not strict point sets at isolated equalities.
  *       An empty conjunction returns the whole interval. Failure in any condition fails the whole query.
+ *       Windows are reconstructed from detected crossings; @ref altitude_events sampling limits apply.
  * @throw std::invalid_argument For malformed inputs or an out-of-calendar/physical-provider interval.
- * @throw std::runtime_error For unavailable certificates, unresolved dependencies or exhausted work.
+ * @throw std::runtime_error For detected numerical ambiguity, failed refinement or exhausted work.
  */
 [[nodiscard]] inline auto observing_windows(
   const Observer& observer,
@@ -262,7 +265,13 @@ namespace detail::altitude_events {
   );
   ObservingWindows result { .conditions = {}, .events = query::reported_events(computed.composed), .windows = {} };
   for (std::size_t index = 0; index < conditions.size(); ++index) {
-    result.conditions.push_back(query::condition_state(conditions[index], computed.conditions.at(index), computed.composed.states.at(index)));
+    result.conditions.push_back(
+      query::condition_state(
+        conditions[index],
+        computed.conditions.at(index),
+        computed.composed.states.at(index)
+      )
+    );
   }
   for (const auto& window : computed.composed.windows) {
     result.windows.push_back({ .start_jde_tt = window.start_jde_tt, .end_jde_tt = window.end_jde_tt });

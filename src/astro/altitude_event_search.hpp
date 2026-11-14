@@ -34,259 +34,364 @@ namespace astro::observer::detail::altitude_events {
 namespace search = astro::detail::event_search;
 namespace refraction = astro::earth::refraction;
 
-/** @brief One immutable provider observation; all fields except TT are dimensionless. */
+inline constexpr double TIME_RESOLUTION_TT_DAYS = 0x1p-20;
+inline constexpr double LEVEL_RESOLUTION_DEGREES = 0x1p-30;
+inline constexpr double SAMPLE_STEP_TT_DAYS = 0x1p-7;
+/** @brief Empirical dimensionless ambiguity threshold at a detected turn, not an error bound. */
+inline constexpr double CONTACT_RESIDUAL = 0x1p-24;
+
+/** @brief First and last evaluable TT instants on one continuous model branch, both included. */
+struct Domain {
+  double first;
+  double last;
+};
+
+/** @brief One topocentric observation; all components are dimensionless. */
 struct Observation {
-  double jde_tt;
   double up;
   double q;
   double forward;
   double meridian;
-  double product;
-  double residual;
 };
 
-/** @brief A fixed-observer objective restricted to a separately certified closed TT envelope. */
+/** @brief Fixed-observer altitude or meridian objective, guarded by its evaluable domain. */
 struct Altitude {
-  astro::ephemeris::Target target;
-  astro::observer::Observer observer;
+  ephemeris::Target target;
+  Observer observer;
   double level_sine;
-  double residual_error;
-  search::Interval envelope;
+  Domain domain;
   bool meridian;
 
   [[nodiscard]] auto observe(const double jde_tt) const -> Observation {
-    if (jde_tt < envelope.start_jde_tt or jde_tt > envelope.end_jde_tt) {
-      throw std::runtime_error { "Altitude sample leaves its certified envelope" };
+    if (not std::isfinite(jde_tt) or jde_tt < domain.first or jde_tt > domain.last) {
+      throw std::runtime_error { "Altitude sample leaves its evaluable domain" };
     }
-    const auto position = astro::ephemeris::equatorial_position(target, jde_tt);
-    const auto tt = astro::julian_day::jde_to_tt(jde_tt);
-    const auto ut1 = astro::delta_t::tt_to_ut1(astro::delta_t::Model::ALGO5, tt);
-    const double jd_ut1 = astro::julian_day::ut1_to_jd(ut1);
-    const auto theta = astro::sidereal::local_apparent(
+
+    const auto position = ephemeris::equatorial_position(target, jde_tt);
+    const auto tt = julian_day::jde_to_tt(jde_tt);
+    const auto ut1 = delta_t::tt_to_ut1(delta_t::Model::ALGO5, tt);
+    const double jd_ut1 = julian_day::ut1_to_jd(ut1);
+    const auto theta = sidereal::local_apparent(
       jd_ut1,
       jde_tt,
       -observer.location.longitude,
-      astro::earth::nutation::Model::IAU_1980
+      earth::nutation::Model::IAU_1980
     );
     const auto geometry = astro::observer::detail::local_geometry(position, theta, observer);
-    // The residual contract has two binary64 roundings, including a separately stored product.
-    const volatile double product = level_sine * geometry.q;
-    return {
-      .jde_tt = jde_tt, .up = geometry.up, .q = geometry.q, .forward = geometry.B, .meridian = geometry.A,
-      .product = product, .residual = geometry.up - product,
-    };
+    return { .up = geometry.up, .q = geometry.q, .forward = geometry.B, .meridian = geometry.A };
   }
 
-  [[nodiscard]] auto operator()(const double jde_tt) const -> search::Value {
-    const auto sample = observe(jde_tt);
-    return { .value = meridian ? sample.meridian : sample.residual, .error = residual_error };
+  [[nodiscard]] auto operator()(const double jde_tt) const -> double {
+    const auto observed = observe(jde_tt);
+    return meridian ? observed.meridian : observed.up - (level_sine * observed.q);
   }
 };
 
-/** @brief Tighten robust brackets until the slope bound localizes uncertain values at the requested resolution. */
-[[nodiscard]] inline auto prepare_refinement(
-  const Altitude& altitude,
-  search::Candidate candidate,
-  const search::Bounds bounds,
-  search::Budget& budget,
-  const double resolution
-) -> search::Candidate {
-  const double required_slope = search::upper(search::upper(2.0 * altitude.residual_error) / resolution);
-  for (uint32_t iteration = 0; iteration < 96; ++iteration) {
-    if (search::derivative_floor(candidate.left, candidate.right, bounds) >= required_slope) {
-      break;
-    }
-    const double middle = std::midpoint(candidate.left.jde_tt, candidate.right.jde_tt);
-    if (middle == candidate.left.jde_tt or middle == candidate.right.jde_tt) {
-      break;
-    }
-    const auto observed = search::sample(altitude, middle, budget);
-    const int32_t sign = search::sign(observed.evaluated);
-    if (sign == 0) {
-      const double previous_left = candidate.left.jde_tt;
-      const double previous_right = candidate.right.jde_tt;
-      for (const double at : { std::midpoint(previous_left, middle), std::midpoint(middle, previous_right) }) {
-        const bool inside_bracket = candidate.left.jde_tt < at and at < candidate.right.jde_tt;
-        if (not inside_bracket) {
-          continue;
-        }
-        const auto quarter = search::sample(altitude, at, budget);
-        const int32_t quarter_sign = search::sign(quarter.evaluated);
-        if (quarter_sign == search::sign(candidate.left.evaluated)) {
-          candidate.left = quarter;
-        } else if (quarter_sign == search::sign(candidate.right.evaluated)) {
-          candidate.right = quarter;
-        }
-      }
-      if (candidate.left.jde_tt == previous_left and candidate.right.jde_tt == previous_right) {
-        break;
-      }
-      continue;
-    }
-    if (sign == search::sign(candidate.left.evaluated)) {
-      candidate.left = observed;
-    } else {
-      candidate.right = observed;
-    }
-  }
-  return candidate;
-}
+/** @brief Scalar sample; zero belongs to the below side throughout the search and replay. */
+struct Sample {
+  double jde_tt;
+  double value;
 
-/** @brief Return the complete scalar census or fail if any retained region lacks a certificate. */
-[[nodiscard]] inline auto events(
-  const Altitude& altitude,
-  const search::Interval cell,
-  const search::Bounds bounds,
-  search::Budget& budget,
-  const double resolution
-) -> std::vector<search::Root> {
-  const auto candidates = search::isolate_cell(
-    altitude,
-    cell.start_jde_tt,
-    cell.end_jde_tt,
-    bounds,
-    budget,
-    search::EndpointOwnership::LEFT,
-    18
+  [[nodiscard]] auto above() const -> bool { return value > 0.0; }
+};
+
+/** @brief Crossing time on the new side, with +1 for rising and -1 for falling. */
+struct Event {
+  double jde_tt;
+  int32_t change;
+};
+
+/** @brief Fixed-grid scan bounds and neighbouring samples on a continuous model branch. */
+struct Grid {
+  Domain domain;
+  double start;
+  double end;
+  std::vector<double> times;
+};
+
+/** @brief Build a query-independent dyadic grid, clipped only at fixed domain boundaries. */
+[[nodiscard]] inline auto grid(
+  const search::Interval query,
+  const Domain domain,
+  const std::size_t maximum_samples
+) -> Grid {
+  constexpr double EPOCH = 2451545.0;
+  const double start = std::max(
+    domain.first,
+    EPOCH + ((std::ceil((query.start_jde_tt - EPOCH) / SAMPLE_STEP_TT_DAYS) - 1.0) * SAMPLE_STEP_TT_DAYS)
   );
-  for (const auto& candidate : candidates) {
-    if (candidate.isolation != search::Isolation::UNIQUE) {
-      throw std::runtime_error { "Altitude census contains an unresolved region" };
-    }
+  const double end = std::min(
+    domain.last,
+    EPOCH + (std::ceil((query.end_jde_tt - EPOCH) / SAMPLE_STEP_TT_DAYS) * SAMPLE_STEP_TT_DAYS)
+  );
+  const double left = std::max(domain.first, start - SAMPLE_STEP_TT_DAYS);
+  const double right = std::min(domain.last, end + SAMPLE_STEP_TT_DAYS);
+
+  const double left_index = std::floor((left - EPOCH) / SAMPLE_STEP_TT_DAYS);
+  const double right_index = std::floor((right - EPOCH) / SAMPLE_STEP_TT_DAYS);
+  const bool clipped_end = EPOCH + (right_index * SAMPLE_STEP_TT_DAYS) < right;
+  const double count = right_index - left_index + 1.0 + static_cast<double>(clipped_end);
+  if (not std::isfinite(count) or count > static_cast<double>(maximum_samples)) {
+    throw std::runtime_error { "The altitude sample plan exceeds the shared evaluation budget" };
   }
 
-  std::vector<search::Root> result;
-  for (const auto& candidate : candidates) {
-    const auto prepared = prepare_refinement(altitude, candidate, bounds, budget, resolution);
-    result.push_back(search::refine(altitude, prepared, bounds, budget, resolution));
+  Grid result { .domain = domain, .start = start, .end = end, .times = { left } };
+  const auto first = static_cast<int64_t>(left_index) + 1;
+  const auto last = static_cast<int64_t>(right_index);
+  for (int64_t index = first; index <= last; ++index) {
+    result.times.push_back(EPOCH + (static_cast<double>(index) * SAMPLE_STEP_TT_DAYS));
+  }
+    if (result.times.back() < right) {
+    result.times.push_back(right);
   }
   return result;
 }
 
-/** @brief Exclude zero over the complete clock collar, including its exact-reference jump allowance. */
-[[nodiscard]] inline auto certify_clock_collar(
-  const search::Sample& left,
-  const search::Sample& right,
-  const double first_derivative,
-  const double jump_upper
-) -> int32_t {
-  const bool finite_samples = std::isfinite(left.jde_tt) and std::isfinite(right.jde_tt)
-    and std::isfinite(left.evaluated.value) and std::isfinite(right.evaluated.value);
-  const bool valid_bounds = search::finite_nonnegative(left.evaluated.error) and search::finite_nonnegative(right.evaluated.error)
-    and search::finite_nonnegative(first_derivative) and search::finite_nonnegative(jump_upper);
-  if (not finite_samples or not valid_bounds or left.jde_tt >= right.jde_tt) {
-    throw std::runtime_error { "Invalid complete clock-collar source certificate" };
+/** @brief Charge an attempted scalar evaluation, including one that returns a non-finite value. */
+template <typename Func>
+[[nodiscard]] inline auto sample(const Func& f, const double jde_tt, search::Budget& budget) -> Sample {
+  search::charge_evaluation(jde_tt, budget);
+  const double value = f(jde_tt);
+  if (not std::isfinite(value)) {
+    throw std::runtime_error { "Altitude objective is not finite" };
   }
-  const double width = search::upper(right.jde_tt - left.jde_tt);
-  const double smooth_drift = search::upper(first_derivative * width);
-  const double complete_drift = search::upper(smooth_drift + jump_upper);
-  const double observed_difference = search::lower(std::fabs(right.evaluated.value - left.evaluated.value));
-  const double comparison_allowance = search::upper(search::upper(complete_drift + left.evaluated.error) + right.evaluated.error);
-  if (observed_difference > comparison_allowance) {
-    throw std::runtime_error { "Clock-collar observations contradict their complete source certificate" };
-  }
-  const int32_t left_sign = search::sign(left.evaluated);
-  const int32_t right_sign = search::sign(right.evaluated);
-  const double margin = std::max(search::magnitude_floor(left.evaluated), search::magnitude_floor(right.evaluated));
-  if (left_sign != 0 and left_sign == right_sign and margin > complete_drift) {
-    return left_sign;
-  }
-  throw std::runtime_error { "The complete clock-collar event census is unresolved" };
+  return { .jde_tt = jde_tt, .value = value };
 }
 
-/** @brief Resolved geometric degrees, absolute level allowance and inverse evaluation charge. */
-struct Level {
-  double geometric_degrees;
-  double error_degrees;
-  std::size_t evaluation_charge;
-};
+/** @brief Reserve one turn or crossing bracket before refining it. */
+inline auto charge_candidate(search::Budget& budget) -> void {
+  if (budget.candidates_remaining == 0) {
+    throw std::runtime_error { "The altitude candidate budget is exhausted" };
+  }
+  --budget.candidates_remaining;
+}
 
-inline constexpr std::size_t SAEMUNDSSON_INVERSE_MAX_ITER = 64;
-inline constexpr std::size_t SAEMUNDSSON_INVERSE_MAX_CHARGE =
-  refraction::SAEMUNDSSON_HORIZON_MAX_ITER + 1 + SAEMUNDSSON_INVERSE_MAX_ITER + 2;
-
-/** @brief Resolve an attainable apparent level; uncertain range endpoints fail numerically. */
-[[nodiscard]] inline auto inverse(
-  const double apparent,
-  const refraction::Params& params,
-  const double map_error,
-  const double residual_error,
-  const double slope_lower,
-  const double resolution
-) -> Level {
-  refraction::detail::validate_params(params);
-  const bool weather = params.temperature_c >= -90.0 and params.temperature_c <= 60.0
-                       and params.pressure_hpa >= 300.0 and params.pressure_hpa <= 1100.0;
-  const bool model = params.model == refraction::Model::BENNETT or params.model == refraction::Model::SAEMUNDSSON;
-  if (not std::isfinite(apparent) or not model) {
-    throw std::invalid_argument { "Invalid apparent level, model or supported weather" };
-  }
-  if (not weather) {
-    throw std::runtime_error { "The weather leaves the proved inverse certificate tier" };
-  }
-  if (not search::finite_nonnegative(map_error) or not search::finite_nonnegative(residual_error)
-      or not std::isfinite(slope_lower) or slope_lower <= 0.0 or not std::isfinite(resolution) or resolution <= 0.0) {
-    throw std::runtime_error { "The inverse has no valid numerical certificate" };
-  }
-  if (params.model == refraction::Model::BENNETT) {
-    if (apparent < 0.0 or apparent > 90.0) {
-      throw std::invalid_argument { "Apparent level is outside Bennett's range" };
-    }
-    const double geometric = apparent - refraction::detail::apply_tp_correction(
-      refraction::bennett(astro::toolbox::AngleDeg { apparent }), params
-    ).deg();
-    if (search::lower(geometric - map_error) > 90.0) {
-      throw std::invalid_argument { "Apparent level exceeds the supported geometric upper endpoint" };
-    }
-    if (search::upper(geometric + map_error) >= 90.0) {
-      throw std::runtime_error { "The geometric upper endpoint is unresolved" };
-    }
-    if (map_error > resolution) {
-      throw std::runtime_error { "Refraction value uncertainty exceeds the geometric-level resolution" };
-    }
-    return { .geometric_degrees = geometric, .error_degrees = map_error, .evaluation_charge = 1 };
+/** @brief Bisect a side change and return the first retained sample on the new side. */
+template <typename Func>
+[[nodiscard]] inline auto crossing(const Func& f, Sample left, Sample right, search::Budget& budget) -> Event {
+  charge_candidate(budget);
+  if (left.jde_tt >= right.jde_tt or left.above() == right.above()) {
+    throw std::runtime_error { "Altitude crossing has no directed bracket" };
   }
 
-  double left = -refraction::at_horizon(params).deg();
-  constexpr std::size_t HORIZON_CHARGE = refraction::SAEMUNDSSON_HORIZON_MAX_ITER + 1;
-  double right = 90.0;
-  if (not std::isfinite(left) or left < -1.5 or left >= 0.0) {
-    throw std::runtime_error { "The actual apparent horizon leaves the proved source interval" };
-  }
-  const auto map = [&](const double value) {
-    return value + refraction::detail::apply_tp_correction(
-      refraction::saemundsson(astro::toolbox::AngleDeg { value }), params
-    ).deg();
-  };
-  const double left_value = map(left);
-  const double right_value = map(right);
-  if (apparent < search::lower(left_value - map_error) or apparent > search::upper(right_value + map_error)) {
-    throw std::invalid_argument { "Apparent level is outside Saemundsson's supported range" };
-  }
-  if (apparent <= search::upper(left_value + map_error) or apparent >= search::lower(right_value - map_error)) {
-    throw std::runtime_error { "The attainable apparent range endpoint is unresolved" };
-  }
-  for (std::size_t iteration = 0; iteration < SAEMUNDSSON_INVERSE_MAX_ITER; ++iteration) {
-    const double middle = std::midpoint(left, right);
-    const double radius = std::max(search::upper(middle - left), search::upper(right - middle));
-    if (radius <= resolution) {
-      return { .geometric_degrees = middle, .error_degrees = radius, .evaluation_charge = HORIZON_CHARGE + iteration + 2 };
+  for (uint32_t iteration = 0; iteration < 64; ++iteration) {
+    if (right.jde_tt - left.jde_tt <= TIME_RESOLUTION_TT_DAYS) {
+      return { .jde_tt = right.jde_tt, .change = right.above() ? 1 : -1 };
     }
-    const double residual = map(middle) - apparent;
-    if (std::fabs(residual) <= residual_error) {
-      const double residual_radius = search::upper(search::upper(std::fabs(residual) + residual_error) / slope_lower);
-      if (residual_radius <= resolution) {
-        return { .geometric_degrees = middle, .error_degrees = residual_radius, .evaluation_charge = HORIZON_CHARGE + iteration + 3 };
-      }
-      throw std::runtime_error { "Refraction value uncertainty exceeds the geometric-level resolution" };
-    }
-    if (residual < 0.0) {
+    const auto middle = sample(f, std::midpoint(left.jde_tt, right.jde_tt), budget);
+    if (middle.above() == left.above()) {
       left = middle;
     } else {
       right = middle;
     }
   }
-  throw std::runtime_error { "Refraction inverse work budget exhausted" };
+  throw std::runtime_error { "Altitude crossing did not converge" };
+}
+
+/** @brief Refined extremum and its orientation, for partitioning neighbouring grid intervals. */
+struct Turn {
+  Sample point;
+  bool minimum;
+};
+
+/** @brief Refine a sampled turn with the shared golden-section primitive. */
+template <typename Func>
+[[nodiscard]] inline auto turn(
+  const Func& f,
+  const Sample left,
+  const Sample right,
+  const bool minimum,
+  search::Budget& budget
+) -> Turn {
+  charge_candidate(budget);
+  const auto objective = [&](const double at) {
+    const double value = sample(f, at, budget).value;
+    return minimum ? value : -value;
+  };
+  const toolbox::GoldenSectionRules rules {
+    .lower_probe = [](const double lo, const double hi) { return lo + (toolbox::INV_PHI_SQ * (hi - lo)); },
+    .move_lower = [](const double lhs, const double rhs) { return not (lhs < rhs); },
+    .finished = [](const double width, const double tolerance) { return width <= tolerance; },
+  };
+  const auto bracket = toolbox::golden_section_bracket(
+    objective,
+    left.jde_tt,
+    right.jde_tt,
+    TIME_RESOLUTION_TT_DAYS,
+    64,
+    rules
+  );
+  if (not bracket.converged) {
+    throw std::runtime_error { "Altitude extremum did not converge" };
+  }
+  return {
+    .point = sample(f, std::midpoint(bracket.lower, bracket.upper), budget),
+    .minimum = minimum,
+  };
+}
+
+/** @brief Retain a detected turn only when its side is numerically distinguishable from contact. */
+inline auto append_turn(const Turn& refined, std::vector<Turn>& turns) -> void {
+  if (std::abs(refined.point.value) <= CONTACT_RESIDUAL) {
+    throw std::runtime_error { "Altitude search encountered an unresolved near contact" };
+  }
+  turns.push_back(refined);
+}
+
+/** @brief Search a fixed domain-edge interval where a three-sample turn test has no outer neighbour. */
+template <typename Func>
+inline auto edge_turns(
+  const Func& f,
+  const Sample left,
+  const Sample right,
+  std::vector<Turn>& turns,
+  search::Budget& budget
+) -> void {
+  for (const bool minimum : { true, false }) {
+    const bool already_found = std::ranges::any_of(turns, [&](const Turn& value) {
+      return value.minimum == minimum and left.jde_tt <= value.point.jde_tt and value.point.jde_tt <= right.jde_tt;
+    });
+    if (already_found) {
+      continue;
+    }
+
+    const auto refined = turn(f, left, right, minimum, budget);
+    const bool interior = refined.point.jde_tt - left.jde_tt > TIME_RESOLUTION_TT_DAYS
+      and right.jde_tt - refined.point.jde_tt > TIME_RESOLUTION_TT_DAYS;
+    const bool beats_ends = minimum
+      ? refined.point.value < std::min(left.value, right.value)
+      : refined.point.value > std::max(left.value, right.value);
+    if (interior and beats_ends) {
+      append_turn(refined, turns);
+    }
+  }
+}
+
+/** @brief Detected crossings and endpoint sides of one fixed-grid scan. */
+struct Scan {
+  bool initially_above;
+  bool finally_above;
+  std::vector<Event> events;
+};
+
+/** @brief Sample, partition at detected turns, and refine directed crossings on one continuous branch. */
+template <typename Func>
+[[nodiscard]] inline auto scan(
+  const Func& f,
+  const Grid& planned,
+  const bool find_turns,
+  search::Budget& budget
+) -> Scan {
+  if (planned.times.size() > budget.evaluations_remaining) {
+    throw std::runtime_error { "The altitude sample plan exceeds the shared evaluation budget" };
+  }
+  std::vector<Sample> samples;
+  samples.reserve(planned.times.size());
+  for (const double time : planned.times) {
+    samples.push_back(sample(f, time, budget));
+  }
+
+  std::vector<Turn> turns;
+  if (find_turns) {
+    for (std::size_t index = 1; index + 1 < samples.size(); ++index) {
+      const auto left = samples.at(index - 1);
+      const auto middle = samples.at(index);
+      const auto right = samples.at(index + 1);
+      if (middle.jde_tt < planned.start or middle.jde_tt > planned.end) {
+        continue;
+      }
+      const bool minimum = middle.value <= left.value and middle.value < right.value;
+      const bool maximum = middle.value >= left.value and middle.value > right.value;
+      if (minimum or maximum) {
+        append_turn(turn(f, left, right, minimum, budget), turns);
+      }
+    }
+
+    if (samples.size() >= 2 and samples.front().jde_tt == planned.domain.first) {
+      edge_turns(f, samples.front(), samples.at(1), turns, budget);
+    }
+    if (samples.size() >= 2 and samples.back().jde_tt == planned.domain.last) {
+      edge_turns(f, samples.at(samples.size() - 2), samples.back(), turns, budget);
+    }
+  }
+
+  std::vector<Sample> points;
+  for (const auto& value : samples) {
+    if (planned.start <= value.jde_tt and value.jde_tt <= planned.end) {
+      points.push_back(value);
+    }
+  }
+  for (const auto& value : turns) {
+    if (planned.start < value.point.jde_tt and value.point.jde_tt < planned.end) {
+      points.push_back(value.point);
+    }
+  }
+  std::ranges::sort(points, {}, &Sample::jde_tt);
+  const auto duplicates = std::ranges::unique(points, {}, &Sample::jde_tt);
+  points.erase(duplicates.begin(), duplicates.end());
+
+  Scan result { .initially_above = points.front().above(), .finally_above = points.back().above(), .events = {} };
+  for (std::size_t index = 1; index < points.size(); ++index) {
+    const auto left = points.at(index - 1);
+    const auto right = points.at(index);
+    if (left.above() != right.above()) {
+      result.events.push_back(crossing(f, left, right, budget));
+    }
+  }
+  return result;
+}
+
+/** @brief Resolve an apparent threshold to geometric degrees within the supported weather window. */
+[[nodiscard]] inline auto inverse(
+  const double apparent,
+  const refraction::Params& params,
+  search::Budget& budget
+) -> double {
+  refraction::detail::validate_params(params);
+  const bool weather = params.temperature_c >= -90.0 and params.temperature_c <= 60.0
+    and params.pressure_hpa >= 300.0 and params.pressure_hpa <= 1100.0;
+  const bool model = params.model == refraction::Model::BENNETT or params.model == refraction::Model::SAEMUNDSSON;
+  if (not weather or not model or not std::isfinite(apparent) or apparent < 0.0 or apparent > 90.0) {
+    throw std::invalid_argument { "Unsupported apparent altitude, refraction model or weather" };
+  }
+
+  const auto correction = [&](const double degrees) {
+    search::charge_evaluation(0.0, budget);
+    const auto native = params.model == refraction::Model::BENNETT
+      ? refraction::bennett(toolbox::AngleDeg { degrees }) : refraction::saemundsson(toolbox::AngleDeg { degrees });
+    return refraction::detail::apply_tp_correction(native, params).deg();
+  };
+
+  if (params.model == refraction::Model::BENNETT) {
+    const double geometric = apparent - correction(apparent);
+    if (geometric >= 90.0) {
+      throw std::invalid_argument { "Apparent level exceeds the supported geometric upper endpoint" };
+    }
+    return geometric;
+  }
+
+  // Meeus (16.4) is monotone here for the supported weather window; -1.5° brackets its apparent horizon.
+  double left = -1.5;
+  double right = 90.0;
+  const auto map = [&](const double value) { return value + correction(value); };
+  if (map(left) > apparent) {
+    throw std::runtime_error { "Saemundsson apparent horizon is not bracketed" };
+  }
+  if (apparent > map(right)) {
+    throw std::invalid_argument { "Apparent level is outside Saemundsson's supported range" };
+  }
+  for (uint32_t iteration = 0; iteration < 64; ++iteration) {
+    if (right - left <= LEVEL_RESOLUTION_DEGREES) {
+      return std::midpoint(left, right);
+    }
+    const double middle = std::midpoint(left, right);
+    if (map(middle) < apparent) {
+      left = middle;
+    } else {
+      right = middle;
+    }
+  }
+  throw std::runtime_error { "Refraction inverse did not converge" };
 }
 
 } // namespace astro::observer::detail::altitude_events

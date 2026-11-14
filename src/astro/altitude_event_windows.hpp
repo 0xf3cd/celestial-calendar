@@ -25,21 +25,12 @@
 
 namespace astro::observer::detail::altitude_events {
 
-/** @brief Reported crossing/contact and the originating closed proof piece's start. */
-struct Event {
-  double jde_tt;
-  int32_t change;
-  double origin_start_jde_tt;
-};
-
-/** @brief One condition's complete canonical census, seed, sense and resolved level. */
+/** @brief One condition's detected crossings, scan-start side and resolved geometric level. */
 struct Condition {
-  bool complete;
   bool seed_above;
   bool above;
   std::vector<Event> events;
-  Level level {};
-  double residual_error {};
+  double geometric_degrees;
 };
 
 /** @brief Positive-duration operational span in JDE(TT). */
@@ -69,17 +60,18 @@ struct Result {
   std::vector<ReportedEvent> reported_events;
 };
 
-/** @brief Replay complete censuses before clipping; start events are already reflected in the initial state. */
+/** @brief Replay detected crossings before clipping; start events are reflected in the initial state. */
 [[nodiscard]] inline auto windows(
   const std::span<const Condition> conditions,
   const double start_jde_tt,
   const double end_jde_tt,
-  const double census_start_jde_tt,
-  const double census_end_jde_tt
+  const double scan_start_jde_tt,
+  const double scan_end_jde_tt
 ) -> Result {
-  const bool covered = census_start_jde_tt <= start_jde_tt and start_jde_tt < end_jde_tt and end_jde_tt <= census_end_jde_tt;
+  const bool covered = scan_start_jde_tt <= start_jde_tt and start_jde_tt < end_jde_tt
+    and end_jde_tt <= scan_end_jde_tt;
   if (not std::isfinite(start_jde_tt) or not std::isfinite(end_jde_tt) or not covered) {
-    throw std::invalid_argument { "The window query leaves the complete canonical cell" };
+    throw std::invalid_argument { "The window query leaves its sampled interval" };
   }
 
   std::vector<SideState> states;
@@ -89,22 +81,17 @@ struct Result {
   std::size_t companion_events = 0;
   for (std::size_t index = 0; index < conditions.size(); ++index) {
     const auto& condition = conditions[index];
-    if (not condition.complete) {
-      throw std::runtime_error { "A condition has an unresolved census" };
-    }
     bool above = condition.seed_above;
-    double previous = astro::detail::event_search::lower(census_start_jde_tt);
+    double previous = astro::detail::event_search::lower(scan_start_jde_tt);
     for (std::size_t position = 0; position < condition.events.size(); ++position) {
       const auto& event = condition.events.at(position);
-      if (not std::isfinite(event.jde_tt) or event.jde_tt <= previous or event.jde_tt > census_end_jde_tt
-          or event.change < -1 or event.change > 1) {
-        throw std::runtime_error { "A condition census has an invalid event" };
+      if (not std::isfinite(event.jde_tt) or event.jde_tt <= previous or event.jde_tt > scan_end_jde_tt
+          or (event.change != -1 and event.change != 1)) {
+        throw std::runtime_error { "A condition has an invalid crossing" };
       }
       previous = event.jde_tt;
       if (event.jde_tt <= start_jde_tt) {
-        if (event.change != 0 and event.origin_start_jde_tt >= census_start_jde_tt) {
-          above = event.change > 0;
-        }
+        above = event.change > 0;
         positions[index] = position + 1;
       }
       if (start_jde_tt <= event.jde_tt and event.jde_tt < end_jde_tt) {
@@ -115,7 +102,10 @@ struct Result {
       }
     }
     const bool satisfied = condition.above ? above : not above;
-    states.push_back({ .initially_satisfied = static_cast<uint8_t>(satisfied), .currently_satisfied = static_cast<uint8_t>(satisfied) });
+    states.push_back({
+      .initially_satisfied = static_cast<uint8_t>(satisfied),
+      .currently_satisfied = static_cast<uint8_t>(satisfied),
+    });
     unsatisfied += static_cast<std::size_t>(not satisfied);
   }
   Result result {
@@ -136,15 +126,15 @@ struct Result {
     if (not found) {
       break;
     }
+
     const bool previously_active = unsatisfied == 0;
     for (std::size_t index = 0; index < conditions.size(); ++index) {
       const auto& condition = conditions[index];
       while (positions[index] < condition.events.size() and condition.events.at(positions[index]).jde_tt == time) {
         const auto& event = condition.events.at(positions[index]++);
-        result.reported_events.push_back({ .jde_tt = event.jde_tt, .condition = static_cast<uint32_t>(index), .change = event.change });
-        if (event.change == 0) {
-          continue;
-        }
+        result.reported_events.push_back({
+          .jde_tt = event.jde_tt, .condition = static_cast<uint32_t>(index), .change = event.change,
+        });
         const bool above = event.change > 0;
         const bool satisfied = condition.above ? above : not above;
         const bool previous = result.states[index].currently_satisfied != 0;
@@ -158,6 +148,7 @@ struct Result {
         }
       }
     }
+
     const bool active = unsatisfied == 0;
     if (previously_active and not active and opening < time) {
       result.windows.push_back({ .start_jde_tt = opening, .end_jde_tt = time });

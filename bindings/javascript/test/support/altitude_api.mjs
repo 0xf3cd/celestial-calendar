@@ -56,6 +56,22 @@ export function runAltitudeAcceptance(celestial) {
   check(transits.length === 1 && transits[0].target === "mars" && transits[0].sourceCode === 3, "distinct transit metadata");
   const unresolved = { ...condition, target: "pluto", level: { kind: "geometric", altitudeDeg: 48.605252016244656 } };
   const criticalSite = { ...site, latitudeDeg: 30 };
+  const closePair = { ...unresolved, level: { kind: "geometric", altitudeDeg: 48.595252016244656 } };
+  const pair = celestial.observer.altitudeEvents(criticalSite, closePair, start, start + 0.25);
+  check(pair.events.length === 2 && pair.events[0].direction === "increasing" && pair.events[1].direction === "decreasing",
+    "resolved Pluto close pair");
+  for (const [target, first, last] of [
+    ["sun", 1867522.5, 1867522.75], ["sun", 13689325.25, 13689325.5],
+    ["pluto", 2409543.5, 2409543.75], ["pluto", 2488069.25, 2488069.5],
+  ]) {
+    const result = celestial.observer.altitudeEvents(criticalSite, { ...condition, target }, first, last);
+    check(result.condition.condition.target === target, "domain-edge target");
+    check(result.events.every(event => first <= event.jdeTt && event.jdeTt < last), "domain-edge event interval");
+  }
+  const outsideWeather = { ...condition, level: {
+    kind: "refracted", altitudeDeg: 10, refraction: { model: "bennett", temperatureC: -91 },
+  } };
+  reject(() => celestial.observer.altitudeEvents(site, outsideWeather, start, end), RangeError);
   reject(() => celestial.observer.altitudeEvents(criticalSite, unresolved, start, start + 0.25), celestial.CelestialError, true);
   reject(() => celestial.observer.observingWindows(criticalSite, [condition, unresolved], start, start + 0.25), celestial.CelestialError, true);
   reject(() => celestial.observer.upperTransits(site, "meanAscending", start, end), RangeError);

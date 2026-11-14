@@ -1134,7 +1134,7 @@ typedef struct CelestialAltitudeCondition {
 } CelestialAltitudeCondition;
 
 /**
- * @brief One tagged record in a complete altitude/transit/window result; unused fields are zero.
+ * @brief One tagged altitude/transit/window record; unused fields are zero.
  * @note CONDITION records occur first in input order, followed by EVENT records ordered by
  *       TT then condition index, then WINDOW records in time order. A transit query returns
  *       only UPPER_TRANSIT records. A condition's source/clock/level metadata apply to its events.
@@ -1147,7 +1147,7 @@ typedef struct CelestialAltitudeRecord {
   uint32_t delta_t_model_code;   /* CONDITION/UPPER_TRANSIT: fixed CELESTIAL_DELTA_T_MODEL_ALGO5. */
   uint32_t refraction_code;      /* CONDITION: original CELESTIAL_REFRACTION_* convention. */
   uint32_t sense_code;           /* CONDITION: original CELESTIAL_ALTITUDE_SENSE_* value. */
-  uint32_t direction_code;       /* EVENT: existing CELESTIAL_EVENT_DIRECTION_* code. */
+  uint32_t direction_code;       /* EVENT: CELESTIAL_EVENT_DIRECTION_INCREASING or DECREASING. */
   uint32_t initially_satisfied;  /* CONDITION: 0 or 1 immediately after start-event replay. */
   uint32_t reserved;             /* Always zero. */
   double jde_tt;                /* EVENT/UPPER_TRANSIT: reported TT; WINDOW: inclusive start. */
@@ -1159,7 +1159,7 @@ typedef struct CelestialAltitudeRecord {
 } CelestialAltitudeRecord;
 
 /**
- * @brief Find the complete altitude-event census for one condition over [start,end) in JDE(TT).
+ * @brief Find centre-altitude crossings for one condition over [start,end) in JDE(TT).
  * @param condition One condition; must not be null. Geometric levels are strictly inside (-90,90).
  * @param latitude_deg WGS84 geodetic latitude in [-90,90] degrees.
  * @param longitude_deg Geographic longitude in [-180,180] degrees, positive east.
@@ -1171,16 +1171,18 @@ typedef struct CelestialAltitudeRecord {
  * @param slot_count Capacity; a short fill returns the exact prefix without changing the full total.
  * @return Number written, equal to min(total,slot_count) on success. A count pass writes no slots.
  * @note Fixed ALGO5/IAU1980. Start events are included and already reflected in initially_satisfied;
- *       end events are excluded. Rounded zero alone does not certify a tangent. An unresolved
- *       count, unavailable certificate or exhausted work fails the whole query with CELESTIAL_ERROR_COMPUTATION,
- *       zero total and untouched slots. Use celestial_last_error_kind to distinguish empty success.
+ *       end events are excluded. Sampling can miss events without an error; success does not guarantee
+ *       completeness. No TANGENT events are returned. Detected near contacts, failed refinement or
+ *       exhausted work fail the whole query with CELESTIAL_ERROR_COMPUTATION, zero total and untouched slots.
+ *       Refraction weather outside [-90,60] degrees Celsius or [300,1100] hPa is CELESTIAL_ERROR_INVALID_INPUT.
+ *       Use celestial_last_error_kind to distinguish empty success.
  */
 CELESTIAL_API uint32_t celestial_altitude_events(const CelestialAltitudeCondition *condition, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count);
 
 /**
- * @brief Find all upper meridian passages over [start,end) in JDE(TT).
+ * @brief Find upper meridian passages over [start,end) in JDE(TT).
  * @param target_code A physical CELESTIAL_TARGET_* code, with no altitude threshold or refraction.
- * @note Site, domain, count/fill and failure contracts match celestial_altitude_events.
+ * @note Sampling limits, site, domain, count/fill and failure contracts match celestial_altitude_events.
  *       At a geographic pole, passage is relative to the supplied longitude.
  */
 CELESTIAL_API uint32_t celestial_upper_transits(uint32_t target_code, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count);
@@ -1191,7 +1193,8 @@ CELESTIAL_API uint32_t celestial_upper_transits(uint32_t target_code, double lat
  * @param condition_count Number of input conditions. An empty conjunction returns the whole interval.
  * @note Site, domain, count/fill and failure contracts match celestial_altitude_events. Windows are
  *       maximal positive-duration operational spans, not strict point sets at isolated equalities.
- *       An unresolved condition or start-state dependency fails the whole query before clipping.
+ *       Windows are reconstructed from detected crossings, with the same sampling limits.
+ *       Failure in any condition fails the whole query.
  */
 CELESTIAL_API uint32_t celestial_observing_windows(const CelestialAltitudeCondition *conditions, uint32_t condition_count, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count);
 

@@ -1,9 +1,13 @@
 # Interval altitude events and observing windows
 
-Use these queries to find every centre-altitude crossing in a half-open TT interval,
-all upper meridian passages, or the times when several altitude conditions hold together.
+Use these queries to find centre-altitude crossings in a half-open TT interval,
+upper meridian passages, or the times when several altitude conditions hold together.
 They support the Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune and Pluto.
 Mathematical lunar nodes are not physical targets.
+
+The search samples the interval and refines detected crossings. It can miss events without
+reporting an error, especially near grazing contacts or closely spaced crossings. A successful
+result, including an empty one, does not guarantee that every event was found.
 
 ## Python
 
@@ -117,26 +121,25 @@ transits retain their position source and fixed Delta T model. The daily rise/se
 - Intervals are `[start,end)`: start events are included, end events excluded. `initially_satisfied`
   (JavaScript `initiallySatisfied`) already includes start-event replay; do not apply those events twice.
 - Events are chronological, with condition index breaking equal-time ties. The direction is
-  increasing/decreasing **altitude**, irrespective of the condition's above/below sense. A certified
-  tangent does not change the side state; rounded residual zero alone does not certify contact.
-- Windows are maximal positive-duration operational spans. They are not strict point sets with
-  holes at isolated equalities. Equal-time events apply atomically; irrelevant crossings and tangents
-  do not fragment a window. An empty conjunction returns the whole requested interval.
+  increasing/decreasing **altitude**, irrespective of the condition's above/below sense.
+  Altitude queries return crossings only, never `TANGENT`.
+- Windows are maximal positive-duration spans reconstructed from the initial side and detected
+  crossings. They are not strict point sets with holes at isolated equalities. Equal-time events
+  apply atomically; irrelevant crossings do not fragment a window. Missed events can change the
+  reconstructed windows. An empty conjunction returns the whole requested interval.
 - Event `condition_index`/`conditionIndex` selects its state in `result.conditions` (or
   `result.condition` for a single altitude query). Transit records carry their own target,
   source and clock.
 - Thresholds refer to body centres, with no solar/lunar limb or geocentric-parallax offset.
   Geometric levels must be strictly inside `(−90°,90°)`. Refraction resolves an attainable apparent
   threshold with the selected model.
-  The proved weather tier is `[−90,60]°C` and `[300,1100] hPa`. Outside the proof tier, a query can
-  fail numerically rather than return an extrapolated threshold.
+  Supported weather is `[−90,60]°C` and `[300,1100] hPa`; values outside these ranges are invalid input.
 - At an exact geographic pole, upper passage uses the meridian defined by the supplied longitude.
 
 Bennett accepts apparent inputs from 0° to 90°, subject to a resolved geometric upper endpoint.
-Saemundsson's apparent endpoints are computed using the selected weather at the model's horizon
-and at 90° geometric altitude. Values definitely outside the selected model's range are invalid
-input; uncertain endpoints fail numerically. Keep twilight thresholds such as −6° geometric
-rather than passing them to either refraction model.
+Saemundsson accepts apparent inputs from 0° through the apparent altitude at 90° geometric,
+computed using the selected weather. Unattainable thresholds are invalid input.
+Keep twilight thresholds such as −6° geometric rather than passing them to either refraction model.
 
 ## Sunrise, twilight and civil-clock display
 
@@ -190,53 +193,52 @@ the search and returned event times remain TT. See [UTC conversion rules](UTC_CO
 The calendar admits `[1867522.5,13689325.5)` in JDE(TT); an interval may end at the exclusive
 upper bound. Only selected physical providers constrain it. In particular, Pluto requires
 `[2409543.5,2488069.5)`, but selecting the Sun, Moon or a VSOP87 planet does not inherit Pluto's
-window or a chart/longitude-rate domain. The library ships precomputed source and clock bounds,
-called certificates; callers do not supply them. The search needs these bounds over each complete,
-closed quarter-day cell. Admission alone therefore does not
-promise a successful query.
+window or a chart/longitude-rate domain. Samples stay inside the selected provider/calendar
+domain, including queries that end at an exclusive upper bound. Admission does not establish
+physical accuracy at distant epochs or guarantee successful computation.
 
-The current clock certificates cover the closed TT range `[2378495.0,2524595.0]` (roughly 1800–2200).
-Queries use complete quarter-day cells, plus the preceding cell when the start is exactly aligned;
-all of those cells need certificates. Two additional closed clock windows are
-`[10000000.5,10000000.75]` and `[13689000.5,13689000.75]`, with source certificates for Mars and Jupiter
-in both, and Saturn in the first only. These are certificate-coverage ranges, not narrower provider
-admission rules or guarantees that a query succeeds. The
-[shipped source and clock tables](../src/astro/altitude_event_bounds.hpp) record this coverage.
+The search uses a J2000-anchored grid spaced `2^-7` TT day (11.25 minutes), refines detected
+extrema, then bisects side changes. Fixed neighbouring samples keep the root brackets independent
+of query endpoints. Above means a positive altitude residual; zero belongs to the below side.
+Each reported crossing is the final bracket's right endpoint, sampled on the new side.
+The operational state changes at that reported time.
 
-Each complete query shares these fixed work limits across conditions, clock pieces, inverse levels
+A detected extremum with dimensionless residual magnitude at most `2^-24` fails as an unresolved
+near contact. This is an empirical ambiguity threshold, not an error bound or a guarantee that
+every contact is detected. The search treats ALGO5 value discontinuities as separate branches;
+if the sampled sides differ across a jump, the query fails rather than reporting a crossing there.
+
+Each query shares these fixed work limits across conditions, clock pieces, inverse levels
 and event searches:
 
 | Limit | Value |
 |---|---:|
 | Charged evaluations | 8,192 |
-| Candidate/interval-piece slots | 2,048 |
+| Refined turns and crossing brackets | 2,048 |
 | Input conditions | 2,048 |
 | Event time resolution | `2^-20` TT day (about 0.0824 second) |
 | Inverse-level resolution | `2^-30` degree |
 
-These are work and isolation resolutions, **not physical accuracy bounds**. Fixed quarter-day
-cells, any preceding-cell companion, clock partitions and root candidates share the candidate
-allowance. There is no guaranteed successful span or condition count below these ceilings:
-an ordinary long interval may exhaust work, and a short near-contact may remain unresolved.
-Slow altitude crossings, including those near a geographic pole or culmination, can fail to
-resolve at the fixed time resolution even when an ordinary mid-latitude crossing succeeds.
-The resolutions are not relaxed to make a query fit. Python limits result storage to 64 MiB;
+These are work and refinement resolutions, **not physical accuracy bounds**. Sampling costs
+about 128 evaluations per TT day per condition, before neighbour, extremum, inverse and root work.
+There is no guaranteed successful span or condition count below these ceilings: an ordinary long
+interval may exhaust work, and a short near-contact may fail. The resolutions are not relaxed
+to make a query fit. Python limits result storage to 64 MiB;
 JavaScript limits caller-owned WASM buffers to 16 MiB. Their condition collections are bounded
 before native execution.
 
-Successful queries certify the complete event census at the declared resolution. An unresolved
-count, indistinguishable close pair, unavailable certificate or exhausted work fails the **whole
-query**, including any window intersection. A known false condition does not permit skipping an
-unresolved companion. Failure never returns a partial result or an uncertified empty success.
+Detected numerical ambiguity, failed refinement or exhausted work fails the **whole query**,
+including any window intersection. A known false condition does not permit skipping a failing
+companion. Failure never returns a partial result. Undetected events can still produce a
+successful result; there is no completeness flag or automatic warning for that case.
 
 Input checks report malformed/out-of-domain values as `std::invalid_argument` in C++, `ValueError` in Python and
 `RangeError` in JavaScript; wrong high-level types/shapes use `TypeError`. Unresolved numerical work
 throws `std::runtime_error` in C++ and `CelestialError` in the bindings. Binding-side resource
 failures have `recorded=false`; native-reported failures have `recorded=true`. Error-kind identity
 remains authoritative even if no message could be allocated.
-Legal weather outside the proved tier is a numerical failure. If several aspects of a query are
-invalid or unprovable, the first detected failure determines the kind; a proof failure can precede
-an inverse-level input check.
+If several aspects of a query are invalid or fail numerically, the first detected failure
+determines the kind; a work-budget failure can precede an inverse-level input check.
 
 ## C count/fill stream
 

@@ -10,11 +10,15 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <algorithm>
 #include <array>
 #include <cfenv>
+#include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -66,10 +70,10 @@ TEST(AltitudeEventQuery, QueryKindsHaveDistinctConditionShapes) {
   EXPECT_EQ(budget.evaluations_remaining, 8192U);
 }
 
-TEST(AltitudeEventQuery, HalfOpenCalendarEndpointAdmissionIsSeparateFromClosedProofAvailability) {
+TEST(AltitudeEventQuery, HalfOpenCalendarEndUsesOnlyEvaluableSamples) {
   const search::Interval query { .start_jde_tt = 13689325.25, .end_jde_tt = 13689325.5 };
   search::Budget budget { .evaluations_remaining = 8192, .candidates_remaining = 2048 };
-  EXPECT_THROW((void)compute(Kind::TRANSITS, site(), query, {}, 0, budget), std::runtime_error);
+  EXPECT_NO_THROW((void)compute(Kind::TRANSITS, site(), query, {}, 0, budget));
   const search::Interval outside { .start_jde_tt = 13689325.5, .end_jde_tt = 13689325.75 };
   EXPECT_THROW((void)compute(Kind::TRANSITS, site(), outside, {}, 0, budget), std::invalid_argument);
 }
@@ -102,30 +106,26 @@ TEST(AltitudeEventQuery, GeometricEndpointsAndMismatchedAtmosphericModelsAreInva
   EXPECT_THROW((void)compute(Kind::ALTITUDE, site(), QUARTER, requests, 0, budget), std::invalid_argument);
 }
 
-TEST(AltitudeEventQuery, AlignedStartsRetainPrecedingAndContainingPieceOrigins) {
-  const std::array requests { geometric() };
-  search::Budget budget { .evaluations_remaining = 8192, .candidates_remaining = 2048 };
-  const auto scheduled = schedule(Kind::ALTITUDE, QUARTER, requests, 0, budget);
-  ASSERT_EQ(scheduled.pieces.size(), 2U);
-  EXPECT_DOUBLE_EQ(scheduled.census.start_jde_tt, QUARTER.start_jde_tt);
-  EXPECT_DOUBLE_EQ(scheduled.pieces.at(0).start_jde_tt, QUARTER.start_jde_tt - 0.25);
-  EXPECT_DOUBLE_EQ(scheduled.pieces.at(1).start_jde_tt, QUARTER.start_jde_tt);
-  EXPECT_EQ(budget.candidates_remaining, 2046U);
-  EXPECT_EQ(budget.evaluations_remaining, 8192U);
-}
-
-TEST(AltitudeEventQuery, ClippedStartsUseTheirContainingCanonicalQuarterWithoutLookbehind) {
-  const std::array requests { geometric() };
-  const search::Interval query { .start_jde_tt = 2451545.125, .end_jde_tt = 2451545.1875 };
-  search::Budget budget { .evaluations_remaining = 8192, .candidates_remaining = 2048 };
-  const auto scheduled = schedule(Kind::ALTITUDE, query, requests, 0, budget);
+TEST(AltitudeEventQuery, AlignedStartsUseThePrecedingGridPointAndGlobalNeighbours) {
+  const auto scheduled = schedule(0, QUARTER, 8192);
   ASSERT_EQ(scheduled.pieces.size(), 1U);
-  EXPECT_DOUBLE_EQ(scheduled.pieces.front().start_jde_tt, 2451545.0);
-  EXPECT_DOUBLE_EQ(scheduled.pieces.front().end_jde_tt, 2451545.25);
-  EXPECT_EQ(budget.candidates_remaining, 2047U);
+  const auto& piece = scheduled.pieces.front();
+  EXPECT_DOUBLE_EQ(piece.start, QUARTER.start_jde_tt - SAMPLE_STEP_TT_DAYS);
+  EXPECT_DOUBLE_EQ(piece.end, QUARTER.end_jde_tt);
+  EXPECT_DOUBLE_EQ(piece.times.front(), piece.start - SAMPLE_STEP_TT_DAYS);
+  EXPECT_DOUBLE_EQ(piece.times.back(), piece.end + SAMPLE_STEP_TT_DAYS);
+  EXPECT_EQ(scheduled.sample_count, piece.times.size());
 }
 
-TEST(AltitudeEventQuery, SharedBudgetIsConsumedAcrossRepeatedCompleteQueries) {
+TEST(AltitudeEventQuery, UnalignedStartsUseTheContainingGlobalGridInterval) {
+  const search::Interval query { .start_jde_tt = 2451545.001, .end_jde_tt = 2451545.005 };
+  const auto scheduled = schedule(0, query, 8192);
+  ASSERT_EQ(scheduled.pieces.size(), 1U);
+  EXPECT_DOUBLE_EQ(scheduled.pieces.front().start, 2451545.0);
+  EXPECT_DOUBLE_EQ(scheduled.pieces.front().end, 2451545.0 + SAMPLE_STEP_TT_DAYS);
+}
+
+TEST(AltitudeEventQuery, SharedBudgetIsConsumedAcrossRepeatedQueries) {
   const std::array requests { geometric() };
   search::Budget budget { .evaluations_remaining = 8192, .candidates_remaining = 2048 };
   const auto first = compute(Kind::ALTITUDE, site(), QUARTER, requests, 0, budget);
@@ -144,19 +144,78 @@ TEST(AltitudeEventQuery, ActualInverseChargeComesFromTheSameQueryBudget) {
     .target = 0, .level = 10.0, .above = true, .convention = 1,
     .params = { .temperature_c = 15.0, .pressure_hpa = 1013.25, .model = earth::refraction::Model::SAEMUNDSSON },
   };
-  search::Budget short_budget { .evaluations_remaining = SAEMUNDSSON_INVERSE_MAX_CHARGE - 1, .candidates_remaining = 2048 };
+  search::Budget short_budget { .evaluations_remaining = 2, .candidates_remaining = 2048 };
   EXPECT_THROW((void)resolve_level(request, short_budget), std::runtime_error);
-  EXPECT_EQ(short_budget.evaluations_remaining, SAEMUNDSSON_INVERSE_MAX_CHARGE - 1);
-  search::Budget budget { .evaluations_remaining = SAEMUNDSSON_INVERSE_MAX_CHARGE, .candidates_remaining = 2048 };
+  EXPECT_EQ(short_budget.evaluations_remaining, 0U);
+  auto budget = query_budget();
   const auto level = resolve_level(request, budget);
-  EXPECT_EQ(budget.evaluations_remaining + level.evaluation_charge, SAEMUNDSSON_INVERSE_MAX_CHARGE);
+  EXPECT_LT(level, request.level);
+  EXPECT_LT(budget.evaluations_remaining, 8192U);
   EXPECT_EQ(budget.candidates_remaining, 2048U);
 }
 
-TEST(AltitudeEventQuery, RealPlutoUnresolvedControlCannotBecomeSuccessfulEmpty) {
+TEST(AltitudeEventQuery, DetectedPlutoContactCannotBecomeSuccessfulEmpty) {
   const std::array requests { geometric(9, 48.605252016244656) };
   search::Budget budget { .evaluations_remaining = 8192, .candidates_remaining = 2048 };
   EXPECT_THROW((void)compute(Kind::ALTITUDE, site(30.0), QUARTER, requests, 0, budget), std::runtime_error);
+}
+
+TEST(AltitudeEventQuery, AllProviderAndCalendarEdgesKeepEverySampleInsideTheSelectedDomain) {
+  struct Case { uint32_t target; double start; double end; };
+  for (const auto input : std::array {
+    Case { .target = 0, .start = 1867522.5, .end = 1867522.75 },
+    Case { .target = 0, .start = 13689325.25, .end = 13689325.5 },
+    Case { .target = 9, .start = 2409543.5, .end = 2409543.75 },
+    Case { .target = 9, .start = 2488069.25, .end = 2488069.5 },
+  }) {
+    const search::Interval query { .start_jde_tt = input.start, .end_jde_tt = input.end };
+    const auto domain = sample_domain(input.target);
+    const auto planned = schedule(input.target, query, 8192);
+    for (const auto& piece : planned.pieces) {
+      for (const double at : piece.times) {
+        EXPECT_GE(at, domain.first);
+        EXPECT_LE(at, domain.last);
+      }
+    }
+    const std::array requests { geometric(input.target, 0.0) };
+    auto work = query_budget();
+    EXPECT_NO_THROW((void)compute(Kind::ALTITUDE, site(30.0), query, requests, 0, work));
+  }
+}
+
+TEST(AltitudeEventQuery, ModelJoinSideChangesFailButOrdinaryCrossingsAcrossTheDateSucceed) {
+  for (const int32_t year : { 500, 1600, 1860, 2005 }) {
+    const double join = julian_day::tt_to_jde(calendar::Datetime { std::chrono::year { year } / std::chrono::January / 1, 0.0 });
+    const Altitude provider {
+      .target = ephemeris::Target::SUN, .observer = site(30.0), .level_sine = 0.0,
+      .domain = sample_domain(0), .meridian = false,
+    };
+    const auto left = provider.observe(search::lower(join));
+    const auto right = provider.observe(join);
+    const double sine = std::midpoint(left.up / left.q, right.up / right.q);
+    const double level = toolbox::AngleRad { std::asin(sine) }.deg();
+    const search::Interval query { .start_jde_tt = join - 0.125, .end_jde_tt = join + 0.125 };
+    const std::array crossing { geometric(0, level) };
+    auto work = query_budget();
+    EXPECT_THROW((void)compute(Kind::ALTITUDE, site(30.0), query, crossing, 0, work), std::runtime_error);
+    const std::array ordinary { geometric(0, 0.0) };
+    work = query_budget();
+    EXPECT_NO_THROW((void)compute(Kind::ALTITUDE, site(30.0), query, ordinary, 0, work));
+  }
+}
+
+TEST(AltitudeEventQuery, ModelJoinListMatchesTheInheritedPolynomialDiscontinuities) {
+  for (const int32_t year : delta_t::algo5::DISCONTINUITY_YEARS) {
+    const auto at = static_cast<double>(year);
+    EXPECT_GT(std::abs(delta_t::algo5::compute(at) - delta_t::algo5::compute(search::lower(at))), 1e-5);
+  }
+  for (int32_t year = 401; year < 2100; ++year) {
+    if (std::ranges::find(delta_t::algo5::DISCONTINUITY_YEARS, year) != delta_t::algo5::DISCONTINUITY_YEARS.end()) {
+      continue;
+    }
+    const auto at = static_cast<double>(year);
+    EXPECT_NEAR(delta_t::algo5::compute(at), delta_t::algo5::compute(search::lower(at)), 1e-7);
+  }
 }
 
 TEST(AltitudeEventQuery, NonNearestEnvironmentFailsBeforeConsumingQueryWork) {

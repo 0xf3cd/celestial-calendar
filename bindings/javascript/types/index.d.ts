@@ -322,18 +322,22 @@ export const observer: Readonly<{
   /** UTC from 1972, or explicit UT1. Provider/Delta T guards apply without a chart/rate window. */
   position(target: PhysicalTarget, civil: CivilDateTime, options: ObserverPositionOptions): TopocentricPosition;
   /**
-   * Complete centre-altitude events in [startJdeTt,endJdeTt), with fixed ALGO5/IAU1980.
+   * Detected centre-altitude crossings in [startJdeTt,endJdeTt), with fixed ALGO5/IAU1980.
    * Start events are included and already reflected in initiallySatisfied; end events are excluded.
-   * @throws {CelestialError} For unresolved counts, unavailable certificates, exhausted work or malformed success.
+   * Sampling can miss events without an error; no tangent events are returned.
+   * @throws {RangeError} For invalid inputs, including weather outside [-90,60] C or [300,1100] hPa.
+   * @throws {CelestialError} For detected near contacts, failed refinement, exhausted work or malformed success.
    * No failure returns a partial result. The returned graph is frozen and owns its values.
    */
   altitudeEvents(site: Observer, condition: AltitudeCondition, startJdeTt: number, endJdeTt: number): AltitudeEvents;
-  /** All upper meridian passages in [start,end) JDE(TT); at a pole use the supplied longitude's meridian. */
+  /** Detected upper meridian passages in [start,end) JDE(TT), with altitudeEvents' sampling limits.
+   * At a pole use the supplied longitude's meridian. */
   upperTransits(site: Observer, target: PhysicalTarget, startJdeTt: number, endJdeTt: number): readonly UpperTransit[];
   /**
    * Intersect conditions and retain their states and companion events, in JDE(TT).
    * Windows are maximal positive-duration operational spans, not strict point sets at isolated equalities.
-   * An empty conjunction returns the whole interval; any unresolved condition fails the whole query.
+   * Windows are reconstructed from detected crossings; altitudeEvents' sampling limits apply.
+   * An empty conjunction returns the whole interval; failure in any condition fails the whole query.
    */
   observingWindows(site: Observer, conditions: readonly AltitudeCondition[], startJdeTt: number, endJdeTt: number): ObservingWindows;
 }>;

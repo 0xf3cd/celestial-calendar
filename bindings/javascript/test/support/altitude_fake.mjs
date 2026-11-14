@@ -98,9 +98,7 @@ export function testAltitudeFakeNative(fixture, M, control, reset, called, layou
     configure(rows); fails(cases[2][1]); ++corruptions;
   }
   configure([state, { tag: 1, direction_code: 2, jde_tt: start + 0.5 }, { tag: 2, jde_tt: start, end_jde_tt: end }]);
-  const tangent = cases[2][1]();
-  assert.equal(tangent.events[0].direction, "tangent");
-  assert.equal(tangent.windows.length, 1);
+  fails(cases[2][1]); ++corruptions;
   reset();
   for (const input of [null, { ...condition, level: 0 }, { ...condition, level: { ...condition.level, refraction: {} } },
     { ...condition, sense: 1 }, Object.create(condition)]) {

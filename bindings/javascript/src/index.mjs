@@ -757,7 +757,6 @@ const ALTITUDE_SENSES = Object.freeze({
 const ALTITUDE_DIRECTIONS = Object.freeze({
   [CODES.CELESTIAL_EVENT_DIRECTION_INCREASING]: "increasing",
   [CODES.CELESTIAL_EVENT_DIRECTION_DECREASING]: "decreasing",
-  [CODES.CELESTIAL_EVENT_DIRECTION_TANGENT]: "tangent",
 });
 
 const altitudeCondition = (input) => {
@@ -830,7 +829,7 @@ const altitudeSpans = (states, events, start, end) => {
     const wasActive = unsatisfied === 0;
     do {
       const event = events[index++];
-      if (time === start || event.direction === "tangent") continue;
+      if (time === start) continue;
       const condition = event.conditionIndex;
       const above = event.direction === "increasing";
       const value = states[condition].condition.sense === "above" ? above : !above;
