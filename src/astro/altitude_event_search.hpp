@@ -141,7 +141,7 @@ struct Grid {
   for (int64_t index = first; index <= last; ++index) {
     result.times.push_back(EPOCH + (static_cast<double>(index) * SAMPLE_STEP_TT_DAYS));
   }
-    if (result.times.back() < right) {
+  if (result.times.back() < right) {
     result.times.push_back(right);
   }
   return result;

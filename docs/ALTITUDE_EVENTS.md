@@ -69,6 +69,8 @@ for (const window of result.windows) console.log(window.startJdeTt, window.endJd
 shapes. TypeScript uses `GeometricLevel | RefractedLevel` and readonly result collections.
 For refraction, use a level such as
 `{ kind: "refracted", altitudeDeg: 20, refraction: { model: "bennett" } }`.
+Set `temperatureC` and `pressureHpa` inside `refraction` to change the weather;
+they default to 15°C and 1013.25 hPa.
 A geometric level cannot carry refraction fields. Returned objects, nested conditions and arrays
 are frozen copies, independent of later queries, mutable inputs and WASM memory growth.
 
@@ -118,6 +120,7 @@ transits retain their position source and fixed Delta T model. The daily rise/se
 
 - Times are **JDE(TT)**, not JD(UT1), civil UTC or local clock fields. The site is fixed throughout
   the query. The computation uses fixed ALGO5 TT-to-UT1 conversion and IAU 1980 nutation.
+  See [civil-clock display](#sunrise-twilight-and-civil-clock-display) to convert returned times.
 - Intervals are `[start,end)`: start events are included, end events excluded. `initially_satisfied`
   (JavaScript `initiallySatisfied`) already includes start-event replay; do not apply those events twice.
 - Events are chronological, with condition index breaking equal-time ties. The direction is
@@ -199,14 +202,12 @@ physical accuracy at distant epochs or guarantee successful computation.
 
 The search uses a J2000-anchored grid spaced `2^-7` TT day (11.25 minutes), refines detected
 extrema, then bisects side changes. Fixed neighbouring samples keep the root brackets independent
-of query endpoints. Above means a positive altitude residual; zero belongs to the below side.
+of query endpoints.
+The dimensionless altitude residual is `up - sin(h0) * q`, where `h0` is the resolved geometric
+threshold, and `up` and `q` are the vertical component and length of the observer-to-body vector,
+both divided by geocentric distance. A positive residual means above; zero belongs to the below side.
 Each reported crossing is the final bracket's right endpoint, sampled on the new side.
 The operational state changes at that reported time.
-
-A detected extremum with dimensionless residual magnitude at most `2^-24` fails as an unresolved
-near contact. This is an empirical ambiguity threshold, not an error bound or a guarantee that
-every contact is detected. The search treats ALGO5 value discontinuities as separate branches;
-if the sampled sides differ across a jump, the query fails rather than reporting a crossing there.
 
 Each query shares these fixed work limits across conditions, clock pieces, inverse levels
 and event searches:
@@ -226,6 +227,13 @@ interval may exhaust work, and a short near-contact may fail. The resolutions ar
 to make a query fit. Python limits result storage to 64 MiB;
 JavaScript limits caller-owned WASM buffers to 16 MiB. Their condition collections are bounded
 before native execution.
+
+## Failures and error types
+
+A detected extremum with dimensionless residual magnitude at most `2^-24` fails as an unresolved
+near contact. This is an empirical ambiguity threshold, not an error bound or a guarantee that
+every contact is detected. The search treats ALGO5 value discontinuities as separate branches;
+if the sampled sides differ across a jump, the query fails rather than reporting a crossing there.
 
 Detected numerical ambiguity, failed refinement or exhausted work fails the **whole query**,
 including any window intersection. A known false condition does not permit skipping a failing

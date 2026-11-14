@@ -161,6 +161,7 @@ struct Schedule {
 
   double first = domain.first;
   for (const int32_t year : delta_t::algo5::DISCONTINUITY_YEARS) {
+    // Earlier ALGO5 joins lie outside the calendar's supported TT range.
     if (year < 401) {
       continue;
     }

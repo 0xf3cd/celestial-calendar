@@ -46,6 +46,18 @@ auto geometric(const uint32_t target = 0, const double level = -45.0) -> Request
   };
 }
 
+/** @brief East-positive longitude placing the Sun on the upper meridian at a TT instant. */
+auto solar_meridian_longitude(const double jde_tt) -> toolbox::AngleDeg {
+  const auto position = ephemeris::equatorial_position(ephemeris::Target::SUN, jde_tt);
+  const auto ut1 = delta_t::tt_to_ut1(delta_t::Model::ALGO5, julian_day::jde_to_tt(jde_tt));
+  const auto theta = sidereal::greenwich_apparent(
+    julian_day::ut1_to_jd(ut1),
+    jde_tt,
+    earth::nutation::Model::IAU_1980
+  );
+  return toolbox::AngleDeg { std::remainder((position.right_ascension - theta).deg(), 360.0) };
+}
+
 inline constexpr search::Interval QUARTER { .start_jde_tt = 2451545.0, .end_jde_tt = 2451545.25 };
 
 } // namespace
@@ -202,6 +214,124 @@ TEST(AltitudeEventQuery, ModelJoinSideChangesFailButOrdinaryCrossingsAcrossTheDa
     work = query_budget();
     EXPECT_NO_THROW((void)compute(Kind::ALTITUDE, site(30.0), query, ordinary, 0, work));
   }
+}
+
+TEST(AltitudeEventQuery, TransitModelJoinSideChangesFailButNearbyPassagesSucceed) {
+  for (const int32_t year : { 1600, 2005 }) {
+    const double join = julian_day::tt_to_jde(
+      calendar::Datetime { std::chrono::year { year } / std::chrono::January / 1, 0.0 }
+    );
+    const double longitude = std::midpoint(
+      solar_meridian_longitude(search::lower(join)).deg(),
+      solar_meridian_longitude(join).deg()
+    );
+    const Observer observer {
+      .location = { .latitude = toolbox::AngleDeg { 30.0 }, .longitude = toolbox::AngleDeg { longitude } },
+      .elevation = toolbox::DistanceKm { 0.0 },
+    };
+    const Altitude provider {
+      .target = ephemeris::Target::SUN, .observer = observer, .level_sine = 0.0,
+      .domain = sample_domain(0), .meridian = true,
+    };
+    const auto before = provider.observe(search::lower(join));
+    const auto after = provider.observe(join);
+    ASSERT_NE(before.meridian > 0.0, after.meridian > 0.0);
+    ASSERT_GT(before.forward, 0.0);
+    ASSERT_GT(after.forward, 0.0);
+
+    const search::Interval query { .start_jde_tt = join - 0.125, .end_jde_tt = join + 0.125 };
+    auto work = query_budget();
+    try {
+      (void)compute(Kind::TRANSITS, observer, query, {}, 0, work);
+      FAIL() << "A model jump cannot become a transit";
+    } catch (const std::runtime_error& error) {
+      EXPECT_STREQ(error.what(), "Meridian crossing coincides with a Delta T model join");
+    }
+
+    const Observer ordinary {
+      .location = { .latitude = observer.location.latitude, .longitude = toolbox::AngleDeg { longitude + 1.0 } },
+      .elevation = observer.elevation,
+    };
+    work = query_budget();
+    const auto result = compute(Kind::TRANSITS, ordinary, query, {}, 0, work);
+    EXPECT_EQ(result.transit_times.size(), 1U);
+  }
+}
+
+TEST(AltitudeEventQuery, UnresolvedTransitForwardSideFailsAtAnAdmittedDistantObserver) {
+  constexpr double EPOCH = 2451545.0;
+  constexpr double PROBE_HEIGHT_KM = 1e8;
+  const auto longitude = solar_meridian_longitude(EPOCH);
+  const auto provider_at = [longitude](const double height_km) {
+    return Altitude {
+      .target = ephemeris::Target::SUN,
+      .observer = {
+        .location = { .latitude = toolbox::AngleDeg { 30.0 }, .longitude = longitude },
+        .elevation = toolbox::DistanceKm { height_km },
+      },
+      .level_sine = 0.0, .domain = sample_domain(0), .meridian = true,
+    };
+  };
+  const double surface = provider_at(0.0).observe(EPOCH).forward;
+  const double distant = provider_at(PROBE_HEIGHT_KM).observe(EPOCH).forward;
+  // The forward component is affine in observer height; its zero need not make the full direction zero.
+  const double height = PROBE_HEIGHT_KM * surface / (surface - distant);
+  const auto provider = provider_at(height);
+  const search::Interval query { .start_jde_tt = EPOCH - 0.125, .end_jde_tt = EPOCH + 0.125 };
+  const auto planned = schedule(0, query, 8192);
+  auto work = query_budget();
+  const auto found = scan(provider, planned.pieces.front(), false, work);
+  ASSERT_EQ(found.events.size(), 1U);
+  EXPECT_LE(std::abs(provider.observe(found.events.front().jde_tt).forward), CONTACT_RESIDUAL);
+
+  work = query_budget();
+  try {
+    (void)compute(Kind::TRANSITS, provider.observer, query, {}, 0, work);
+    FAIL() << "An unresolved forward side cannot become an empty or nonempty success";
+  } catch (const std::runtime_error& error) {
+    EXPECT_STREQ(error.what(), "The meridian forward side is unresolved");
+  }
+  work = query_budget();
+  const auto control = compute(
+    Kind::TRANSITS,
+    provider_at(height * 0.99).observer,
+    query,
+    {},
+    0,
+    work
+  );
+  EXPECT_EQ(control.transit_times.size(), 1U);
+}
+
+TEST(AltitudeEventQuery, TransitAtAnIntervalSplitIsOwnedOnlyByTheRightQuery) {
+  const search::Interval query { .start_jde_tt = 2451545.0, .end_jde_tt = 2451546.0 };
+  auto work = query_budget();
+  const auto whole = compute(Kind::TRANSITS, site(30.0), query, {}, 0, work);
+  ASSERT_EQ(whole.transit_times.size(), 1U);
+  const double split = whole.transit_times.front();
+  ASSERT_GT(split, query.start_jde_tt);
+  ASSERT_LT(split, query.end_jde_tt);
+
+  work = query_budget();
+  const auto left = compute(
+    Kind::TRANSITS,
+    site(30.0),
+    { .start_jde_tt = query.start_jde_tt, .end_jde_tt = split },
+    {},
+    0,
+    work
+  );
+  EXPECT_TRUE(left.transit_times.empty());
+  work = query_budget();
+  const auto right = compute(
+    Kind::TRANSITS,
+    site(30.0),
+    { .start_jde_tt = split, .end_jde_tt = query.end_jde_tt },
+    {},
+    0,
+    work
+  );
+  EXPECT_EQ(right.transit_times, whole.transit_times);
 }
 
 TEST(AltitudeEventQuery, ModelJoinListMatchesTheInheritedPolynomialDiscontinuities) {
