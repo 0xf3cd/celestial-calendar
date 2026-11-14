@@ -11,41 +11,12 @@
  */
 
 #include <cstdint>
-#include <optional>
-#include <stdexcept>
 
 #include "celestial.h"
 #include "lib.hpp"
 #include "lib_civil.hpp"
 #include "lib_codes.hpp"
 #include "observer.hpp"
-
-namespace {
-
-/** @brief Decode refraction without reading weather storage when no correction is requested. */
-// NOLINTBEGIN(bugprone-easily-swappable-parameters): Names retain the published selector/temperature/pressure order.
-auto refraction_params(
-  const uint32_t code,
-  const double temperature_c,
-  const double pressure_hpa
-) -> std::optional<astro::earth::refraction::Params> {
-  using astro::earth::refraction::Model;
-  switch (code) {
-    case CELESTIAL_REFRACTION_NONE: return std::nullopt;
-    case CELESTIAL_REFRACTION_BENNETT:
-      return astro::earth::refraction::Params {
-        .temperature_c = temperature_c, .pressure_hpa = pressure_hpa, .model = Model::BENNETT,
-      };
-    case CELESTIAL_REFRACTION_SAEMUNDSSON:
-      return astro::earth::refraction::Params {
-        .temperature_c = temperature_c, .pressure_hpa = pressure_hpa, .model = Model::SAEMUNDSSON,
-      };
-    default: throw std::invalid_argument { "Unknown refraction selector" };
-  }
-}
-// NOLINTEND(bugprone-easily-swappable-parameters)
-
-} // namespace
 
 extern "C" {
 
@@ -78,7 +49,7 @@ auto celestial_topocentric_position(
         .elevation = astro::toolbox::DistanceKm { elevation_m / 1000.0 },
       },
       lib::codes::target(target_code),
-      refraction_params(refraction_code, temperature_c, pressure_hpa),
+      lib::codes::refraction_params(refraction_code, temperature_c, pressure_hpa),
       lib::codes::delta_t_model(delta_t_model_code)
     );
     const auto& position = observation.position;

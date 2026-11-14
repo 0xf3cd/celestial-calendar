@@ -26,9 +26,9 @@ sys.path.insert(0, str(REPO))
 from automation.c_abi_schema import C_TO_CTYPES, parse_function, parse_header_text, record_layouts  # noqa: E402
 
 HEADER = REPO / "src/shared_lib/celestial.h"
-EXPECTED_EXPORT_COUNT = 40
-EXPECTED_LAYOUT_COUNT = 31
-EXPECTED_RECORDING_COUNT = 38
+EXPECTED_EXPORT_COUNT = 43
+EXPECTED_LAYOUT_COUNT = 33
+EXPECTED_RECORDING_COUNT = 41
 DECLARATION_SEAMS = ("BINDING_SPECS", "RECORDING_EXPORTS", "STRUCT_TYPES")
 READERS = {"celestial_last_error", "celestial_last_error_kind"}
 POINTEE_TYPES = {
@@ -126,7 +126,12 @@ def verify_record_layouts(manifest: dict, header: dict) -> None:
 
 def verify_protocol_contracts(protocols: dict) -> None:
   """Independent semantic fixtures; these are not a declaration/layout baseline."""
-  empty_events = {"celestial_longitude_events", "celestial_longitude_stations", "celestial_longitude_difference_events"}
+  empty_events = {
+    "celestial_longitude_events",
+    "celestial_longitude_stations",
+    "celestial_longitude_difference_events",
+    "celestial_upper_transits",
+  }
   nonempty = {
     "celestial_moon_phase_moments",
     "celestial_new_moons_in_year",
@@ -134,6 +139,8 @@ def verify_protocol_contracts(protocols: dict) -> None:
     "celestial_model_identities",
     "celestial_positions",
     "celestial_equatorial_positions",
+    "celestial_altitude_events",
+    "celestial_observing_windows",
   }
   fills = {name for name, p in protocols.items() if p["kind"] == "count-fill"}
   assert fills == empty_events | nonempty, "count/fill roster"
@@ -278,7 +285,14 @@ def main() -> None:
   recording = set(exports) - READERS
   verify_manifest(manifest, exports, layouts, recording, codes)
   sources = "\n".join(path.read_text(encoding="utf-8") for path in (REPO / "src/shared_lib").glob("lib*.cpp"))
-  assert {name for name in exports if "lib::wrap_export(" in function_body(sources, name)} == recording
+  shared_altitude = {"celestial_altitude_events", "celestial_upper_transits", "celestial_observing_windows"}
+  assert "lib::wrap_export(" in function_body(sources, "run")
+  for name in shared_altitude:
+    body = function_body(sources, name)
+    assert re.search(r"return\s+run\(\s*__func__\s*,", body), f"shared altitude error boundary: {name}"
+  assert {
+    name for name in exports if "lib::wrap_export(" in function_body(sources, name)
+  } | shared_altitude == recording
   mutations = run_mutation_self_tests(manifest, exports, layouts, recording, codes)
   verify_raw_inventory((HERE / "raw_protocol.py").read_text(encoding="utf-8"), set(exports))
   functions = _binding.FUNCTIONS

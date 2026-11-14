@@ -1067,6 +1067,133 @@ export const LAYOUTS = deepFreeze({
         "offset": 56
       }
     ]
+  },
+  "CelestialAltitudeCondition": {
+    "size": 40,
+    "alignment": 8,
+    "fields": [
+      {
+        "name": "target_code",
+        "type": "uint32_t",
+        "offset": 0
+      },
+      {
+        "name": "sense_code",
+        "type": "uint32_t",
+        "offset": 4
+      },
+      {
+        "name": "refraction_code",
+        "type": "uint32_t",
+        "offset": 8
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t",
+        "offset": 12
+      },
+      {
+        "name": "level_deg",
+        "type": "double",
+        "offset": 16
+      },
+      {
+        "name": "temperature_c",
+        "type": "double",
+        "offset": 24
+      },
+      {
+        "name": "pressure_hpa",
+        "type": "double",
+        "offset": 32
+      }
+    ]
+  },
+  "CelestialAltitudeRecord": {
+    "size": 88,
+    "alignment": 8,
+    "fields": [
+      {
+        "name": "tag",
+        "type": "uint32_t",
+        "offset": 0
+      },
+      {
+        "name": "condition_index",
+        "type": "uint32_t",
+        "offset": 4
+      },
+      {
+        "name": "target_code",
+        "type": "uint32_t",
+        "offset": 8
+      },
+      {
+        "name": "position_source_code",
+        "type": "uint32_t",
+        "offset": 12
+      },
+      {
+        "name": "delta_t_model_code",
+        "type": "uint32_t",
+        "offset": 16
+      },
+      {
+        "name": "refraction_code",
+        "type": "uint32_t",
+        "offset": 20
+      },
+      {
+        "name": "sense_code",
+        "type": "uint32_t",
+        "offset": 24
+      },
+      {
+        "name": "direction_code",
+        "type": "uint32_t",
+        "offset": 28
+      },
+      {
+        "name": "initially_satisfied",
+        "type": "uint32_t",
+        "offset": 32
+      },
+      {
+        "name": "reserved",
+        "type": "uint32_t",
+        "offset": 36
+      },
+      {
+        "name": "jde_tt",
+        "type": "double",
+        "offset": 40
+      },
+      {
+        "name": "end_jde_tt",
+        "type": "double",
+        "offset": 48
+      },
+      {
+        "name": "requested_level_deg",
+        "type": "double",
+        "offset": 56
+      },
+      {
+        "name": "geometric_level_deg",
+        "type": "double",
+        "offset": 64
+      },
+      {
+        "name": "temperature_c",
+        "type": "double",
+        "offset": 72
+      },
+      {
+        "name": "pressure_hpa",
+        "type": "double",
+        "offset": 80
+      }
+    ]
   }
 });
 
@@ -1310,11 +1437,29 @@ export const BINDINGS = deepFreeze([
     "wasmName": "_celestial_apparent_diameter",
     "result": "sret:CelestialApparentDiameter",
     "readsLastError": true
+  },
+  {
+    "cName": "celestial_altitude_events",
+    "wasmName": "_celestial_altitude_events",
+    "result": "count-fill",
+    "readsLastError": true
+  },
+  {
+    "cName": "celestial_upper_transits",
+    "wasmName": "_celestial_upper_transits",
+    "result": "count-fill",
+    "readsLastError": true
+  },
+  {
+    "cName": "celestial_observing_windows",
+    "wasmName": "_celestial_observing_windows",
+    "result": "count-fill",
+    "readsLastError": true
   }
 ]);
 
 export const C_DECLARATIONS = deepFreeze({
-  "source_sha256": "f7a13270afa7a244236999f565a99901080a9489118003802833c437fd1281a5",
+  "source_sha256": "f6f362b12623544e5c42dd367cfd19f1c7e828e70424955258916b0898c4686a",
   "functions": {
     "celestial_last_error": {
       "signature": "const char *celestial_last_error(void)",
@@ -2181,6 +2326,136 @@ export const C_DECLARATIONS = deepFreeze({
           "type": "double"
         }
       ]
+    },
+    "celestial_altitude_events": {
+      "signature": "uint32_t celestial_altitude_events(const CelestialAltitudeCondition *condition, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count)",
+      "result": "uint32_t",
+      "parameters": [
+        {
+          "name": "condition",
+          "type": "const CelestialAltitudeCondition *"
+        },
+        {
+          "name": "latitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "longitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "elevation_m",
+          "type": "double"
+        },
+        {
+          "name": "start_jde_tt",
+          "type": "double"
+        },
+        {
+          "name": "end_jde_tt",
+          "type": "double"
+        },
+        {
+          "name": "record_count",
+          "type": "uint32_t *"
+        },
+        {
+          "name": "slots",
+          "type": "CelestialAltitudeRecord *"
+        },
+        {
+          "name": "slot_count",
+          "type": "uint32_t"
+        }
+      ]
+    },
+    "celestial_upper_transits": {
+      "signature": "uint32_t celestial_upper_transits(uint32_t target_code, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count)",
+      "result": "uint32_t",
+      "parameters": [
+        {
+          "name": "target_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "latitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "longitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "elevation_m",
+          "type": "double"
+        },
+        {
+          "name": "start_jde_tt",
+          "type": "double"
+        },
+        {
+          "name": "end_jde_tt",
+          "type": "double"
+        },
+        {
+          "name": "record_count",
+          "type": "uint32_t *"
+        },
+        {
+          "name": "slots",
+          "type": "CelestialAltitudeRecord *"
+        },
+        {
+          "name": "slot_count",
+          "type": "uint32_t"
+        }
+      ]
+    },
+    "celestial_observing_windows": {
+      "signature": "uint32_t celestial_observing_windows(const CelestialAltitudeCondition *conditions, uint32_t condition_count, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count)",
+      "result": "uint32_t",
+      "parameters": [
+        {
+          "name": "conditions",
+          "type": "const CelestialAltitudeCondition *"
+        },
+        {
+          "name": "condition_count",
+          "type": "uint32_t"
+        },
+        {
+          "name": "latitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "longitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "elevation_m",
+          "type": "double"
+        },
+        {
+          "name": "start_jde_tt",
+          "type": "double"
+        },
+        {
+          "name": "end_jde_tt",
+          "type": "double"
+        },
+        {
+          "name": "record_count",
+          "type": "uint32_t *"
+        },
+        {
+          "name": "slots",
+          "type": "CelestialAltitudeRecord *"
+        },
+        {
+          "name": "slot_count",
+          "type": "uint32_t"
+        }
+      ]
     }
   },
   "constants": {
@@ -2259,7 +2534,13 @@ export const C_DECLARATIONS = deepFreeze({
     "CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC": 1,
     "CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL": 1,
     "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN": 2,
-    "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3
+    "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3,
+    "CELESTIAL_ALTITUDE_SENSE_BELOW": 0,
+    "CELESTIAL_ALTITUDE_SENSE_ABOVE": 1,
+    "CELESTIAL_ALTITUDE_RECORD_CONDITION": 0,
+    "CELESTIAL_ALTITUDE_RECORD_EVENT": 1,
+    "CELESTIAL_ALTITUDE_RECORD_WINDOW": 2,
+    "CELESTIAL_ALTITUDE_RECORD_UPPER_TRANSIT": 3
   },
   "aliases": {}
 });
@@ -2643,6 +2924,49 @@ export const WASM_SIGNATURES = deepFreeze({
       "f64",
       "f64"
     ]
+  },
+  "celestial_altitude_events": {
+    "result": "i32",
+    "parameters": [
+      "i32",
+      "f64",
+      "f64",
+      "f64",
+      "f64",
+      "f64",
+      "i32",
+      "i32",
+      "i32"
+    ]
+  },
+  "celestial_upper_transits": {
+    "result": "i32",
+    "parameters": [
+      "i32",
+      "f64",
+      "f64",
+      "f64",
+      "f64",
+      "f64",
+      "i32",
+      "i32",
+      "i32"
+    ]
+  },
+  "celestial_observing_windows": {
+    "result": "i32",
+    "parameters": [
+      "i32",
+      "i32",
+      "f64",
+      "f64",
+      "f64",
+      "f64",
+      "f64",
+      "i32",
+      "i32",
+      "i32"
+    ]
   }
 });
 
@@ -2920,6 +3244,39 @@ export const PROTOCOLS = deepFreeze({
   "celestial_apparent_diameter": {
     "kind": "sret",
     "identity": "resolved-explicit-model-key-position-source-and-radius-definition",
+    "error_channel": "kind"
+  },
+  "celestial_altitude_events": {
+    "kind": "count-fill",
+    "count_parameter": "record_count",
+    "slots_parameter": "slots",
+    "capacity_parameter": "slot_count",
+    "legal_empty": false,
+    "total_must_match": true,
+    "written_policy": "min-total-capacity",
+    "null_slots_requires_zero_capacity": true,
+    "error_channel": "kind"
+  },
+  "celestial_upper_transits": {
+    "kind": "count-fill",
+    "count_parameter": "record_count",
+    "slots_parameter": "slots",
+    "capacity_parameter": "slot_count",
+    "legal_empty": true,
+    "total_must_match": true,
+    "written_policy": "min-total-capacity",
+    "null_slots_requires_zero_capacity": true,
+    "error_channel": "kind"
+  },
+  "celestial_observing_windows": {
+    "kind": "count-fill",
+    "count_parameter": "record_count",
+    "slots_parameter": "slots",
+    "capacity_parameter": "slot_count",
+    "legal_empty": false,
+    "total_must_match": true,
+    "written_policy": "min-total-capacity",
+    "null_slots_requires_zero_capacity": true,
     "error_channel": "kind"
   }
 });

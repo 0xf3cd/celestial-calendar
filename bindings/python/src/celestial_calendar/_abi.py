@@ -334,6 +334,39 @@ class CelestialApparentDiameter(ctypes.Structure):
   ]
 
 
+class CelestialAltitudeCondition(ctypes.Structure):
+  _fields_ = [
+    ("target_code", ctypes.c_uint32),
+    ("sense_code", ctypes.c_uint32),
+    ("refraction_code", ctypes.c_uint32),
+    ("reserved", ctypes.c_uint32),
+    ("level_deg", ctypes.c_double),
+    ("temperature_c", ctypes.c_double),
+    ("pressure_hpa", ctypes.c_double),
+  ]
+
+
+class CelestialAltitudeRecord(ctypes.Structure):
+  _fields_ = [
+    ("tag", ctypes.c_uint32),
+    ("condition_index", ctypes.c_uint32),
+    ("target_code", ctypes.c_uint32),
+    ("position_source_code", ctypes.c_uint32),
+    ("delta_t_model_code", ctypes.c_uint32),
+    ("refraction_code", ctypes.c_uint32),
+    ("sense_code", ctypes.c_uint32),
+    ("direction_code", ctypes.c_uint32),
+    ("initially_satisfied", ctypes.c_uint32),
+    ("reserved", ctypes.c_uint32),
+    ("jde_tt", ctypes.c_double),
+    ("end_jde_tt", ctypes.c_double),
+    ("requested_level_deg", ctypes.c_double),
+    ("geometric_level_deg", ctypes.c_double),
+    ("temperature_c", ctypes.c_double),
+    ("pressure_hpa", ctypes.c_double),
+  ]
+
+
 P_U32 = ctypes.POINTER(ctypes.c_uint32)
 P_DOUBLE = ctypes.POINTER(ctypes.c_double)
 P_CHAR = ctypes.POINTER(ctypes.c_char)
@@ -524,6 +557,49 @@ BINDING_SPECS = {
     ),
     CelestialApparentDiameter,
   ),
+  "celestial_altitude_events": (
+    (
+      ctypes.POINTER(CelestialAltitudeCondition),
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      P_U32,
+      ctypes.POINTER(CelestialAltitudeRecord),
+      ctypes.c_uint32,
+    ),
+    ctypes.c_uint32,
+  ),
+  "celestial_upper_transits": (
+    (
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      P_U32,
+      ctypes.POINTER(CelestialAltitudeRecord),
+      ctypes.c_uint32,
+    ),
+    ctypes.c_uint32,
+  ),
+  "celestial_observing_windows": (
+    (
+      ctypes.POINTER(CelestialAltitudeCondition),
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      P_U32,
+      ctypes.POINTER(CelestialAltitudeRecord),
+      ctypes.c_uint32,
+    ),
+    ctypes.c_uint32,
+  ),
 }
 
 STRUCT_TYPES = {
@@ -558,6 +634,8 @@ STRUCT_TYPES = {
   "CelestialCivilHouseCapability": CelestialCivilHouseCapability,
   "CelestialTopocentricPosition": CelestialTopocentricPosition,
   "CelestialApparentDiameter": CelestialApparentDiameter,
+  "CelestialAltitudeCondition": CelestialAltitudeCondition,
+  "CelestialAltitudeRecord": CelestialAltitudeRecord,
 }
 
 RECORDING_EXPORTS = frozenset(
@@ -600,6 +678,9 @@ RECORDING_EXPORTS = frozenset(
     "celestial_house_capability",
     "celestial_topocentric_position",
     "celestial_apparent_diameter",
+    "celestial_altitude_events",
+    "celestial_upper_transits",
+    "celestial_observing_windows",
   )
 )
 
@@ -942,6 +1023,49 @@ C_SIGNATURES = {
       "double",
     ),
   ),
+  "celestial_altitude_events": (
+    "uint32_t",
+    (
+      "const CelestialAltitudeCondition *",
+      "double",
+      "double",
+      "double",
+      "double",
+      "double",
+      "uint32_t *",
+      "CelestialAltitudeRecord *",
+      "uint32_t",
+    ),
+  ),
+  "celestial_upper_transits": (
+    "uint32_t",
+    (
+      "uint32_t",
+      "double",
+      "double",
+      "double",
+      "double",
+      "double",
+      "uint32_t *",
+      "CelestialAltitudeRecord *",
+      "uint32_t",
+    ),
+  ),
+  "celestial_observing_windows": (
+    "uint32_t",
+    (
+      "const CelestialAltitudeCondition *",
+      "uint32_t",
+      "double",
+      "double",
+      "double",
+      "double",
+      "double",
+      "uint32_t *",
+      "CelestialAltitudeRecord *",
+      "uint32_t",
+    ),
+  ),
 }
 
 C_CODES = {
@@ -1021,6 +1145,12 @@ C_CODES = {
   "CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL": 1,
   "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN": 2,
   "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3,
+  "CELESTIAL_ALTITUDE_SENSE_BELOW": 0,
+  "CELESTIAL_ALTITUDE_SENSE_ABOVE": 1,
+  "CELESTIAL_ALTITUDE_RECORD_CONDITION": 0,
+  "CELESTIAL_ALTITUDE_RECORD_EVENT": 1,
+  "CELESTIAL_ALTITUDE_RECORD_WINDOW": 2,
+  "CELESTIAL_ALTITUDE_RECORD_UPPER_TRANSIT": 3,
 }
 
 C_PARAMETERS = {
@@ -1258,6 +1388,40 @@ C_PARAMETERS = {
     "latitude_deg",
     "longitude_deg",
     "elevation_m",
+  ],
+  "celestial_altitude_events": [
+    "condition",
+    "latitude_deg",
+    "longitude_deg",
+    "elevation_m",
+    "start_jde_tt",
+    "end_jde_tt",
+    "record_count",
+    "slots",
+    "slot_count",
+  ],
+  "celestial_upper_transits": [
+    "target_code",
+    "latitude_deg",
+    "longitude_deg",
+    "elevation_m",
+    "start_jde_tt",
+    "end_jde_tt",
+    "record_count",
+    "slots",
+    "slot_count",
+  ],
+  "celestial_observing_windows": [
+    "conditions",
+    "condition_count",
+    "latitude_deg",
+    "longitude_deg",
+    "elevation_m",
+    "start_jde_tt",
+    "end_jde_tt",
+    "record_count",
+    "slots",
+    "slot_count",
   ],
 }
 
@@ -1536,6 +1700,39 @@ PROTOCOLS = {
   "celestial_apparent_diameter": {
     "kind": "struct",
     "identity": "resolved-explicit-model-key-position-source-and-radius-definition",
+    "error_channel": "kind",
+  },
+  "celestial_altitude_events": {
+    "kind": "count-fill",
+    "count_parameter": "record_count",
+    "slots_parameter": "slots",
+    "capacity_parameter": "slot_count",
+    "legal_empty": False,
+    "total_must_match": True,
+    "written_policy": "min-total-capacity",
+    "null_slots_requires_zero_capacity": True,
+    "error_channel": "kind",
+  },
+  "celestial_upper_transits": {
+    "kind": "count-fill",
+    "count_parameter": "record_count",
+    "slots_parameter": "slots",
+    "capacity_parameter": "slot_count",
+    "legal_empty": True,
+    "total_must_match": True,
+    "written_policy": "min-total-capacity",
+    "null_slots_requires_zero_capacity": True,
+    "error_channel": "kind",
+  },
+  "celestial_observing_windows": {
+    "kind": "count-fill",
+    "count_parameter": "record_count",
+    "slots_parameter": "slots",
+    "capacity_parameter": "slot_count",
+    "legal_empty": False,
+    "total_must_match": True,
+    "written_policy": "min-total-capacity",
+    "null_slots_requires_zero_capacity": True,
     "error_channel": "kind",
   },
 }

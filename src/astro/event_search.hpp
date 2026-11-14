@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <format>
 #include <limits>
+#include <memory>
 #include <numeric>
 #include <optional>
 #include <ranges>
@@ -57,6 +58,31 @@ struct Sample {
   double jde_tt;
   Value evaluated;
 };
+
+/** @brief Borrow a scalar provider for synchronous isolation or refinement. */
+struct ProviderRef {
+  const void* state;
+  Value (*evaluate)(const void*, double);
+
+  [[nodiscard]] auto operator()(const double jde_tt) const -> Value {
+    return evaluate(state, jde_tt);
+  }
+};
+
+/**
+ * @brief Borrow a scalar provider without copying it.
+ * @note The provider must remain alive while the returned view is invoked.
+ */
+template <typename Provider>
+requires std::is_object_v<Provider>
+[[nodiscard]] inline auto provider_ref(const Provider& provider) -> ProviderRef {
+  return {
+    .state = std::addressof(provider),
+    .evaluate = [](const void* state, const double jde_tt) -> Value {
+      return (*static_cast<const Provider*>(state))(jde_tt);
+    },
+  };
+}
 
 /** @brief Uniform absolute first- and second-derivative bounds on a closed cell. */
 struct Bounds {
@@ -188,23 +214,32 @@ struct Grid {
   };
 }
 
-/** @brief Charge an evaluation even if the provider fails. */
-template <typename Provider>
-requires std::invocable<const Provider&, double>
-     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
-[[nodiscard]] inline auto sample(const Provider& provider, const double jde_tt, Budget& budget) -> Sample {
+/** @brief Charge the caller's evaluation budget before invoking a provider. */
+inline auto charge_evaluation(const double jde_tt, Budget& budget) -> void {
   if (budget.evaluations_remaining == 0) {
     throw std::runtime_error {
       std::format("Event-search evaluation budget exhausted at JDE(TT) {}; {} candidate slots remain", jde_tt, budget.candidates_remaining)
     };
   }
   --budget.evaluations_remaining;
-  const auto evaluated = provider(jde_tt);
+}
+
+/** @brief Reject nonfinite values and invalid error allowances after a charged provider call. */
+[[nodiscard]] inline auto checked_sample(const double jde_tt, const Value evaluated) -> Sample {
   const bool invalid_observation = not std::isfinite(evaluated.value) or not finite_nonnegative(evaluated.error);
   if (invalid_observation) {
     throw std::runtime_error { std::format("Invalid event-search evaluation at JDE(TT) {}", jde_tt) };
   }
   return { .jde_tt = jde_tt, .evaluated = evaluated };
+}
+
+/** @brief Charge an evaluation even if the provider fails. */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
+[[nodiscard]] inline auto sample(const Provider& provider, const double jde_tt, Budget& budget) -> Sample {
+  charge_evaluation(jde_tt, budget);
+  return checked_sample(jde_tt, provider(jde_tt));
 }
 
 /**
@@ -313,11 +348,8 @@ inline auto append_candidate(
 }
 
 /** @brief Traverse a sampled cell, retaining unresolved brackets when subdivision stops. */
-template <typename Provider>
-requires std::invocable<const Provider&, double>
-     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
 inline auto visit_cell(
-  const Provider& provider,
+  const ProviderRef& provider,
   const Cell& cell,
   const Bounds bounds,
   Budget& budget,
@@ -367,6 +399,26 @@ inline auto visit_cell(
   const Cell right { .left = middle, .right = cell.right, .ownership = cell.ownership };
   visit_cell(provider, left, bounds, budget, depth - 1, candidates);
   visit_cell(provider, right, bounds, budget, depth - 1, candidates);
+}
+
+/** @brief Traverse a sampled cell without copying the caller's scalar provider. */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
+inline auto visit_cell(
+  const Provider& provider,
+  const Cell& cell,
+  const Bounds bounds,
+  Budget& budget,
+  const uint32_t depth,
+  std::vector<Candidate>& candidates
+) -> void {
+  if constexpr (std::is_function_v<Provider> or std::is_volatile_v<Provider>) {
+    const auto adapter = [&provider](const double jde_tt) -> Value { return provider(jde_tt); };
+    visit_cell(provider_ref(adapter), cell, bounds, budget, depth, candidates);
+  } else {
+    visit_cell(provider_ref(provider), cell, bounds, budget, depth, candidates);
+  }
 }
 
 /**
@@ -631,11 +683,8 @@ requires std::invocable<const Provider&, double>
  * @brief Bisect a unique-root bracket with robust signs and bounded work.
  * @note The caller has established uniqueness and handled exact endpoint roots.
  */
-template <typename Provider>
-requires std::invocable<const Provider&, double>
-     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
 [[nodiscard]] inline auto refine_bracket(
-  const Provider& provider,
+  const ProviderRef& provider,
   const Candidate& candidate,
   const double minimum_slope,
   Budget& budget,
@@ -693,6 +742,79 @@ requires std::invocable<const Provider&, double>
   };
 }
 
+/** @brief Refine a unique-root bracket through the caller's borrowed scalar provider. */
+template <typename Provider>
+requires std::invocable<const Provider&, double>
+     and std::same_as<std::invoke_result_t<const Provider&, double>, Value>
+[[nodiscard]] inline auto refine_bracket(
+  const Provider& provider,
+  const Candidate& candidate,
+  const double minimum_slope,
+  Budget& budget,
+  const double time_resolution,
+  const uint32_t maximum_iterations
+) -> Root {
+  if constexpr (std::is_function_v<Provider> or std::is_volatile_v<Provider>) {
+    const auto adapter = [&provider](const double jde_tt) -> Value { return provider(jde_tt); };
+    return refine_bracket(
+      provider_ref(adapter),
+      candidate,
+      minimum_slope,
+      budget,
+      time_resolution,
+      maximum_iterations
+    );
+  } else {
+    return refine_bracket(
+      provider_ref(provider),
+      candidate,
+      minimum_slope,
+      budget,
+      time_resolution,
+      maximum_iterations
+    );
+  }
+}
+
+/** @brief Validate the refinement request and require a positive derivative certificate. */
+[[nodiscard]] inline auto refinement_floor(
+  const Candidate& candidate,
+  const Bounds bounds,
+  const double time_resolution
+) -> double {
+  const bool invalid_request = candidate.isolation != Isolation::UNIQUE or not finite_nonnegative(time_resolution);
+  if (invalid_request) {
+    throw std::invalid_argument {
+      std::format(
+        "Invalid event-search refinement request in [{}, {}] JDE(TT): isolation {}, time resolution {} days",
+        candidate.left.jde_tt, candidate.right.jde_tt, static_cast<uint32_t>(candidate.isolation), time_resolution
+      )
+    };
+  }
+  const double floor = derivative_floor(candidate.left, candidate.right, bounds);
+  if (not (floor > 0.0)) {
+    throw std::runtime_error {
+      std::format("Event-search root in [{}, {}] JDE(TT) has no positive derivative certificate: {}", candidate.left.jde_tt, candidate.right.jde_tt, floor)
+    };
+  }
+  return floor;
+}
+
+/** @brief Require opposite robust signs after exact endpoint roots have been handled. */
+inline auto validate_root_bracket(const Candidate& candidate) -> void {
+  const int32_t left_sign = sign(candidate.left.evaluated);
+  const bool robustly_bracketed = left_sign != 0 and sign(candidate.right.evaluated) == -left_sign;
+  if (not robustly_bracketed) {
+    throw std::runtime_error {
+      std::format(
+        "Event-search root in [{}, {}] JDE(TT) is not bracketed by robust signs: {} +/- {}, {} +/- {}",
+        candidate.left.jde_tt, candidate.right.jde_tt, candidate.left.evaluated.value, candidate.left.evaluated.error,
+        candidate.right.evaluated.value, candidate.right.evaluated.error
+      )
+    };
+  }
+}
+
 /**
  * @brief Refine a certified unique root to the requested time resolution or adjacent doubles.
  * @param maximum_iterations Work cap; 96 bisections exceed the binary64 significand width, but cannot
@@ -710,21 +832,7 @@ requires std::invocable<const Provider&, double>
   const double time_resolution = 0.0,
   const uint32_t maximum_iterations = 96
 ) -> Root {
-  const bool invalid_request = candidate.isolation != Isolation::UNIQUE or not finite_nonnegative(time_resolution);
-  if (invalid_request) {
-    throw std::invalid_argument {
-      std::format(
-        "Invalid event-search refinement request in [{}, {}] JDE(TT): isolation {}, time resolution {} days",
-        candidate.left.jde_tt, candidate.right.jde_tt, static_cast<uint32_t>(candidate.isolation), time_resolution
-      )
-    };
-  }
-  const double floor = derivative_floor(candidate.left, candidate.right, bounds);
-  if (not (floor > 0.0)) {
-    throw std::runtime_error {
-      std::format("Event-search root in [{}, {}] JDE(TT) has no positive derivative certificate: {}", candidate.left.jde_tt, candidate.right.jde_tt, floor)
-    };
-  }
+  const double floor = refinement_floor(candidate, bounds, time_resolution);
   const bool increasing = candidate.right.evaluated.value > candidate.left.evaluated.value;
   if (exact_zero(candidate.left.evaluated)) {
     return { .jde_tt = candidate.left.jde_tt, .increasing = increasing };
@@ -732,17 +840,7 @@ requires std::invocable<const Provider&, double>
   if (exact_zero(candidate.right.evaluated)) {
     return { .jde_tt = candidate.right.jde_tt, .increasing = increasing };
   }
-  const int32_t left_sign = sign(candidate.left.evaluated);
-  const bool robustly_bracketed = left_sign != 0 and sign(candidate.right.evaluated) == -left_sign;
-  if (not robustly_bracketed) {
-    throw std::runtime_error {
-      std::format(
-        "Event-search root in [{}, {}] JDE(TT) is not bracketed by robust signs: {} +/- {}, {} +/- {}",
-        candidate.left.jde_tt, candidate.right.jde_tt, candidate.left.evaluated.value, candidate.left.evaluated.error,
-        candidate.right.evaluated.value, candidate.right.evaluated.error
-      )
-    };
-  }
+  validate_root_bracket(candidate);
   return refine_bracket(provider, candidate, floor, budget, time_resolution, maximum_iterations);
 }
 

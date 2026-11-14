@@ -35,12 +35,12 @@ const entries = Object.entries(C_DECLARATIONS.functions);
 const names = entries.map(([name]) => name);
 const readers = new Set(["celestial_last_error", "celestial_last_error_kind"]);
 const recording = names.filter((name) => !readers.has(name));
-assert.equal(names.length, 40);
-assert.equal(recording.length, 38);
+assert.equal(names.length, 43);
+assert.equal(recording.length, 41);
 sameSet(names, BINDINGS.map(({ cName }) => cName));
 sameSet(names, Object.keys(WASM_SIGNATURES));
 sameSet([...names, "malloc", "free"], recipeExports);
-assert.equal(recipeExports.length, 42);
+assert.equal(recipeExports.length, 45);
 assert(recipe.includes('"-sALLOW_MEMORY_GROWTH=1"'));
 assert(recipe.includes('"HEAPU16"'));
 assert.equal((recipe.match(/-sEXPORTED_FUNCTIONS=/g) ?? []).length, 1);
@@ -71,7 +71,9 @@ for (const [group, first, second] of [
   assert.throws(() => verifyChartNames(changed), assert.AssertionError);
 }
 
-const emptyEvents = new Set(["celestial_longitude_events", "celestial_longitude_stations", "celestial_longitude_difference_events"]);
+const emptyEvents = new Set([
+  "celestial_longitude_events", "celestial_longitude_stations", "celestial_longitude_difference_events", "celestial_upper_transits",
+]);
 for (const [name, protocol] of Object.entries(PROTOCOLS)) {
   assert.equal(protocol.error_channel, readers.has(name) ? "preserve" : "kind");
   if (protocol.kind === "count-fill") {
@@ -90,11 +92,11 @@ sameSet(Object.entries(PROTOCOLS).filter(([, p]) => p.kind === "sized-string").m
 ]);
 
 const verifyManifest = (candidate) => {
-  assert.equal(candidate.exports.length, 40);
+  assert.equal(candidate.exports.length, 43);
   sameSet(candidate.exports.map(({ name }) => name), names);
   assert.deepEqual(candidate.codes, C_DECLARATIONS.constants);
   assert.deepEqual(candidate.layouts, LAYOUTS);
-  assert.equal(Object.keys(candidate.layouts).length, 31);
+  assert.equal(Object.keys(candidate.layouts).length, 33);
   assert.deepEqual(candidate.wasm_width_bits, {
     bool: 8, uint8_t: 8, uint16_t: 16, int32_t: 32, uint32_t: 32, pointer: 32, double: 64,
   });
@@ -146,14 +148,23 @@ if (!process.argv.includes("--static-only")) {
   const sourceDir = resolve(REPO, "src/shared_lib");
   const files = (await readdir(sourceDir)).filter((name) => /^lib.*\.cpp$/.test(name));
   const sources = (await Promise.all(files.map((name) => readFile(resolve(sourceDir, name), "utf8")))).join("\n");
-  for (const name of names) {
+  const bodyOf = (name) => {
     const start = sources.search(new RegExp(`auto\\s+${name}\\s*\\(`));
     assert(start >= 0, `missing implementation: ${name}`);
     const open = sources.indexOf("{", start);
     let depth = 0;
     let end = open;
     do { if (sources[end] === "{") ++depth; if (sources[end] === "}") --depth; ++end; } while (depth && end < sources.length);
-    assert.equal(sources.slice(open, end).includes("lib::wrap_export("), !readers.has(name), `recording ${name}`);
+    return sources.slice(open, end);
+  };
+  const sharedAltitude = new Set(["celestial_altitude_events", "celestial_upper_transits", "celestial_observing_windows"]);
+  assert(bodyOf("run").includes("lib::wrap_export("), "shared altitude error boundary");
+  for (const name of names) {
+    if (sharedAltitude.has(name)) {
+      assert(/return\s+run\(\s*__func__\s*,/.test(bodyOf(name)), `delegated recording ${name}`);
+    } else {
+      assert.equal(bodyOf(name).includes("lib::wrap_export("), !readers.has(name), `recording ${name}`);
+    }
   }
   const M = await (await import(pathToFileURL(resolve(REPO, "build/wasm/celestial-jieqi.mjs")))).default();
   const built = Object.keys(M).filter((name) => /^_[a-z]/.test(name) && typeof M[name] === "function").map((name) => name.slice(1));
@@ -163,5 +174,5 @@ if (!process.argv.includes("--static-only")) {
 } else {
   console.log("Static-only: source implementations and built WASM checks not run");
 }
-console.log("PASS declarations 40, records 31, recording 38, ABI mutations 19/19, code swaps 4/4");
+console.log("PASS declarations 43, records 33, recording 41, ABI mutations 19/19, code swaps 4/4");
 console.log("PASS generated legal-empty, exact-total, sized-string and preserving-reader policies");

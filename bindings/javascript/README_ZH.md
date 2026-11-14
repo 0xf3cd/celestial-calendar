@@ -40,6 +40,10 @@ npm install @0xf3cd/celestial
 <a id="examples"></a>
 ## 示例
 
+用区间高度查询查找全部高度事件、上中天，或“火星高于20°且太阳低于−18°”的交集时段。
+接口接受显式JDE(TT)区间；无法确认完整事件数时，整次查询报错。
+用法和限制见[高度事件与观测窗口指南（英文）](../../docs/ALTITUDE_EVENTS.md)。
+
 用 `diameter.query` 查询完整球面视角直径，单位为角秒，可选传入 WGS84 观测者。
 半径约定、支持的天体和浏览器缩放示例见[视角直径指南（英文）](../../docs/APPARENT_DIAMETERS.md)。
 

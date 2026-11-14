@@ -15,6 +15,7 @@ import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { testAltitudeFakeNative } from "./altitude_fake.mjs";
 
 export async function testFakeNative(entryUrl) {
   const { BINDINGS, C_DECLARATIONS, LAYOUTS, PROTOCOLS } = await import(new URL("./bindings.mjs", entryUrl));
@@ -147,6 +148,10 @@ export async function testFakeNative(entryUrl) {
     await writeFile(resolve(directory, "mock-module.mjs"), "export default () => globalThis.__celestialFakeFactory();\n");
     const fixture = await import(pathToFileURL(entry));
     assert.deepEqual(control.calls, [], "import does not query native domains");
+    for (const action of [() => fixture.observer.altitudeEvents(null, null, NaN, NaN),
+      () => fixture.observer.upperTransits(null, null, NaN, NaN), () => fixture.observer.observingWindows(null, [], NaN, NaN)]) {
+      assert.throws(action, { name: "CelestialError", recorded: false });
+    }
     let previous;
     for (const rejection of [new Error("original loader failure"), { loaderFailure: true }]) {
       let rejectLoad;
@@ -513,6 +518,7 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
     }
     reset({ sretPayload: { year: 400, month: 12, day: 31, fraction: 0.9 } });
     assert.equal(fixture.time.jdeToUtc(1867522.5).year, 400);
+    testAltitudeFakeNative(fixture, M, control, reset, called, LAYOUTS);
     console.log("PASS fake native: loader retry; error kinds/empty messages; count/fill errors/totals; 10 allocation-failure paths; sized UTF-8; malformed successes; FFI widths/resource caps; UTC decoders");
   } finally {
     delete globalThis.__celestialFakeFactory;

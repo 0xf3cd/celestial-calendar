@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -54,6 +55,10 @@ auto sum_value(const double left, const double right) -> search::Value {
   const double recovered_right = value - left;
   const double error = (left - (value - recovered_right)) + (right - recovered_right);
   return { .value = value, .error = std::fabs(error) };
+}
+
+auto linear_reference(const double& time) -> search::Value {
+  return { .value = time - 0.25, .error = 0.0 };
 }
 
 template <typename Provider>
@@ -431,6 +436,104 @@ TEST(EphemerisEventsKernel, RefinementAccountsForRoundedMidpoint) {
       }
     }
   }
+}
+
+TEST(EphemerisEventsKernel, ScalarRecursionAndRefinementPreserveTheProviderObject) {
+  struct Provider {
+    std::unique_ptr<uint32_t> calls;
+    const Provider*& observed;
+
+    // NOLINTNEXTLINE(google-runtime-operator): Address-taking is an adversary for provider identity in this test.
+    auto operator&() const -> const Provider* { return nullptr; }
+
+    auto operator()(const double time) const -> search::Value {
+      ++*calls;
+      observed = this;
+      return { .value = (time * time) - 0.25, .error = 0.0 };
+    }
+  };
+  static_assert(not std::copy_constructible<Provider>);
+  const Provider* observed = nullptr;
+  const Provider provider { .calls = std::make_unique<uint32_t>(0), .observed = observed };
+  const search::Bounds bounds { .first_derivative = 2.0, .second_derivative = 2.0 };
+  search::Budget budget { .evaluations_remaining = 1024, .candidates_remaining = 64 };
+  const auto candidates = search::isolate_cell(provider, -1.0, 1.0, bounds, budget);
+  ASSERT_EQ(candidates.size(), 2);
+  ASSERT_EQ(observed, std::addressof(provider));
+  for (const auto& candidate : candidates) {
+    const auto root = search::refine(provider, candidate, bounds, budget);
+    ASSERT_EQ(root.jde_tt, root.increasing ? 0.5 : -0.5);
+    ASSERT_EQ(observed, std::addressof(provider));
+  }
+  ASSERT_EQ(budget.evaluations_remaining + *provider.calls, 1024);
+}
+
+TEST(EphemerisEventsKernel, VolatileProvidersRetainTheCallableContract) {
+  struct Provider {
+    uint32_t& calls;
+
+    auto operator()(const double time) const volatile -> search::Value {
+      ++calls;
+      return { .value = time - 0.25, .error = 0.0 };
+    }
+  };
+  uint32_t calls = 0;
+  const volatile Provider provider { .calls = calls };
+  search::Budget budget { .evaluations_remaining = 1024, .candidates_remaining = 64 };
+  const auto candidates = search::isolate_cell(provider, 0.0, 1.0, LINEAR_BOUNDS, budget);
+  ASSERT_EQ(candidates.size(), 1);
+  const auto root = search::refine(provider, candidates.at(0), LINEAR_BOUNDS, budget);
+  ASSERT_EQ(root.jde_tt, 0.25);
+  ASSERT_TRUE(root.increasing);
+  ASSERT_EQ(budget.evaluations_remaining + calls, 1024);
+}
+
+TEST(EphemerisEventsKernel, FunctionReferencesUseTheScalarKernel) {
+  search::Budget budget { .evaluations_remaining = 1024, .candidates_remaining = 64 };
+  const auto candidates = search::isolate_cell(linear_reference, 0.0, 1.0, LINEAR_BOUNDS, budget);
+  ASSERT_EQ(candidates.size(), 1);
+  const auto root = search::refine(linear_reference, candidates.at(0), LINEAR_BOUNDS, budget);
+  ASSERT_EQ(root.jde_tt, 0.25);
+  ASSERT_TRUE(root.increasing);
+}
+
+TEST(EphemerisEventsKernel, ProviderFailuresPreserveTheirExceptionAndEvaluationCharge) {
+  uint32_t calls = 0;
+  const auto provider = [&](const double time) -> search::Value {
+    ++calls;
+    if (time == 0.0) {
+      throw std::domain_error { "Provider failed at midpoint" };
+    }
+    return { .value = (time * time) - 0.25, .error = 0.0 };
+  };
+  search::Budget budget { .evaluations_remaining = 64, .candidates_remaining = 64 };
+  const search::Bounds bounds { .first_derivative = 2.0, .second_derivative = 2.0 };
+  try {
+    static_cast<void>(search::isolate_cell(provider, -1.0, 1.0, bounds, budget));
+    FAIL() << "Provider failure must escape the scalar traversal";
+  } catch (const std::domain_error& error) {
+    ASSERT_STREQ(error.what(), "Provider failed at midpoint");
+  }
+  ASSERT_EQ(calls, 3);
+  ASSERT_EQ(budget.evaluations_remaining, 61);
+
+  search::Budget refinement_budget { .evaluations_remaining = 64, .candidates_remaining = 64 };
+  const auto candidates = search::isolate_cell(linear_reference, 0.0, 1.0, LINEAR_BOUNDS, refinement_budget);
+  ASSERT_EQ(candidates.size(), 1);
+  const auto remaining = refinement_budget.evaluations_remaining;
+  calls = 0;
+  const auto refinement_failure = [&](const double) -> search::Value {
+    ++calls;
+    throw std::domain_error { "Provider failed during refinement" };
+  };
+  try {
+    static_cast<void>(search::refine(refinement_failure, candidates.at(0), LINEAR_BOUNDS, refinement_budget));
+    FAIL() << "Provider failure must escape bracket refinement";
+  } catch (const std::domain_error& error) {
+    ASSERT_STREQ(error.what(), "Provider failed during refinement");
+  }
+  ASSERT_EQ(calls, 1);
+  ASSERT_EQ(refinement_budget.evaluations_remaining + calls, remaining);
 }
 
 TEST(EphemerisEventsKernel, EachBudgetStopsWorkIndependently) {

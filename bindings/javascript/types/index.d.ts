@@ -257,9 +257,89 @@ export interface TopocentricPosition {
   apparentAltitudeDeg: number | null;
 }
 
+export interface GeometricLevel {
+  readonly kind: "geometric";
+  /** Geometric centre altitude, strictly inside (-90,90) degrees. */
+  readonly altitudeDeg: number;
+  readonly refraction?: never;
+}
+
+export interface RefractedLevel {
+  readonly kind: "refracted";
+  /** Apparent centre altitude, in degrees. */
+  readonly altitudeDeg: number;
+  readonly refraction: Readonly<RefractionOptions>;
+}
+
+export type AltitudeSense = "above" | "below";
+export type EventDirection = "increasing" | "decreasing" | "tangent";
+
+export interface AltitudeCondition {
+  readonly target: PhysicalTarget;
+  readonly level: GeometricLevel | RefractedLevel;
+  readonly sense: AltitudeSense;
+}
+
+export interface AltitudeConditionState {
+  readonly condition: AltitudeCondition;
+  readonly sourceCode: number;
+  readonly deltaTModel: "algo5";
+  readonly geometricLevelDeg: number;
+  /** Truth immediately after replay of any event at the inclusive start. */
+  readonly initiallySatisfied: boolean;
+}
+
+export interface AltitudeEvent {
+  readonly jdeTt: number;
+  readonly conditionIndex: number;
+  readonly direction: EventDirection;
+}
+
+export interface AltitudeEvents {
+  readonly condition: AltitudeConditionState;
+  readonly events: readonly AltitudeEvent[];
+}
+
+export interface ObservingWindow {
+  readonly startJdeTt: number;
+  readonly endJdeTt: number;
+}
+
+export interface ObservingWindows {
+  readonly conditions: readonly AltitudeConditionState[];
+  readonly events: readonly AltitudeEvent[];
+  readonly windows: readonly ObservingWindow[];
+}
+
+export interface UpperTransit {
+  readonly jdeTt: number;
+  readonly target: PhysicalTarget;
+  readonly sourceCode: number;
+  readonly deltaTModel: "algo5";
+}
+
 export const observer: Readonly<{
   /** UTC from 1972, or explicit UT1. Provider/Delta T guards apply without a chart/rate window. */
   position(target: PhysicalTarget, civil: CivilDateTime, options: ObserverPositionOptions): TopocentricPosition;
+  /**
+   * Detected centre-altitude crossings in [startJdeTt,endJdeTt), with fixed ALGO5/IAU1980.
+   * Start events are included and already reflected in initiallySatisfied; end events are excluded.
+   * Sampling can miss events without an error; no tangent events are returned.
+   * @throws {RangeError} For invalid inputs, including weather outside [-90,60] C or [300,1100] hPa.
+   * @throws {CelestialError} For detected near contacts, failed refinement, exhausted work or malformed success.
+   * No failure returns a partial result. The returned graph is frozen and owns its values.
+   */
+  altitudeEvents(site: Observer, condition: AltitudeCondition, startJdeTt: number, endJdeTt: number): AltitudeEvents;
+  /** Detected upper meridian passages in [start,end) JDE(TT), with altitudeEvents' sampling limits.
+   * At a pole use the supplied longitude's meridian. */
+  upperTransits(site: Observer, target: PhysicalTarget, startJdeTt: number, endJdeTt: number): readonly UpperTransit[];
+  /**
+   * Intersect conditions and retain their states and companion events, in JDE(TT).
+   * Windows are maximal positive-duration operational spans, not strict point sets at isolated equalities.
+   * Windows are reconstructed from detected crossings; altitudeEvents' sampling limits apply.
+   * An empty conjunction returns the whole interval; failure in any condition fails the whole query.
+   */
+  observingWindows(site: Observer, conditions: readonly AltitudeCondition[], startJdeTt: number, endJdeTt: number): ObservingWindows;
 }>;
 
 /** An unavailable module, computation, resource or protocol failure; invalid native input throws RangeError.

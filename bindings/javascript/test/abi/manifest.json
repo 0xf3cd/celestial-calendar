@@ -360,6 +360,41 @@
         {"name": "distance_au", "type": "double", "offset": 48},
         {"name": "diameter_arcsec", "type": "double", "offset": 56}
       ]
+    },
+    "CelestialAltitudeCondition": {
+      "size": 40,
+      "alignment": 8,
+      "fields": [
+        {"name": "target_code", "type": "uint32_t", "offset": 0},
+        {"name": "sense_code", "type": "uint32_t", "offset": 4},
+        {"name": "refraction_code", "type": "uint32_t", "offset": 8},
+        {"name": "reserved", "type": "uint32_t", "offset": 12},
+        {"name": "level_deg", "type": "double", "offset": 16},
+        {"name": "temperature_c", "type": "double", "offset": 24},
+        {"name": "pressure_hpa", "type": "double", "offset": 32}
+      ]
+    },
+    "CelestialAltitudeRecord": {
+      "size": 88,
+      "alignment": 8,
+      "fields": [
+        {"name": "tag", "type": "uint32_t", "offset": 0},
+        {"name": "condition_index", "type": "uint32_t", "offset": 4},
+        {"name": "target_code", "type": "uint32_t", "offset": 8},
+        {"name": "position_source_code", "type": "uint32_t", "offset": 12},
+        {"name": "delta_t_model_code", "type": "uint32_t", "offset": 16},
+        {"name": "refraction_code", "type": "uint32_t", "offset": 20},
+        {"name": "sense_code", "type": "uint32_t", "offset": 24},
+        {"name": "direction_code", "type": "uint32_t", "offset": 28},
+        {"name": "initially_satisfied", "type": "uint32_t", "offset": 32},
+        {"name": "reserved", "type": "uint32_t", "offset": 36},
+        {"name": "jde_tt", "type": "double", "offset": 40},
+        {"name": "end_jde_tt", "type": "double", "offset": 48},
+        {"name": "requested_level_deg", "type": "double", "offset": 56},
+        {"name": "geometric_level_deg", "type": "double", "offset": 64},
+        {"name": "temperature_c", "type": "double", "offset": 72},
+        {"name": "pressure_hpa", "type": "double", "offset": 80}
+      ]
     }
   },
   "codes": {
@@ -438,7 +473,13 @@
     "CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC": 1,
     "CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL": 1,
     "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN": 2,
-    "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3
+    "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3,
+    "CELESTIAL_ALTITUDE_SENSE_BELOW": 0,
+    "CELESTIAL_ALTITUDE_SENSE_ABOVE": 1,
+    "CELESTIAL_ALTITUDE_RECORD_CONDITION": 0,
+    "CELESTIAL_ALTITUDE_RECORD_EVENT": 1,
+    "CELESTIAL_ALTITUDE_RECORD_WINDOW": 2,
+    "CELESTIAL_ALTITUDE_RECORD_UPPER_TRANSIT": 3
   },
   "exports": [
     {
@@ -753,6 +794,27 @@
       "signature": "CelestialApparentDiameter celestial_apparent_diameter(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t centre_code, double latitude_deg, double longitude_deg, double elevation_m)",
       "return": {"kind": "sret", "layout": "CelestialApparentDiameter"},
       "protocol": {"kind": "sret", "identity": "resolved-explicit-model-key-position-source-and-radius-definition", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_altitude_events",
+      "signature": "uint32_t celestial_altitude_events(const CelestialAltitudeCondition *condition, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count)",
+      "return": {"kind": "primitive", "type": "uint32_t"},
+      "protocol": {"kind": "count-fill", "count_parameter": "record_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": false, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_upper_transits",
+      "signature": "uint32_t celestial_upper_transits(uint32_t target_code, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count)",
+      "return": {"kind": "primitive", "type": "uint32_t"},
+      "protocol": {"kind": "count-fill", "count_parameter": "record_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": true, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_observing_windows",
+      "signature": "uint32_t celestial_observing_windows(const CelestialAltitudeCondition *conditions, uint32_t condition_count, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count)",
+      "return": {"kind": "primitive", "type": "uint32_t"},
+      "protocol": {"kind": "count-fill", "count_parameter": "record_count", "slots_parameter": "slots", "capacity_parameter": "slot_count", "legal_empty": false, "total_must_match": true, "written_policy": "min-total-capacity", "null_slots_requires_zero_capacity": true, "error_channel": "kind"},
       "recording": true
     }
   ]

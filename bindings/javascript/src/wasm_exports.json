@@ -39,6 +39,9 @@
   "celestial_house_capability",
   "celestial_topocentric_position",
   "celestial_apparent_diameter",
+  "celestial_altitude_events",
+  "celestial_upper_transits",
+  "celestial_observing_windows",
   "malloc",
   "free"
 ]
