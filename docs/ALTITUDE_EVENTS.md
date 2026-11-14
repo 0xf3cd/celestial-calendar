@@ -144,6 +144,7 @@ Saemundsson accepts apparent inputs from 0° through the apparent altitude at 90
 computed using the selected weather. Unattainable thresholds are invalid input.
 Keep twilight thresholds such as −6° geometric rather than passing them to either refraction model.
 
+<a id="sunrise-twilight-and-civil-clock-display"></a>
 ## Sunrise, twilight and civil-clock display
 
 The conventional Sun thresholds are geometric centre altitudes. Civil, nautical and astronomical
