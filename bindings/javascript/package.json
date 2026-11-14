@@ -54,7 +54,7 @@
   },
   "devDependencies": {
     "@puppeteer/browsers": "3.2.6",
-    "astro": "7.4.2",
+    "astro": "7.4.7",
     "puppeteer-core": "25.16.0",
     "typescript": "7.0.2",
     "vite": "8.3.5"
