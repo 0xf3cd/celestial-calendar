@@ -22,7 +22,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "altitude_event_query.hpp"
+#include "altitude_events.hpp"
 #include "celestial.h"
 #include "lib.hpp"
 #include "lib_codes.hpp"

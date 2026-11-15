@@ -17,7 +17,7 @@
 
 #include <gtest/gtest.h>
 
-#include "altitude_event_windows.hpp"
+#include "altitude_events.hpp"
 
 namespace astro::observer::detail::altitude_events::test {
 namespace {
