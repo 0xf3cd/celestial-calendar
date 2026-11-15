@@ -25,7 +25,9 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <numeric>
+#include <ranges>
 #include <span>
 #include <stdexcept>
 #include <type_traits>
@@ -290,7 +292,7 @@ template <typename Func>
     const double value = sample(f, at, budget).value;
     return minimum ? value : -value;
   };
-  const toolbox::GoldenSectionRules rules {
+  constexpr toolbox::GoldenSectionRules rules {
     .lower_probe = [](const double lo, const double hi) { return lo + (toolbox::INV_PHI_SQ * (hi - lo)); },
     .move_lower = [](const double lhs, const double rhs) { return not (lhs < rhs); },
     .finished = [](const double width, const double tolerance) { return width <= tolerance; },
@@ -397,17 +399,24 @@ template <typename Func>
     }
   }
 
+  const auto in_scan = [&planned](const Sample& value) {
+    return planned.start <= value.jde_tt and value.jde_tt <= planned.end;
+  };
+  const auto interior = [&planned](const Sample& value) {
+    return planned.start < value.jde_tt and value.jde_tt < planned.end;
+  };
   std::vector<Sample> points;
-  for (const auto& value : samples) {
-    if (planned.start <= value.jde_tt and value.jde_tt <= planned.end) {
-      points.push_back(value);
-    }
-  }
-  for (const auto& value : turns) {
-    if (planned.start < value.point.jde_tt and value.point.jde_tt < planned.end) {
-      points.push_back(value.point);
-    }
-  }
+  std::ranges::copy_if(
+    samples,
+    std::back_inserter(points),
+    in_scan
+  );
+  std::ranges::copy_if(
+    turns | std::views::transform(&Turn::point),
+    std::back_inserter(points),
+    interior
+  );
+
   std::ranges::sort(points, {}, &Sample::jde_tt);
   const auto duplicates = std::ranges::unique(points, {}, &Sample::jde_tt);
   points.erase(duplicates.begin(), duplicates.end());
@@ -926,15 +935,13 @@ struct Schedule {
 
 /** @brief Project detected crossings in chronological then condition-index order. */
 [[nodiscard]] inline auto reported_events(const Result& composed) -> std::vector<AltitudeEvent> {
-  std::vector<AltitudeEvent> result;
-  result.reserve(composed.reported_events.size());
-  for (const auto& event : composed.reported_events) {
-    result.push_back({
-      .jde_tt = event.jde_tt, .condition_index = event.condition,
-      .direction = event_direction(event.change),
-    });
-  }
-  return result;
+  const auto event = [](const ReportedEvent& value) -> AltitudeEvent {
+    return {
+      .jde_tt = value.jde_tt, .condition_index = value.condition,
+      .direction = event_direction(value.change),
+    };
+  };
+  return composed.reported_events | std::views::transform(event) | std::ranges::to<std::vector>();
 }
 
 } // namespace detail::altitude_events
@@ -994,14 +1001,12 @@ struct Schedule {
     static_cast<uint32_t>(target),
     budget
   );
-  std::vector<UpperTransit> transits;
-  transits.reserve(result.transit_times.size());
-  for (const double jde_tt : result.transit_times) {
-    transits.push_back({
+  const auto transit = [target](const double jde_tt) -> UpperTransit {
+    return {
       .jde_tt = jde_tt, .target = target, .source = ephemeris::source_of(target), .delta_t_model = delta_t::Model::ALGO5,
-    });
-  }
-  return transits;
+    };
+  };
+  return result.transit_times | std::views::transform(transit) | std::ranges::to<std::vector>();
 }
 
 /**
@@ -1022,10 +1027,7 @@ struct Schedule {
   if (conditions.size() > query::MAX_CONDITIONS) {
     throw std::runtime_error { "The condition-list work budget is exhausted" };
   }
-  std::vector<query::Request> requests;
-  for (const auto& condition : conditions) {
-    requests.push_back(query::request(condition));
-  }
+  const auto requests = conditions | std::views::transform(query::request) | std::ranges::to<std::vector>();
   auto budget = query::query_budget();
   const auto computed = query::compute(
     query::Kind::WINDOWS,
@@ -1045,9 +1047,11 @@ struct Schedule {
       )
     );
   }
-  for (const auto& window : computed.composed.windows) {
-    result.windows.push_back({ .start_jde_tt = window.start_jde_tt, .end_jde_tt = window.end_jde_tt });
-  }
+
+  const auto window = [](const query::Window& value) -> ObservingWindow {
+    return { .start_jde_tt = value.start_jde_tt, .end_jde_tt = value.end_jde_tt };
+  };
+  result.windows = computed.composed.windows | std::views::transform(window) | std::ranges::to<std::vector>();
   return result;
 }
 
