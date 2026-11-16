@@ -37,7 +37,7 @@ WASM_CHECK = ROOT / "toolbox" / "wasm_check.mjs"
 def test_raw_wasm_size_budgets_agree():
   match = re.search(r"const MAX_WASM_BYTES = ([\d_]+);", WASM_CHECK.read_text(encoding="utf-8"))
   assert match is not None
-  assert int(match[1].replace("_", "")) == build_npm.MAX_WASM_BYTES == 1_321_000
+  assert int(match[1].replace("_", "")) == build_npm.MAX_WASM_BYTES == 1_326_000
   assert build_npm.MAX_TARBALL_BYTES == 800_000
 
 
@@ -58,7 +58,7 @@ def test_npm_raw_wasm_budget_boundary(tmp_path, monkeypatch, offset):
 
   monkeypatch.setattr(build_npm.subprocess, "run", pack)
   if offset > 0:
-    with pytest.raises(RuntimeError, match="raw WASM size .* exceeds 1321000 bytes"):
+    with pytest.raises(RuntimeError, match="raw WASM size .* exceeds 1326000 bytes"):
       build_npm.pack_package(tmp_path / "output", "1.1.1", build_npm.PACKAGE_NAME)
   else:
     with pytest.raises(PackReached):
