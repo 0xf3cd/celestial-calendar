@@ -123,6 +123,7 @@ TEST(AltitudeEventQuery, GeometricEndpointsAndUnknownAtmosphericModelsAreInvalid
     .target = ephemeris::Target::SUN,
     .level = RefractedLevel {
       .altitude = toolbox::AngleDeg { 10.0 },
+      // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): Deliberately test rejection of an unnamed model.
       .params = { .temperature_c = 15.0, .pressure_hpa = 1013.25, .model = static_cast<refraction::Model>(2) },
     },
     .sense = AltitudeSense::ABOVE,
@@ -154,11 +155,11 @@ TEST(AltitudeEventQuery, SharedBudgetIsConsumedAcrossRepeatedQueries) {
   search::Budget budget { .evaluations_remaining = 8192, .candidates_remaining = 2048 };
   const auto first = compute_conditions(site(), QUARTER, requests, budget);
   ASSERT_EQ(first.composed.states.size(), 1U);
-  EXPECT_EQ(first.composed.states.front().initially_satisfied, 1U);
+  EXPECT_TRUE(first.composed.states.front().satisfied);
   const std::size_t remaining = budget.evaluations_remaining;
   EXPECT_LT(remaining, 8192U);
   const auto second = compute_conditions(site(), QUARTER, requests, budget);
-  EXPECT_EQ(second.composed.states.front().initially_satisfied, first.composed.states.front().initially_satisfied);
+  EXPECT_EQ(second.composed.states.front().satisfied, first.composed.states.front().satisfied);
   EXPECT_LT(budget.evaluations_remaining, remaining);
   EXPECT_EQ(first.composed.companion_events, first.composed.reported_events.size());
 }

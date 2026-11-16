@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <iterator>
 #include <numeric>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <stdexcept>
@@ -200,10 +201,10 @@ struct Sample {
   [[nodiscard]] auto above() const -> bool { return value > 0.0; }
 };
 
-/** @brief Crossing time on the new side, with +1 for rising and -1 for falling. */
+/** @brief Crossing time on the new side and its increasing or decreasing direction. */
 struct Event {
   double jde_tt;
-  int32_t change;
+  ephemeris::EventDirection direction;
 };
 
 /** @brief Fixed-grid scan bounds and neighbouring samples on a continuous model branch. */
@@ -281,7 +282,10 @@ template <typename Func>
 
   for (uint32_t iteration = 0; iteration < 64; ++iteration) {
     if (right.jde_tt - left.jde_tt <= TIME_RESOLUTION_TT_DAYS) {
-      return { .jde_tt = right.jde_tt, .change = right.above() ? 1 : -1 };
+      return {
+        .jde_tt = right.jde_tt,
+        .direction = right.above() ? ephemeris::EventDirection::INCREASING : ephemeris::EventDirection::DECREASING,
+      };
     }
     const auto middle = sample(f, std::midpoint(left.jde_tt, right.jde_tt), budget);
     if (middle.above() == left.above()) {
@@ -343,6 +347,30 @@ inline auto append_turn(const Turn& refined, std::vector<Turn>& turns) -> void {
   turns.push_back(refined);
 }
 
+/** @brief Refine three-sample turns whose middle sample belongs to the scan. */
+template <typename Func>
+inline auto interior_turns(
+  const Func& f,
+  const std::span<const Sample> samples,
+  const Grid& planned,
+  std::vector<Turn>& turns,
+  search::Budget& budget
+) -> void {
+  for (std::size_t index = 1; index + 1 < samples.size(); ++index) {
+    const auto left = samples[index - 1];
+    const auto middle = samples[index];
+    const auto right = samples[index + 1];
+    if (middle.jde_tt < planned.start or middle.jde_tt > planned.end) {
+      continue;
+    }
+    const bool minimum = middle.value <= left.value and middle.value < right.value;
+    const bool maximum = middle.value >= left.value and middle.value > right.value;
+    if (minimum or maximum) {
+      append_turn(turn(f, left, right, minimum, budget), turns);
+    }
+  }
+}
+
 /** @brief Search a fixed domain-edge interval where a three-sample turn test has no outer neighbour. */
 template <typename Func>
 inline auto edge_turns(
@@ -401,20 +429,7 @@ template <typename Func>
 
   std::vector<Turn> turns;
   if (turn_search == TurnSearch::REFINE) {
-    for (std::size_t index = 1; index + 1 < samples.size(); ++index) {
-      const auto left = samples.at(index - 1);
-      const auto middle = samples.at(index);
-      const auto right = samples.at(index + 1);
-      if (middle.jde_tt < planned.start or middle.jde_tt > planned.end) {
-        continue;
-      }
-      const bool minimum = middle.value <= left.value and middle.value < right.value;
-      const bool maximum = middle.value >= left.value and middle.value > right.value;
-      if (minimum or maximum) {
-        append_turn(turn(f, left, right, minimum, budget), turns);
-      }
-    }
-
+    interior_turns(f, samples, planned, turns, budget);
     if (samples.size() >= 2 and samples.front().jde_tt == planned.domain.first) {
       edge_turns(f, samples.front(), samples.at(1), turns, budget);
     }
@@ -441,7 +456,11 @@ template <typename Func>
   const auto duplicates = std::ranges::unique(points, {}, &Sample::jde_tt);
   points.erase(duplicates.begin(), duplicates.end());
 
-  Scan result { .initially_above = points.front().above(), .finally_above = points.back().above(), .events = {} };
+  Scan result {
+    .initially_above = points.front().above(),
+    .finally_above = points.back().above(),
+    .events = {},
+  };
   for (std::size_t index = 1; index < points.size(); ++index) {
     const auto left = points.at(index - 1);
     const auto right = points.at(index);
@@ -459,15 +478,17 @@ template <typename Func>
   search::Budget& budget
 ) -> double {
   refraction::detail::validate_params(params);
-  const bool weather = params.temperature_c >= -90.0 and params.temperature_c <= 60.0
-    and params.pressure_hpa >= 300.0 and params.pressure_hpa <= 1100.0;
-  const bool model = params.model == refraction::Model::BENNETT or params.model == refraction::Model::SAEMUNDSSON;
-  if (not weather or not model or not std::isfinite(apparent) or apparent < 0.0 or apparent > 90.0) {
+  const bool supported_weather = refraction::detail::supported_application_weather(params);
+  const bool supported_model = params.model == refraction::Model::BENNETT or params.model == refraction::Model::SAEMUNDSSON;
+  if (not supported_weather or not supported_model or not std::isfinite(apparent) or apparent < 0.0 or apparent > 90.0) {
     throw std::invalid_argument { "Unsupported apparent altitude, refraction model or weather" };
   }
 
   const auto correction = [&](const double degrees) {
-    search::charge_evaluation(0.0, budget);
+    if (budget.evaluations_remaining == 0) {
+      throw std::runtime_error { "The refraction inverse evaluation budget is exhausted" };
+    }
+    --budget.evaluations_remaining;
     const auto native = params.model == refraction::Model::BENNETT
       ? refraction::bennett(toolbox::AngleDeg { degrees }) : refraction::saemundsson(toolbox::AngleDeg { degrees });
     return refraction::detail::apply_tp_correction(native, params).deg();
@@ -508,39 +529,142 @@ template <typename Func>
 /** @brief One condition's detected crossings, scan-start side and resolved geometric level. */
 struct Condition {
   bool seed_above;
-  bool above;
+  AltitudeSense sense;
   std::vector<Event> events;
   double geometric_degrees;
 };
 
-/** @brief Positive-duration operational span in JDE(TT). */
-struct Window {
-  double start_jde_tt;
-  double end_jde_tt;
-};
-
-/** @brief One event associated with its condition, in chronological then condition-index order. */
-struct ReportedEvent {
-  double jde_tt;
-  uint32_t condition;
-  int32_t change;
-};
-
-/** @brief Condition truth immediately after start replay and after the processed reported events. */
+/** @brief Truth of one requested altitude condition at a replay boundary. */
 struct SideState {
-  uint8_t initially_satisfied;
-  uint8_t currently_satisfied;
+  bool satisfied;
 };
 
 /** @brief Operational intersection, with companion events and each condition's initial state. */
 struct Result {
   std::vector<SideState> states;
-  std::vector<Window> windows;
+  std::vector<ObservingWindow> windows;
   std::size_t companion_events;
-  std::vector<ReportedEvent> reported_events;
+  std::vector<AltitudeEvent> reported_events;
 };
 
-/** @brief Replay detected crossings before clipping; start events are reflected in the initial state. */
+/** @brief Initial condition truth and an independently counted half-open event census. */
+struct Replay {
+  std::vector<SideState> states;
+  std::size_t companion_events;
+};
+
+/** @brief Validate every original crossing, replay through start and count owned events before collection. */
+[[nodiscard]] inline auto replay_start(
+  const std::span<const Condition> conditions,
+  const double start_jde_tt,
+  const double end_jde_tt,
+  const double scan_start_jde_tt,
+  const double scan_end_jde_tt
+) -> Replay {
+  const bool covered = scan_start_jde_tt <= start_jde_tt and start_jde_tt < end_jde_tt
+    and end_jde_tt <= scan_end_jde_tt;
+  if (not std::isfinite(start_jde_tt) or not std::isfinite(end_jde_tt) or not covered) {
+    throw std::invalid_argument { "The window query leaves its sampled interval" };
+  }
+
+  Replay result { .states = {}, .companion_events = 0 };
+  for (const auto& condition : conditions) {
+    bool side_above = condition.seed_above;
+    double previous = astro::detail::event_search::lower(scan_start_jde_tt);
+    for (const auto& event : condition.events) {
+      const bool directed = event.direction == ephemeris::EventDirection::INCREASING
+        or event.direction == ephemeris::EventDirection::DECREASING;
+      if (not std::isfinite(event.jde_tt) or event.jde_tt <= previous or event.jde_tt > scan_end_jde_tt
+          or not directed) {
+        throw std::runtime_error { "A condition has an invalid crossing" };
+      }
+      previous = event.jde_tt;
+      if (event.jde_tt <= start_jde_tt) {
+        side_above = event.direction == ephemeris::EventDirection::INCREASING;
+      }
+      if (start_jde_tt <= event.jde_tt and event.jde_tt < end_jde_tt) {
+        ++result.companion_events;
+      }
+    }
+    result.states.push_back({
+      .satisfied = condition.sense == AltitudeSense::ABOVE ? side_above : not side_above,
+    });
+  }
+  return result;
+}
+
+/** @brief Collect validated half-open crossings in chronological then condition-index order. */
+[[nodiscard]] inline auto ordered_events(
+  const std::span<const Condition> conditions,
+  const double start_jde_tt,
+  const double end_jde_tt
+) -> std::vector<AltitudeEvent> {
+  std::vector<AltitudeEvent> result;
+  for (std::size_t index = 0; index < conditions.size(); ++index) {
+    for (const auto& event : conditions[index].events) {
+      if (start_jde_tt <= event.jde_tt and event.jde_tt < end_jde_tt) {
+        result.insert(
+          std::ranges::upper_bound(result, event.jde_tt, {}, &AltitudeEvent::jde_tt),
+          {
+            .jde_tt = event.jde_tt,
+            .condition_index = static_cast<uint32_t>(index),
+            .direction = event.direction,
+          }
+        );
+      }
+    }
+  }
+  return result;
+}
+
+/** @brief Reconstruct maximal windows, updating one replayed state per condition in simultaneous groups. */
+[[nodiscard]] inline auto reconstruct_windows(
+  const std::span<const Condition> conditions,
+  const std::span<const AltitudeEvent> events,
+  const search::Interval query,
+  const std::span<SideState> states
+) -> std::vector<ObservingWindow> {
+  std::size_t unsatisfied = 0;
+  for (const auto state : states) {
+    unsatisfied += static_cast<std::size_t>(not state.satisfied);
+  }
+
+  std::vector<ObservingWindow> result;
+  double opening = query.start_jde_tt;
+  for (std::size_t position = 0; position < events.size();) {
+    const double time = events[position].jde_tt;
+    const bool previously_active = unsatisfied == 0;
+    while (position < events.size() and events[position].jde_tt == time) {
+      const auto& event = events[position];
+      const auto index = event.condition_index;
+      const auto& condition = conditions[index];
+      const bool side_above = event.direction == ephemeris::EventDirection::INCREASING;
+      const bool satisfied = condition.sense == AltitudeSense::ABOVE ? side_above : not side_above;
+      if (states[index].satisfied != satisfied) {
+        if (satisfied) {
+          --unsatisfied;
+        } else {
+          ++unsatisfied;
+        }
+        states[index].satisfied = satisfied;
+      }
+      ++position;
+    }
+
+    const bool active = unsatisfied == 0;
+    if (previously_active and not active and opening < time) {
+      result.push_back({ .start_jde_tt = opening, .end_jde_tt = time });
+    } else if (not previously_active and active) {
+      opening = time;
+    }
+  }
+  if (unsatisfied == 0 and opening < query.end_jde_tt) {
+    result.push_back({ .start_jde_tt = opening, .end_jde_tt = query.end_jde_tt });
+  }
+  return result;
+}
+
+/** @brief Validate and replay original censuses, collect their events, then reconstruct the conjunction. */
 [[nodiscard]] inline auto windows(
   const std::span<const Condition> conditions,
   const double start_jde_tt,
@@ -548,98 +672,21 @@ struct Result {
   const double scan_start_jde_tt,
   const double scan_end_jde_tt
 ) -> Result {
-  const bool covered = scan_start_jde_tt <= start_jde_tt and start_jde_tt < end_jde_tt
-    and end_jde_tt <= scan_end_jde_tt;
-  if (not std::isfinite(start_jde_tt) or not std::isfinite(end_jde_tt) or not covered) {
-    throw std::invalid_argument { "The window query leaves its sampled interval" };
-  }
-
-  std::vector<SideState> states;
-  std::vector<ReportedEvent> reported;
-  std::vector<std::size_t> positions(conditions.size(), 0);
-  std::size_t unsatisfied = 0;
-  std::size_t companion_events = 0;
-  for (std::size_t index = 0; index < conditions.size(); ++index) {
-    const auto& condition = conditions[index];
-    bool above = condition.seed_above;
-    double previous = astro::detail::event_search::lower(scan_start_jde_tt);
-    for (std::size_t position = 0; position < condition.events.size(); ++position) {
-      const auto& event = condition.events.at(position);
-      if (not std::isfinite(event.jde_tt) or event.jde_tt <= previous or event.jde_tt > scan_end_jde_tt
-          or (event.change != -1 and event.change != 1)) {
-        throw std::runtime_error { "A condition has an invalid crossing" };
-      }
-      previous = event.jde_tt;
-      if (event.jde_tt <= start_jde_tt) {
-        above = event.change > 0;
-        positions[index] = position + 1;
-      }
-      if (start_jde_tt <= event.jde_tt and event.jde_tt < end_jde_tt) {
-        ++companion_events;
-        if (event.jde_tt == start_jde_tt) {
-          reported.push_back({ .jde_tt = event.jde_tt, .condition = static_cast<uint32_t>(index), .change = event.change });
-        }
-      }
-    }
-    const bool satisfied = condition.above ? above : not above;
-    states.push_back({
-      .initially_satisfied = static_cast<uint8_t>(satisfied),
-      .currently_satisfied = static_cast<uint8_t>(satisfied),
-    });
-    unsatisfied += static_cast<std::size_t>(not satisfied);
-  }
-  Result result {
-    .states = std::move(states), .windows = {}, .companion_events = companion_events, .reported_events = std::move(reported)
+  auto replayed = replay_start(conditions, start_jde_tt, end_jde_tt, scan_start_jde_tt, scan_end_jde_tt);
+  auto reported = ordered_events(conditions, start_jde_tt, end_jde_tt);
+  auto working_states = replayed.states;
+  auto composed = reconstruct_windows(
+    conditions,
+    reported,
+    { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt },
+    working_states
+  );
+  return {
+    .states = std::move(replayed.states),
+    .windows = std::move(composed),
+    .companion_events = replayed.companion_events,
+    .reported_events = std::move(reported),
   };
-
-  double opening = start_jde_tt;
-  while (true) {
-    bool found = false;
-    double time = end_jde_tt;
-    for (std::size_t index = 0; index < conditions.size(); ++index) {
-      const auto& events = conditions[index].events;
-      if (positions[index] < events.size() and events.at(positions[index]).jde_tt < time) {
-        time = events.at(positions[index]).jde_tt;
-        found = true;
-      }
-    }
-    if (not found) {
-      break;
-    }
-
-    const bool previously_active = unsatisfied == 0;
-    for (std::size_t index = 0; index < conditions.size(); ++index) {
-      const auto& condition = conditions[index];
-      while (positions[index] < condition.events.size() and condition.events.at(positions[index]).jde_tt == time) {
-        const auto& event = condition.events.at(positions[index]++);
-        result.reported_events.push_back({
-          .jde_tt = event.jde_tt, .condition = static_cast<uint32_t>(index), .change = event.change,
-        });
-        const bool above = event.change > 0;
-        const bool satisfied = condition.above ? above : not above;
-        const bool previous = result.states[index].currently_satisfied != 0;
-        if (previous != satisfied) {
-          if (satisfied) {
-            --unsatisfied;
-          } else {
-            ++unsatisfied;
-          }
-          result.states[index].currently_satisfied = static_cast<uint8_t>(satisfied);
-        }
-      }
-    }
-
-    const bool active = unsatisfied == 0;
-    if (previously_active and not active and opening < time) {
-      result.windows.push_back({ .start_jde_tt = opening, .end_jde_tt = time });
-    } else if (not previously_active and active) {
-      opening = time;
-    }
-  }
-  if (unsatisfied == 0 and opening < end_jde_tt) {
-    result.windows.push_back({ .start_jde_tt = opening, .end_jde_tt = end_jde_tt });
-  }
-  return result;
 }
 
 /** @brief Resolved conditions and their reconstructed conjunction, complete before publication. */
@@ -678,7 +725,7 @@ inline auto validate_interval(const Observer& observer, const search::Interval q
     throw std::invalid_argument { "Interval endpoints must be finite with start < end" };
   }
   static_cast<void>(julian_day::jde_to_tt(query.start_jde_tt));
-  const double admitted_end = query.end_jde_tt == 13689325.5
+  const double admitted_end = query.end_jde_tt == julian_day::INVERSE_END_JD
     ? std::nextafter(query.end_jde_tt, query.start_jde_tt) : query.end_jde_tt;
   static_cast<void>(julian_day::jde_to_tt(admitted_end));
 }
@@ -719,8 +766,8 @@ inline auto validate_selectors(const std::span<const AltitudeCondition> conditio
 [[nodiscard]] inline auto sample_domain(const ephemeris::Target target) -> Domain {
   const auto provider = ephemeris::target_facts(target).position_domain;
   return {
-    .first = provider.has_value() ? std::max(1867522.5, provider->at(0)) : 1867522.5,
-    .last = search::lower(provider.has_value() ? std::min(13689325.5, provider->at(1)) : 13689325.5),
+    .first = provider.has_value() ? std::max(julian_day::INVERSE_START_JD, provider->at(0)) : julian_day::INVERSE_START_JD,
+    .last = search::lower(provider.has_value() ? std::min(julian_day::INVERSE_END_JD, provider->at(1)) : julian_day::INVERSE_END_JD),
   };
 }
 
@@ -756,7 +803,7 @@ struct Schedule {
   double first = domain.first;
   for (const int32_t year : delta_t::algo5::DISCONTINUITY_YEARS) {
     // Earlier ALGO5 joins lie outside the calendar's supported TT range.
-    if (year < 401) {
+    if (year < julian_day::INVERSE_START_YEAR) {
       continue;
     }
     const double join = julian_day::tt_to_jde(
@@ -783,6 +830,24 @@ struct Schedule {
   }, requested);
 }
 
+/** @brief Scan one branch and reject a side change from the preceding model branch. */
+template <typename Func>
+[[nodiscard]] inline auto scan_branch(
+  const Func& f,
+  const Grid& planned,
+  const TurnSearch turns,
+  std::optional<bool>& previous_side,
+  const char* const discontinuity_error,
+  search::Budget& budget
+) -> Scan {
+  auto found = scan(f, planned, turns, budget);
+  if (previous_side.has_value() and *previous_side != found.initially_above) {
+    throw std::runtime_error { discontinuity_error };
+  }
+  previous_side = found.finally_above;
+  return found;
+}
+
 /** @brief Search each smooth branch and reject a condition-side change across a clock jump. */
 [[nodiscard]] inline auto condition_events(
   const AltitudeCondition& requested,
@@ -793,12 +858,11 @@ struct Schedule {
   const double level = resolve_level(requested.level, budget);
   Condition condition {
     .seed_above = false,
-    .above = requested.sense == AltitudeSense::ABOVE,
+    .sense = requested.sense,
     .events = {},
     .geometric_degrees = level,
   };
-  bool first = true;
-  bool previous_side = false;
+  std::optional<bool> previous_side;
   for (const auto& piece : scheduled.pieces) {
     const Altitude provider {
       .target = requested.target,
@@ -806,15 +870,19 @@ struct Schedule {
       .level_sine = std::sin(toolbox::AngleDeg { level }.rad()),
       .domain = piece.domain,
     };
-    const auto found = scan(provider, piece, TurnSearch::REFINE, budget);
+    const bool first = not previous_side.has_value();
+    const auto found = scan_branch(
+      provider,
+      piece,
+      TurnSearch::REFINE,
+      previous_side,
+      "Altitude crossing coincides with a Delta T model join",
+      budget
+    );
 
     if (first) {
       condition.seed_above = found.initially_above;
-      first = false;
-    } else if (previous_side != found.initially_above) {
-      throw std::runtime_error { "Altitude crossing coincides with a Delta T model join" };
     }
-    previous_side = found.finally_above;
     condition.events.insert(condition.events.end(), found.events.begin(), found.events.end());
   }
   return condition;
@@ -829,21 +897,21 @@ struct Schedule {
   search::Budget& budget
 ) -> std::vector<double> {
   std::vector<double> times;
-  bool first = true;
-  bool previous_side = false;
+  std::optional<bool> previous_side;
   for (const auto& piece : scheduled.pieces) {
     const Meridian provider {
       .target = target,
       .observer = observer,
       .domain = piece.domain,
     };
-    const auto found = scan(provider, piece, TurnSearch::OMIT, budget);
-
-    if (not first and previous_side != found.initially_above) {
-      throw std::runtime_error { "Meridian crossing coincides with a Delta T model join" };
-    }
-    first = false;
-    previous_side = found.finally_above;
+    const auto found = scan_branch(
+      provider,
+      piece,
+      TurnSearch::OMIT,
+      previous_side,
+      "Meridian crossing coincides with a Delta T model join",
+      budget
+    );
 
     for (const auto& event : found.events) {
       if (event.jde_tt < query.start_jde_tt or event.jde_tt >= query.end_jde_tt) {
@@ -926,28 +994,8 @@ struct Schedule {
     .source = ephemeris::source_of(requested.target),
     .delta_t_model = delta_t::Model::ALGO5,
     .geometric_level = toolbox::AngleDeg { resolved.geometric_degrees },
-    .initially_satisfied = state.initially_satisfied != 0,
+    .initially_satisfied = state.satisfied,
   };
-}
-
-/** @brief Translate a crossing's side change to the shared event direction. */
-[[nodiscard]] inline auto event_direction(const int32_t change) -> ephemeris::EventDirection {
-  switch (change) {
-    case -1: return ephemeris::EventDirection::DECREASING;
-    case 1: return ephemeris::EventDirection::INCREASING;
-    default: throw std::runtime_error { "A completed altitude event has an invalid side change" };
-  }
-}
-
-/** @brief Project detected crossings in chronological then condition-index order. */
-[[nodiscard]] inline auto reported_events(const Result& composed) -> std::vector<AltitudeEvent> {
-  const auto event = [](const ReportedEvent& value) -> AltitudeEvent {
-    return {
-      .jde_tt = value.jde_tt, .condition_index = value.condition,
-      .direction = event_direction(value.change),
-    };
-  };
-  return composed.reported_events | std::views::transform(event) | std::ranges::to<std::vector>();
 }
 
 } // namespace detail::altitude_events
@@ -978,7 +1026,7 @@ struct Schedule {
   );
   return {
     .condition = query::condition_state(condition, result.conditions.front(), result.composed.states.front()),
-    .events = query::reported_events(result.composed),
+    .events = result.composed.reported_events,
   };
 }
 
@@ -1039,7 +1087,11 @@ struct Schedule {
     conditions,
     budget
   );
-  ObservingWindows result { .conditions = {}, .events = query::reported_events(computed.composed), .windows = {} };
+  ObservingWindows result {
+    .conditions = {},
+    .events = computed.composed.reported_events,
+    .windows = computed.composed.windows,
+  };
   for (std::size_t index = 0; index < conditions.size(); ++index) {
     result.conditions.push_back(
       query::condition_state(
@@ -1049,11 +1101,6 @@ struct Schedule {
       )
     );
   }
-
-  const auto window = [](const query::Window& value) -> ObservingWindow {
-    return { .start_jde_tt = value.start_jde_tt, .end_jde_tt = value.end_jde_tt };
-  };
-  result.windows = computed.composed.windows | std::views::transform(window) | std::ranges::to<std::vector>();
   return result;
 }
 

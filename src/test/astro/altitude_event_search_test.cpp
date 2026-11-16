@@ -48,7 +48,10 @@ TEST(AltitudeEventSearch, ExactZeroSamplesRetainBothCrossingDirections) {
     ASSERT_EQ(found.events.size(), 1U);
     const auto event = found.events.front();
     EXPECT_NEAR(event.jde_tt, EPOCH, TIME_RESOLUTION_TT_DAYS);
-    EXPECT_EQ(event.change, slope > 0.0 ? 1 : -1);
+    EXPECT_EQ(
+      event.direction,
+      slope > 0.0 ? ephemeris::EventDirection::INCREASING : ephemeris::EventDirection::DECREASING
+    );
     EXPECT_EQ(f(event.jde_tt) > 0.0, slope > 0.0);
     EXPECT_EQ(found.initially_above, slope < 0.0);
     EXPECT_EQ(found.finally_above, slope > 0.0);
@@ -66,8 +69,14 @@ TEST(AltitudeEventSearch, TiedCoarseSamplesResolveAPairWithinOneGridInterval) {
     ASSERT_EQ(found.events.size(), 2U);
     EXPECT_NEAR(found.events.at(0).jde_tt, centre - RADIUS, TIME_RESOLUTION_TT_DAYS);
     EXPECT_NEAR(found.events.at(1).jde_tt, centre + RADIUS, TIME_RESOLUTION_TT_DAYS);
-    EXPECT_EQ(found.events.at(0).change, orientation > 0.0 ? 1 : -1);
-    EXPECT_EQ(found.events.at(1).change, -found.events.at(0).change);
+    EXPECT_EQ(
+      found.events.at(0).direction,
+      orientation > 0.0 ? ephemeris::EventDirection::INCREASING : ephemeris::EventDirection::DECREASING
+    );
+    EXPECT_EQ(
+      found.events.at(1).direction,
+      orientation > 0.0 ? ephemeris::EventDirection::DECREASING : ephemeris::EventDirection::INCREASING
+    );
   }
 }
 
@@ -121,7 +130,7 @@ TEST(AltitudeEventSearch, QuerySplitsReuseTheSameExtremaAndRootBrackets) {
     ASSERT_EQ(joined.size(), whole.events.size());
     for (std::size_t index = 0; index < joined.size(); ++index) {
       EXPECT_DOUBLE_EQ(joined.at(index).jde_tt, whole.events.at(index).jde_tt);
-      EXPECT_EQ(joined.at(index).change, whole.events.at(index).change);
+      EXPECT_EQ(joined.at(index).direction, whole.events.at(index).direction);
     }
   }
 }
@@ -234,6 +243,19 @@ TEST(AltitudeEventSearch, UnsupportedWeatherAndUnattainableLevelsAreInvalidInput
   EXPECT_THROW((void)inverse(-1.0, {}, work), std::invalid_argument);
   EXPECT_THROW((void)inverse(90.0, {}, work), std::invalid_argument);
   EXPECT_THROW((void)inverse(90.0, { .model = refraction::Model::SAEMUNDSSON }, work), std::invalid_argument);
+}
+
+TEST(AltitudeEventSearch, InverseBudgetFailureDoesNotInventAnObservationTime) {
+  auto work = budget();
+  work.evaluations_remaining = 0;
+  try {
+    (void)inverse(10.0, {}, work);
+    FAIL() << "An exhausted inverse budget cannot evaluate a correction";
+  } catch (const std::runtime_error& error) {
+    EXPECT_STREQ(error.what(), "The refraction inverse evaluation budget is exhausted");
+  }
+  EXPECT_EQ(work.evaluations_remaining, 0U);
+  EXPECT_EQ(work.candidates_remaining, 2048U);
 }
 
 } // namespace astro::observer::detail::altitude_events::test

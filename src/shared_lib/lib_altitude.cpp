@@ -11,8 +11,11 @@
  */
 
 #include <algorithm>
+#include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <ranges>
 #include <span>
@@ -35,6 +38,25 @@ namespace observer = astro::observer;
 static_assert(sizeof(CelestialAltitudeCondition) == 40);
 static_assert(sizeof(CelestialAltitudeRecord) == 88);
 static_assert(std::is_trivially_copy_assignable_v<CelestialAltitudeRecord>);
+
+/** @brief Boundary codes indexed by the admitted core target, reconciled with the owning tables. */
+struct TargetIdentity {
+  uint32_t target;
+  uint32_t source;
+};
+
+constexpr auto TARGET_IDENTITIES = std::invoke([] {
+  std::array<TargetIdentity, lib::codes::TARGETS.size()> result {};
+  for (const auto& entry : lib::codes::TARGETS) {
+    result.at(static_cast<std::size_t>(entry.value)) = {
+      .target = entry.code,
+      .source = lib::codes::code_of(astro::ephemeris::source_of(entry.value)),
+    };
+  }
+  return result;
+});
+
+constexpr uint32_t CLOCK = lib::codes::code_of(astro::delta_t::Model::ALGO5);
 
 /** @brief Resolve a full-width physical-target code before narrowing to a core identity. */
 [[nodiscard]] auto physical_target(const uint32_t code) -> astro::ephemeris::Target {
@@ -92,83 +114,113 @@ static_assert(std::is_trivially_copy_assignable_v<CelestialAltitudeRecord>);
   return result;
 }
 
-/** @brief Validate complete metadata and materialize condition, event and selected window records. */
+/** @brief Completed condition stream; valid-index projection cannot allocate, validate or throw. */
+struct ConditionRecords {
+  std::span<const observer::AltitudeCondition> requested;
+  const query::ConditionQuery& computed;
+  std::span<const observer::ObservingWindow> windows;
+
+  [[nodiscard]] auto size() const noexcept -> std::size_t {
+    return requested.size() + computed.composed.reported_events.size() + windows.size();
+  }
+
+  auto write(std::size_t index, CelestialAltitudeRecord& record) const noexcept -> void {
+    record = {};
+    if (index < requested.size()) {
+      const auto& condition = requested[index];
+      const auto identity = std::span { TARGET_IDENTITIES }[static_cast<std::size_t>(condition.target)];
+      record.condition_index = static_cast<uint32_t>(index);
+      record.target_code = identity.target;
+      record.position_source_code = identity.source;
+      record.delta_t_model_code = CLOCK;
+      record.sense_code = condition.sense == observer::AltitudeSense::ABOVE
+        ? CELESTIAL_ALTITUDE_SENSE_ABOVE : CELESTIAL_ALTITUDE_SENSE_BELOW;
+      record.initially_satisfied = static_cast<uint32_t>(computed.composed.states[index].satisfied);
+      record.geometric_level_deg = computed.conditions[index].geometric_degrees;
+      assert(not condition.level.valueless_by_exception());
+      if (const auto* level = std::get_if<observer::GeometricLevel>(&condition.level); level != nullptr) {
+        record.requested_level_deg = level->altitude.deg();
+      } else if (const auto* refracted = std::get_if<observer::RefractedLevel>(&condition.level); refracted != nullptr) {
+        record.requested_level_deg = refracted->altitude.deg();
+        record.refraction_code = refracted->params.model == query::refraction::Model::BENNETT
+          ? CELESTIAL_REFRACTION_BENNETT : CELESTIAL_REFRACTION_SAEMUNDSSON;
+        record.temperature_c = refracted->params.temperature_c;
+        record.pressure_hpa = refracted->params.pressure_hpa;
+      }
+      return;
+    }
+    index -= requested.size();
+    if (index < computed.composed.reported_events.size()) {
+      const auto& event = computed.composed.reported_events[index];
+      record.tag = CELESTIAL_ALTITUDE_RECORD_EVENT;
+      record.condition_index = event.condition_index;
+      record.direction_code = static_cast<uint32_t>(event.direction);
+      record.jde_tt = event.jde_tt;
+      return;
+    }
+    index -= computed.composed.reported_events.size();
+    const auto& window = windows[index];
+    record.tag = CELESTIAL_ALTITUDE_RECORD_WINDOW;
+    record.jde_tt = window.start_jde_tt;
+    record.end_jde_tt = window.end_jde_tt;
+  }
+};
+
+/** @brief Validate the completed condition metadata before publishing any record. */
 [[nodiscard]] auto records(
   const std::span<const observer::AltitudeCondition> requested,
   const query::ConditionQuery& computed,
   const std::span<const observer::ObservingWindow> windows
-) -> std::vector<CelestialAltitudeRecord> {
+) -> ConditionRecords {
   if (computed.composed.states.size() != requested.size() or computed.conditions.size() != requested.size()) {
     throw std::runtime_error { "The completed condition metadata is inconsistent" };
   }
   if (computed.composed.reported_events.size() != computed.composed.companion_events) {
     throw std::runtime_error { "The typed merger lost a reported condition event" };
   }
-
-  constexpr uint32_t CLOCK = lib::codes::code_of(astro::delta_t::Model::ALGO5);
-  std::vector<CelestialAltitudeRecord> result;
-  result.reserve(requested.size() + computed.composed.reported_events.size() + windows.size());
-  for (std::size_t index = 0; index < requested.size(); ++index) {
-    const auto& condition = requested[index];
-    CelestialAltitudeRecord record {};
-    record.condition_index = static_cast<uint32_t>(index);
-    record.target_code = lib::codes::code_of(condition.target);
-    record.position_source_code = lib::codes::code_of(astro::ephemeris::source_of(condition.target));
-    record.delta_t_model_code = CLOCK;
-    record.sense_code = condition.sense == observer::AltitudeSense::ABOVE
-      ? CELESTIAL_ALTITUDE_SENSE_ABOVE : CELESTIAL_ALTITUDE_SENSE_BELOW;
-    record.initially_satisfied = computed.composed.states[index].initially_satisfied;
-    record.geometric_level_deg = computed.conditions[index].geometric_degrees;
-    std::visit([&](const auto& level) {
-      record.requested_level_deg = level.altitude.deg();
-      if constexpr (std::is_same_v<std::decay_t<decltype(level)>, observer::RefractedLevel>) {
-        record.refraction_code = level.params.model == query::refraction::Model::BENNETT
-          ? CELESTIAL_REFRACTION_BENNETT : CELESTIAL_REFRACTION_SAEMUNDSSON;
-        record.temperature_c = level.params.temperature_c;
-        record.pressure_hpa = level.params.pressure_hpa;
-      }
-    }, condition.level);
-    result.push_back(record);
-  }
-  for (const auto& event : computed.composed.reported_events) {
-    CelestialAltitudeRecord record {};
-    record.tag = CELESTIAL_ALTITUDE_RECORD_EVENT;
-    record.condition_index = event.condition;
-    record.direction_code = event.change > 0
-      ? CELESTIAL_EVENT_DIRECTION_INCREASING : CELESTIAL_EVENT_DIRECTION_DECREASING;
-    record.jde_tt = event.jde_tt;
-    result.push_back(record);
-  }
-  for (const auto& window : windows) {
-    CelestialAltitudeRecord record {};
-    record.tag = CELESTIAL_ALTITUDE_RECORD_WINDOW;
-    record.jde_tt = window.start_jde_tt;
-    record.end_jde_tt = window.end_jde_tt;
-    result.push_back(record);
-  }
-  return result;
+  return {
+    .requested = requested,
+    .computed = computed,
+    .windows = windows,
+  };
 }
 
-/** @brief Materialize only transit records, with the selected physical-source identity. */
-[[nodiscard]] auto transit_records(
-  const astro::ephemeris::Target target,
-  const std::span<const double> times
-) -> std::vector<CelestialAltitudeRecord> {
-  const uint32_t code = lib::codes::code_of(target);
-  const uint32_t source = lib::codes::code_of(astro::ephemeris::source_of(target));
-  constexpr uint32_t CLOCK = lib::codes::code_of(astro::delta_t::Model::ALGO5);
-  std::vector<CelestialAltitudeRecord> result;
-  result.reserve(times.size());
-  for (const double time : times) {
-    CelestialAltitudeRecord record {};
+/** @brief Completed transit stream, with no condition or window state. */
+struct TransitRecords {
+  TargetIdentity identity;
+  std::span<const double> times;
+
+  [[nodiscard]] auto size() const noexcept -> std::size_t { return times.size(); }
+
+  auto write(const std::size_t index, CelestialAltitudeRecord& record) const noexcept -> void {
+    record = {};
     record.tag = CELESTIAL_ALTITUDE_RECORD_UPPER_TRANSIT;
-    record.target_code = code;
-    record.position_source_code = source;
+    record.target_code = identity.target;
+    record.position_source_code = identity.source;
     record.delta_t_model_code = CLOCK;
-    record.jde_tt = time;
-    result.push_back(record);
+    record.jde_tt = times[index];
   }
-  return result;
+};
+
+/** @brief Publish a complete stream's count and requested prefix after all preparation succeeds. */
+template <typename Records>
+[[nodiscard]] auto publish(
+  const Records& output,
+  uint32_t* count,
+  CelestialAltitudeRecord* slots,
+  const uint32_t capacity
+) -> uint32_t {
+  if (output.size() > std::numeric_limits<uint32_t>::max()) {
+    throw std::runtime_error { "The complete record count cannot be represented" };
+  }
+
+  *count = static_cast<uint32_t>(output.size());
+  const uint32_t written = std::min(*count, capacity);
+  const auto destination = std::span { slots, written };
+  for (uint32_t index = 0; index < written; ++index) {
+    output.write(index, destination[index]);
+  }
+  return written;
 }
 
 /** @brief Check caller storage, prepare the complete stream, then publish its count and prefix. */
@@ -183,18 +235,7 @@ template <typename Prepare>
   return lib::wrap_export(operation, [&] {
     lib::check_count(count, "count");
     lib::check_slots(slots, capacity);
-    const auto output = prepare();
-    if (output.size() > std::numeric_limits<uint32_t>::max()) {
-      throw std::runtime_error { "The complete record count cannot be represented" };
-    }
-
-    *count = static_cast<uint32_t>(output.size());
-    const uint32_t written = std::min(*count, capacity);
-    std::ranges::copy(
-      std::span { output }.first(written),
-      std::span { slots, written }.begin()
-    );
-    return written;
+    return prepare();
   });
 }
 
@@ -217,6 +258,7 @@ template <typename Prepare>
 
 extern "C" {
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): Parameters retain the published C ABI order.
 auto celestial_altitude_events(
   const CelestialAltitudeCondition* condition,
   const double latitude_deg,
@@ -234,7 +276,8 @@ auto celestial_altitude_events(
     const auto decoded = decode_conditions(condition, 1, observer, interval);
     auto budget = query::query_budget();
     const auto computed = query::compute_conditions(observer, interval, decoded, budget);
-    return records(decoded, computed, {});
+    const auto output = records(decoded, computed, {});
+    return publish(output, record_count, slots, slot_count);
   });
 }
 
@@ -256,7 +299,11 @@ auto celestial_upper_transits(
     const auto target = physical_target(target_code);
     auto budget = query::query_budget();
     const auto times = query::compute_transits(observer, interval, target, budget);
-    return transit_records(target, times);
+    const TransitRecords output {
+      .identity = std::span { TARGET_IDENTITIES }[static_cast<std::size_t>(target)],
+      .times = times,
+    };
+    return publish(output, record_count, slots, slot_count);
   });
 }
 
@@ -278,12 +325,11 @@ auto celestial_observing_windows(
     const auto decoded = decode_conditions(conditions, condition_count, observer, interval);
     auto budget = query::query_budget();
     const auto computed = query::compute_conditions(observer, interval, decoded, budget);
-    const auto window = [](const query::Window& value) -> observer::ObservingWindow {
-      return { .start_jde_tt = value.start_jde_tt, .end_jde_tt = value.end_jde_tt };
-    };
-    const auto windows = computed.composed.windows | std::views::transform(window) | std::ranges::to<std::vector>();
-    return records(decoded, computed, windows);
+    const auto output = records(decoded, computed, computed.composed.windows);
+    return publish(output, record_count, slots, slot_count);
   });
 }
+
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 } // extern "C"
