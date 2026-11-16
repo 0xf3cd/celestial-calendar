@@ -217,7 +217,7 @@ TEST(AltitudeEventQuery, ModelJoinSideChangesFailButOrdinaryCrossingsAcrossTheDa
     };
     const auto left = observe(provider.target, provider.observer, provider.domain, search::lower(join));
     const auto right = observe(provider.target, provider.observer, provider.domain, join);
-    const double sine = std::midpoint(left.up / left.q, right.up / right.q);
+    const double sine = std::midpoint(left.up / left.norm, right.up / right.norm);
     const double level = toolbox::AngleRad { std::asin(sine) }.deg();
     const search::Interval query { .start_jde_tt = join - 0.125, .end_jde_tt = join + 0.125 };
     const std::array crossing { geometric(0, level) };

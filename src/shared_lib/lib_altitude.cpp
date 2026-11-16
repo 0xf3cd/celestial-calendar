@@ -17,7 +17,6 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
-#include <ranges>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -84,7 +83,9 @@ constexpr uint32_t CLOCK = lib::codes::code_of(astro::delta_t::Model::ALGO5);
 
   const auto requested = std::span { inputs, count };
   for (const auto& input : requested) {
-    if (input.sense_code > 1 or input.refraction_code > 2 or input.reserved != 0) {
+    const bool known_selectors = input.sense_code <= CELESTIAL_ALTITUDE_SENSE_ABOVE
+      and input.refraction_code <= CELESTIAL_REFRACTION_SAEMUNDSSON;
+    if (not known_selectors or input.reserved != 0) {
       throw std::invalid_argument { "Invalid condition selector or reserved storage" };
     }
     if (input.refraction_code == CELESTIAL_REFRACTION_NONE and (input.temperature_c != 0.0 or input.pressure_hpa != 0.0)) {
@@ -101,7 +102,10 @@ constexpr uint32_t CLOCK = lib::codes::code_of(astro::delta_t::Model::ALGO5);
     const auto atmosphere = lib::codes::refraction_params(input.refraction_code, input.temperature_c, input.pressure_hpa);
     const auto altitude = astro::toolbox::AngleDeg { input.level_deg };
     const auto level = atmosphere.has_value()
-      ? observer::AltitudeLevel { observer::RefractedLevel { .altitude = altitude, .params = *atmosphere } }
+      ? observer::AltitudeLevel { observer::RefractedLevel {
+          .altitude = altitude,
+          .params = *atmosphere,
+        } }
       : observer::AltitudeLevel { observer::GeometricLevel { .altitude = altitude } };
     query::validate_level(level);
     result.push_back({
@@ -272,10 +276,13 @@ auto celestial_altitude_events(
 ) -> uint32_t {
   return run(__func__, record_count, slots, slot_count, [=] {
     const auto observer = site(latitude_deg, longitude_deg, elevation_m);
-    const query::search::Interval interval { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
+    const query::search::Interval interval {
+      .start_jde_tt = start_jde_tt,
+      .end_jde_tt = end_jde_tt,
+    };
     const auto decoded = decode_conditions(condition, 1, observer, interval);
     auto budget = query::query_budget();
-    const auto computed = query::compute_conditions(observer, interval, decoded, budget);
+    const auto computed = query::search_conditions(observer, interval, decoded, budget);
     const auto output = records(decoded, computed, {});
     return publish(output, record_count, slots, slot_count);
   });
@@ -294,11 +301,15 @@ auto celestial_upper_transits(
 ) -> uint32_t {
   return run(__func__, record_count, slots, slot_count, [=] {
     const auto observer = site(latitude_deg, longitude_deg, elevation_m);
-    const query::search::Interval interval { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
+    const query::search::Interval interval {
+      .start_jde_tt = start_jde_tt,
+      .end_jde_tt = end_jde_tt,
+    };
     query::validate_interval(observer, interval);
     const auto target = physical_target(target_code);
+    query::validate_target(target, interval);
     auto budget = query::query_budget();
-    const auto times = query::compute_transits(observer, interval, target, budget);
+    const auto times = query::search_transits(observer, interval, target, budget);
     const TransitRecords output {
       .identity = std::span { TARGET_IDENTITIES }[static_cast<std::size_t>(target)],
       .times = times,
@@ -321,10 +332,13 @@ auto celestial_observing_windows(
 ) -> uint32_t {
   return run(__func__, record_count, slots, slot_count, [=] {
     const auto observer = site(latitude_deg, longitude_deg, elevation_m);
-    const query::search::Interval interval { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt };
+    const query::search::Interval interval {
+      .start_jde_tt = start_jde_tt,
+      .end_jde_tt = end_jde_tt,
+    };
     const auto decoded = decode_conditions(conditions, condition_count, observer, interval);
     auto budget = query::query_budget();
-    const auto computed = query::compute_conditions(observer, interval, decoded, budget);
+    const auto computed = query::search_conditions(observer, interval, decoded, budget);
     const auto output = records(decoded, computed, computed.composed.windows);
     return publish(output, record_count, slots, slot_count);
   });

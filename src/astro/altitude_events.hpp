@@ -134,7 +134,7 @@ struct Domain {
 /** @brief One topocentric observation; all components are dimensionless. */
 struct Observation {
   double up;
-  double q;
+  double norm;
   double forward;
   double meridian;
 };
@@ -154,18 +154,20 @@ struct Observation {
   const auto tt = julian_day::jde_to_tt(jde_tt);
   const auto ut1 = delta_t::tt_to_ut1(delta_t::Model::ALGO5, tt);
   const double jd_ut1 = julian_day::ut1_to_jd(ut1);
-  const auto theta = sidereal::local_apparent(
-    jd_ut1,
-    jde_tt,
-    -observer.location.longitude,
-    earth::nutation::Model::IAU_1980
+  const auto theta = astro::observer::detail::local_sidereal_angle(
+    {
+      .jd_ut1 = jd_ut1,
+      .jde_tt = jde_tt,
+    },
+    observer.location.longitude
   );
-  const auto geometry = astro::observer::detail::local_geometry(position, theta, observer);
+  const auto translated = astro::observer::detail::translate(position, theta, observer);
+  const auto projected = astro::observer::detail::project(translated, observer.location.latitude);
   return {
-    .up = geometry.up,
-    .q = geometry.q,
-    .forward = geometry.B,
-    .meridian = geometry.A,
+    .up = projected.up,
+    .norm = translated.norm,
+    .forward = translated.forward,
+    .meridian = translated.meridian,
   };
 }
 
@@ -178,7 +180,7 @@ struct Altitude {
 
   [[nodiscard]] auto operator()(const double jde_tt) const -> double {
     const auto observed = observe(target, observer, domain, jde_tt);
-    return observed.up - (level_sine * observed.q);
+    return observed.up - (level_sine * observed.norm);
   }
 };
 
@@ -567,7 +569,10 @@ struct Replay {
     throw std::invalid_argument { "The window query leaves its sampled interval" };
   }
 
-  Replay result { .states = {}, .companion_events = 0 };
+  Replay result {
+    .states = {},
+    .companion_events = 0,
+  };
   for (const auto& condition : conditions) {
     bool side_above = condition.seed_above;
     double previous = astro::detail::event_search::lower(scan_start_jde_tt);
@@ -653,13 +658,19 @@ struct Replay {
 
     const bool active = unsatisfied == 0;
     if (previously_active and not active and opening < time) {
-      result.push_back({ .start_jde_tt = opening, .end_jde_tt = time });
+      result.push_back({
+        .start_jde_tt = opening,
+        .end_jde_tt = time,
+      });
     } else if (not previously_active and active) {
       opening = time;
     }
   }
   if (unsatisfied == 0 and opening < query.end_jde_tt) {
-    result.push_back({ .start_jde_tt = opening, .end_jde_tt = query.end_jde_tt });
+    result.push_back({
+      .start_jde_tt = opening,
+      .end_jde_tt = query.end_jde_tt,
+    });
   }
   return result;
 }
@@ -678,7 +689,10 @@ struct Replay {
   auto composed = reconstruct_windows(
     conditions,
     reported,
-    { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt },
+    {
+      .start_jde_tt = start_jde_tt,
+      .end_jde_tt = end_jde_tt,
+    },
     working_states
   );
   return {
@@ -765,9 +779,13 @@ inline auto validate_selectors(const std::span<const AltitudeCondition> conditio
 /** @brief The target/calendar sample domain, with its excluded upper bound moved inward by one ULP. */
 [[nodiscard]] inline auto sample_domain(const ephemeris::Target target) -> Domain {
   const auto provider = ephemeris::target_facts(target).position_domain;
+  const double first = provider.has_value()
+    ? std::max(julian_day::INVERSE_START_JD, provider->at(0)) : julian_day::INVERSE_START_JD;
+  const double end = provider.has_value()
+    ? std::min(julian_day::INVERSE_END_JD, provider->at(1)) : julian_day::INVERSE_END_JD;
   return {
-    .first = provider.has_value() ? std::max(julian_day::INVERSE_START_JD, provider->at(0)) : julian_day::INVERSE_START_JD,
-    .last = search::lower(provider.has_value() ? std::min(julian_day::INVERSE_END_JD, provider->at(1)) : julian_day::INVERSE_END_JD),
+    .first = first,
+    .last = search::lower(end),
   };
 }
 
@@ -930,6 +948,21 @@ template <typename Func>
   return times;
 }
 
+/**
+ * @brief Plan and search upper passages using the query's shared work budget.
+ * @pre The observer, interval and physical target have passed admission.
+ */
+[[nodiscard]] inline auto search_transits(
+  const Observer& observer,
+  const search::Interval query,
+  const ephemeris::Target target,
+  search::Budget& budget
+) -> std::vector<double> {
+  ephemeris::detail::validate_event_environment();
+  const auto planned = schedule(target, query, budget.evaluations_remaining);
+  return transit_events(target, observer, query, planned, budget);
+}
+
 /** @brief Admit a physical transit query, plan its samples, and retain its upper passages. */
 [[nodiscard]] inline auto compute_transits(
   const Observer& observer,
@@ -939,27 +972,19 @@ template <typename Func>
 ) -> std::vector<double> {
   validate_interval(observer, query);
   validate_target(target, query);
-  ephemeris::detail::validate_event_environment();
-  const auto planned = schedule(target, query, budget.evaluations_remaining);
-  return transit_events(target, observer, query, planned, budget);
+  return search_transits(observer, query, target, budget);
 }
 
-/** @brief Admit all conditions, preflight their shared work, then search and compose the conjunction. */
-[[nodiscard]] inline auto compute_conditions(
+/**
+ * @brief Preflight shared work, search every condition, and compose the conjunction.
+ * @pre The observer, interval and complete condition list have passed admission.
+ */
+[[nodiscard]] inline auto search_conditions(
   const Observer& observer,
   const search::Interval query,
   const std::span<const AltitudeCondition> requests,
   search::Budget& budget
 ) -> ConditionQuery {
-  validate_selectors(requests);
-  validate_interval(observer, query);
-  if (requests.size() > MAX_CONDITIONS) {
-    throw std::runtime_error { "The condition-list work budget is exhausted" };
-  }
-  for (const auto& requested : requests) {
-    validate_target(requested.target, query);
-    validate_level(requested.level);
-  }
   ephemeris::detail::validate_event_environment();
 
   std::vector<Schedule> plans;
@@ -980,7 +1005,29 @@ template <typename Func>
     conditions.push_back(condition_events(requests[index], observer, planned, budget));
   }
   auto composed = windows(conditions, query.start_jde_tt, query.end_jde_tt, scan_start, scan_end);
-  return { .conditions = std::move(conditions), .composed = std::move(composed) };
+  return {
+    .conditions = std::move(conditions),
+    .composed = std::move(composed),
+  };
+}
+
+/** @brief Admit all typed conditions before any inverse or provider work. */
+[[nodiscard]] inline auto compute_conditions(
+  const Observer& observer,
+  const search::Interval query,
+  const std::span<const AltitudeCondition> requests,
+  search::Budget& budget
+) -> ConditionQuery {
+  validate_selectors(requests);
+  validate_interval(observer, query);
+  if (requests.size() > MAX_CONDITIONS) {
+    throw std::runtime_error { "The condition-list work budget is exhausted" };
+  }
+  for (const auto& requested : requests) {
+    validate_target(requested.target, query);
+    validate_level(requested.level);
+  }
+  return search_conditions(observer, query, requests, budget);
 }
 
 /** @brief Attach physical-source and fixed-clock metadata to a resolved condition. */
@@ -1025,7 +1072,11 @@ template <typename Func>
     budget
   );
   return {
-    .condition = query::condition_state(condition, result.conditions.front(), result.composed.states.front()),
+    .condition = query::condition_state(
+      condition,
+      result.conditions.front(),
+      result.composed.states.front()
+    ),
     .events = result.composed.reported_events,
   };
 }

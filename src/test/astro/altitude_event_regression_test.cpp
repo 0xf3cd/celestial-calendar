@@ -57,10 +57,10 @@ TEST(AltitudeEventRegression, BothExactPolesUseTheSuppliedLongitudeForUpperPassa
       const auto ut1 = delta_t::tt_to_ut1(delta_t::Model::ALGO5, julian_day::jde_to_tt(event.jde_tt));
       const auto theta = sidereal::local_apparent(julian_day::ut1_to_jd(ut1), event.jde_tt, toolbox::AngleDeg { 77.0 });
       const auto position = ephemeris::equatorial_position(ephemeris::Target::MARS, event.jde_tt);
-      const auto local = detail::local_geometry(position, theta, make_site(latitude));
-      EXPECT_GT(local.B, 0.0);
+      const auto local = detail::translate(position, theta, make_site(latitude));
+      EXPECT_GT(local.forward, 0.0);
       // A daily angular rate near 2*pi transports 2^-20 day into less than 2^-16.
-      EXPECT_NEAR(local.A, 0.0, 0x1p-16);
+      EXPECT_NEAR(local.meridian, 0.0, 0x1p-16);
     }
   }
 }
