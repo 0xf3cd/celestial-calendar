@@ -60,6 +60,7 @@ def test_aliases_build_once_and_floor_current_consumers_use_the_exact_artifacts(
   }
   consumer = jobs["alias-consumers"]
   assert consumer["needs"] == ["aliases", "manylinux"]
+  assert consumer["runs-on"] == "ubuntu-24.04"
   assert consumer["strategy"]["matrix"] == {"python": ["3.11.9", "3.14.7"]}
   downloads = [step["with"] for step in consumer["steps"] if "download-artifact@" in step.get("uses", "")]
   assert downloads == [

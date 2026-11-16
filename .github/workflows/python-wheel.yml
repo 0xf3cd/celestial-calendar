@@ -54,7 +54,8 @@ jobs:
 
   alias-consumers:
     needs: [aliases, manylinux]
-    runs-on: ubuntu-latest
+    # Keep the fixed 3.11.9 floor on a compatible setup-python image.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
