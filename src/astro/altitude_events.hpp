@@ -138,36 +138,57 @@ struct Observation {
   double meridian;
 };
 
-/** @brief Fixed-observer altitude or meridian objective, guarded by its evaluable domain. */
+/** @brief Observe a physical target inside one continuous, evaluable model branch. */
+[[nodiscard]] inline auto observe(
+  const ephemeris::Target target,
+  const Observer& observer,
+  const Domain domain,
+  const double jde_tt
+) -> Observation {
+  if (not std::isfinite(jde_tt) or jde_tt < domain.first or jde_tt > domain.last) {
+    throw std::runtime_error { "Altitude sample leaves its evaluable domain" };
+  }
+
+  const auto position = ephemeris::equatorial_position(target, jde_tt);
+  const auto tt = julian_day::jde_to_tt(jde_tt);
+  const auto ut1 = delta_t::tt_to_ut1(delta_t::Model::ALGO5, tt);
+  const double jd_ut1 = julian_day::ut1_to_jd(ut1);
+  const auto theta = sidereal::local_apparent(
+    jd_ut1,
+    jde_tt,
+    -observer.location.longitude,
+    earth::nutation::Model::IAU_1980
+  );
+  const auto geometry = astro::observer::detail::local_geometry(position, theta, observer);
+  return {
+    .up = geometry.up,
+    .q = geometry.q,
+    .forward = geometry.B,
+    .meridian = geometry.A,
+  };
+}
+
+/** @brief Fixed-observer difference from a geometric centre-altitude threshold. */
 struct Altitude {
   ephemeris::Target target;
   Observer observer;
   double level_sine;
   Domain domain;
-  bool meridian;
-
-  [[nodiscard]] auto observe(const double jde_tt) const -> Observation {
-    if (not std::isfinite(jde_tt) or jde_tt < domain.first or jde_tt > domain.last) {
-      throw std::runtime_error { "Altitude sample leaves its evaluable domain" };
-    }
-
-    const auto position = ephemeris::equatorial_position(target, jde_tt);
-    const auto tt = julian_day::jde_to_tt(jde_tt);
-    const auto ut1 = delta_t::tt_to_ut1(delta_t::Model::ALGO5, tt);
-    const double jd_ut1 = julian_day::ut1_to_jd(ut1);
-    const auto theta = sidereal::local_apparent(
-      jd_ut1,
-      jde_tt,
-      -observer.location.longitude,
-      earth::nutation::Model::IAU_1980
-    );
-    const auto geometry = astro::observer::detail::local_geometry(position, theta, observer);
-    return { .up = geometry.up, .q = geometry.q, .forward = geometry.B, .meridian = geometry.A };
-  }
 
   [[nodiscard]] auto operator()(const double jde_tt) const -> double {
-    const auto observed = observe(jde_tt);
-    return meridian ? observed.meridian : observed.up - (level_sine * observed.q);
+    const auto observed = observe(target, observer, domain, jde_tt);
+    return observed.up - (level_sine * observed.q);
+  }
+};
+
+/** @brief Fixed-observer meridian-plane component, without an altitude threshold. */
+struct Meridian {
+  ephemeris::Target target;
+  Observer observer;
+  Domain domain;
+
+  [[nodiscard]] auto operator()(const double jde_tt) const -> double {
+    return observe(target, observer, domain, jde_tt).meridian;
   }
 };
 
@@ -358,12 +379,15 @@ struct Scan {
   std::vector<Event> events;
 };
 
+/** @brief Refine altitude extrema or scan only the sampled meridian side changes. */
+enum class TurnSearch : uint8_t { REFINE, OMIT };
+
 /** @brief Sample, partition at detected turns, and refine directed crossings on one continuous branch. */
 template <typename Func>
 [[nodiscard]] inline auto scan(
   const Func& f,
   const Grid& planned,
-  const bool find_turns,
+  const TurnSearch turn_search,
   search::Budget& budget
 ) -> Scan {
   if (planned.times.size() > budget.evaluations_remaining) {
@@ -376,7 +400,7 @@ template <typename Func>
   }
 
   std::vector<Turn> turns;
-  if (find_turns) {
+  if (turn_search == TurnSearch::REFINE) {
     for (std::size_t index = 1; index + 1 < samples.size(); ++index) {
       const auto left = samples.at(index - 1);
       const auto middle = samples.at(index);
@@ -406,11 +430,7 @@ template <typename Func>
     return planned.start < value.jde_tt and value.jde_tt < planned.end;
   };
   std::vector<Sample> points;
-  std::ranges::copy_if(
-    samples,
-    std::back_inserter(points),
-    in_scan
-  );
+  std::ranges::copy_if(samples, std::back_inserter(points), in_scan);
   std::ranges::copy_if(
     turns | std::views::transform(&Turn::point),
     std::back_inserter(points),
@@ -622,23 +642,10 @@ struct Result {
   return result;
 }
 
-/** @brief Select the result to compose from the shared interval search. */
-enum class Kind : uint8_t { ALTITUDE, TRANSITS, WINDOWS };
-
-/** @brief Decoded condition storage; convention 2 is geometric and carries no atmospheric computation. */
-struct Request {
-  uint32_t target {};
-  double level {};
-  bool above {};
-  uint32_t convention {};
-  earth::refraction::Params params;
-};
-
-/** @brief Query result, published only after every condition has finished successfully. */
-struct Computed {
+/** @brief Resolved conditions and their reconstructed conjunction, complete before publication. */
+struct ConditionQuery {
   std::vector<Condition> conditions;
   Result composed;
-  std::vector<double> transit_times;
 };
 
 inline constexpr std::size_t MAX_CONDITIONS = 2048;
@@ -649,31 +656,21 @@ inline constexpr std::size_t MAX_CONDITIONS = 2048;
 }
 
 /** @brief Validate one physical target against its position domain. */
-inline auto validate_target(const uint32_t target, const search::Interval query) -> void {
-  if (target > 9) {
+inline auto validate_target(const ephemeris::Target target, const search::Interval query) -> void {
+  const bool physical = std::ranges::any_of(ephemeris::TARGET_FACTS, [target](const ephemeris::TargetFacts& facts) {
+    return facts.target == target and not facts.node.has_value();
+  });
+  if (not physical) {
     throw std::invalid_argument { "A physical target is required" };
   }
-  const auto domain = ephemeris::target_facts(static_cast<ephemeris::Target>(target)).position_domain;
+  const auto domain = ephemeris::target_facts(target).position_domain;
   if (domain.has_value() and (query.start_jde_tt < domain->at(0) or query.end_jde_tt > domain->at(1))) {
     throw std::invalid_argument { "The query leaves its target's position domain" };
   }
 }
 
 /** @brief Admit half-open TT queries, including the inverse calendar's exclusive upper endpoint. */
-inline auto validate_query(
-  const Kind kind,
-  const Observer& observer,
-  const search::Interval query,
-  const std::span<const Request> requests,
-  const uint32_t target
-) -> void {
-  if (kind != Kind::ALTITUDE and kind != Kind::TRANSITS and kind != Kind::WINDOWS) {
-    throw std::invalid_argument { "Unknown query kind" };
-  }
-  if ((kind == Kind::ALTITUDE and requests.size() != 1) or (kind == Kind::TRANSITS and not requests.empty())) {
-    throw std::invalid_argument { "The query has the wrong condition shape" };
-  }
-
+inline auto validate_interval(const Observer& observer, const search::Interval query) -> void {
   astro::observer::detail::validate(observer);
   const bool valid_interval = std::isfinite(query.start_jde_tt) and std::isfinite(query.end_jde_tt)
     and query.start_jde_tt < query.end_jde_tt;
@@ -684,35 +681,43 @@ inline auto validate_query(
   const double admitted_end = query.end_jde_tt == 13689325.5
     ? std::nextafter(query.end_jde_tt, query.start_jde_tt) : query.end_jde_tt;
   static_cast<void>(julian_day::jde_to_tt(admitted_end));
-  if (kind == Kind::TRANSITS) {
-    validate_target(target, query);
-  }
-  if (requests.size() > MAX_CONDITIONS) {
-    throw std::runtime_error { "The condition-list work budget is exhausted" };
-  }
+}
 
-  for (const auto& request : requests) {
-    validate_target(request.target, query);
-    if (not std::isfinite(request.level) or request.convention > 2) {
+/** @brief Validate a typed threshold without resolving refraction or observing a target. */
+inline auto validate_level(const AltitudeLevel& requested) -> void {
+  std::visit([](const auto& level) {
+    const double degrees = level.altitude.deg();
+    if (not std::isfinite(degrees)) {
       throw std::invalid_argument { "Invalid level or convention" };
     }
-    if (request.convention == 2) {
-      const bool inside_geometric_range = -90.0 < request.level and request.level < 90.0;
+    if constexpr (std::is_same_v<std::decay_t<decltype(level)>, GeometricLevel>) {
+      const bool inside_geometric_range = -90.0 < degrees and degrees < 90.0;
       if (not inside_geometric_range) {
         throw std::invalid_argument { "Geometric levels must be strictly between -90 and 90 degrees" };
       }
     } else {
-      refraction::detail::validate_params(request.params);
-      if (static_cast<uint32_t>(request.params.model) != request.convention) {
-        throw std::invalid_argument { "The requested refraction convention and model disagree" };
+      refraction::detail::validate_params(level.params);
+    }
+  }, requested);
+}
+
+/** @brief Check typed selectors across the complete list before observer and interval admission. */
+inline auto validate_selectors(const std::span<const AltitudeCondition> conditions) -> void {
+  for (const auto& condition : conditions) {
+    if (condition.sense != AltitudeSense::ABOVE and condition.sense != AltitudeSense::BELOW) {
+      throw std::invalid_argument { "Unknown altitude condition sense" };
+    }
+    if (const auto* level = std::get_if<RefractedLevel>(&condition.level); level != nullptr) {
+      if (level->params.model != refraction::Model::BENNETT and level->params.model != refraction::Model::SAEMUNDSSON) {
+        throw std::invalid_argument { "Unknown refraction model" };
       }
     }
   }
 }
 
 /** @brief The target/calendar sample domain, with its excluded upper bound moved inward by one ULP. */
-[[nodiscard]] inline auto sample_domain(const uint32_t target) -> Domain {
-  const auto provider = ephemeris::target_facts(static_cast<ephemeris::Target>(target)).position_domain;
+[[nodiscard]] inline auto sample_domain(const ephemeris::Target target) -> Domain {
+  const auto provider = ephemeris::target_facts(target).position_domain;
   return {
     .first = provider.has_value() ? std::max(1867522.5, provider->at(0)) : 1867522.5,
     .last = search::lower(provider.has_value() ? std::min(13689325.5, provider->at(1)) : 13689325.5),
@@ -727,7 +732,7 @@ struct Schedule {
 
 /** @brief Plan every sample before observing a target; no stencil crosses a model jump. */
 [[nodiscard]] inline auto schedule(
-  const uint32_t target,
+  const ephemeris::Target target,
   const search::Interval query,
   const std::size_t maximum_samples
 ) -> Schedule {
@@ -768,30 +773,40 @@ struct Schedule {
 }
 
 /** @brief Resolve only atmospheric thresholds; geometric conditions require no inverse work. */
-[[nodiscard]] inline auto resolve_level(const Request& request, search::Budget& budget) -> double {
-  return request.convention == 2 ? request.level : inverse(request.level, request.params, budget);
+[[nodiscard]] inline auto resolve_level(const AltitudeLevel& requested, search::Budget& budget) -> double {
+  return std::visit([&](const auto& level) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(level)>, GeometricLevel>) {
+      return level.altitude.deg();
+    } else {
+      return inverse(level.altitude.deg(), level.params, budget);
+    }
+  }, requested);
 }
 
 /** @brief Search each smooth branch and reject a condition-side change across a clock jump. */
 [[nodiscard]] inline auto condition_events(
-  const Request& request,
+  const AltitudeCondition& requested,
   const Observer& observer,
   const Schedule& scheduled,
   search::Budget& budget
 ) -> Condition {
-  const double level = resolve_level(request, budget);
-  Condition condition { .seed_above = false, .above = request.above, .events = {}, .geometric_degrees = level };
+  const double level = resolve_level(requested.level, budget);
+  Condition condition {
+    .seed_above = false,
+    .above = requested.sense == AltitudeSense::ABOVE,
+    .events = {},
+    .geometric_degrees = level,
+  };
   bool first = true;
   bool previous_side = false;
   for (const auto& piece : scheduled.pieces) {
     const Altitude provider {
-      .target = static_cast<ephemeris::Target>(request.target),
+      .target = requested.target,
       .observer = observer,
       .level_sine = std::sin(toolbox::AngleDeg { level }.rad()),
       .domain = piece.domain,
-      .meridian = false,
     };
-    const auto found = scan(provider, piece, true, budget);
+    const auto found = scan(provider, piece, TurnSearch::REFINE, budget);
 
     if (first) {
       condition.seed_above = found.initially_above;
@@ -807,7 +822,7 @@ struct Schedule {
 
 /** @brief Retain forward-side meridian crossings in the requested half-open interval. */
 [[nodiscard]] inline auto transit_events(
-  const uint32_t target,
+  const ephemeris::Target target,
   const Observer& observer,
   const search::Interval query,
   const Schedule& scheduled,
@@ -817,14 +832,12 @@ struct Schedule {
   bool first = true;
   bool previous_side = false;
   for (const auto& piece : scheduled.pieces) {
-    const Altitude provider {
-      .target = static_cast<ephemeris::Target>(target),
+    const Meridian provider {
+      .target = target,
       .observer = observer,
-      .level_sine = 0.0,
       .domain = piece.domain,
-      .meridian = true,
     };
-    const auto found = scan(provider, piece, false, budget);
+    const auto found = scan(provider, piece, TurnSearch::OMIT, budget);
 
     if (not first and previous_side != found.initially_above) {
       throw std::runtime_error { "Meridian crossing coincides with a Delta T model join" };
@@ -837,7 +850,7 @@ struct Schedule {
         continue;
       }
       search::charge_evaluation(event.jde_tt, budget);
-      const double forward = provider.observe(event.jde_tt).forward;
+      const double forward = observe(target, observer, piece.domain, event.jde_tt).forward;
       if (std::abs(forward) <= CONTACT_RESIDUAL) {
         throw std::runtime_error { "The meridian forward side is unresolved" };
       }
@@ -849,22 +862,37 @@ struct Schedule {
   return times;
 }
 
-/** @brief Validate, preflight sample work, search every condition, then compose the requested result. */
-[[nodiscard]] inline auto compute(
-  const Kind kind,
+/** @brief Admit a physical transit query, plan its samples, and retain its upper passages. */
+[[nodiscard]] inline auto compute_transits(
   const Observer& observer,
   const search::Interval query,
-  const std::span<const Request> requests,
-  const uint32_t target,
+  const ephemeris::Target target,
   search::Budget& budget
-) -> Computed {
-  validate_query(kind, observer, query, requests, target);
+) -> std::vector<double> {
+  validate_interval(observer, query);
+  validate_target(target, query);
   ephemeris::detail::validate_event_environment();
+  const auto planned = schedule(target, query, budget.evaluations_remaining);
+  return transit_events(target, observer, query, planned, budget);
+}
 
-  if (kind == Kind::TRANSITS) {
-    const auto planned = schedule(target, query, budget.evaluations_remaining);
-    return { .conditions = {}, .composed = {}, .transit_times = transit_events(target, observer, query, planned, budget) };
+/** @brief Admit all conditions, preflight their shared work, then search and compose the conjunction. */
+[[nodiscard]] inline auto compute_conditions(
+  const Observer& observer,
+  const search::Interval query,
+  const std::span<const AltitudeCondition> requests,
+  search::Budget& budget
+) -> ConditionQuery {
+  validate_selectors(requests);
+  validate_interval(observer, query);
+  if (requests.size() > MAX_CONDITIONS) {
+    throw std::runtime_error { "The condition-list work budget is exhausted" };
   }
+  for (const auto& requested : requests) {
+    validate_target(requested.target, query);
+    validate_level(requested.level);
+  }
+  ephemeris::detail::validate_event_environment();
 
   std::vector<Schedule> plans;
   std::size_t sample_count = 0;
@@ -884,31 +912,7 @@ struct Schedule {
     conditions.push_back(condition_events(requests[index], observer, planned, budget));
   }
   auto composed = windows(conditions, query.start_jde_tt, query.end_jde_tt, scan_start, scan_end);
-  return { .conditions = std::move(conditions), .composed = std::move(composed), .transit_times = {} };
-}
-
-/** @brief Decode only the fields belonging to the requested geometric or atmospheric convention. */
-[[nodiscard]] inline auto request(const AltitudeCondition& condition) -> Request {
-  if (condition.sense != AltitudeSense::ABOVE and condition.sense != AltitudeSense::BELOW) {
-    throw std::invalid_argument { "Unknown altitude condition sense" };
-  }
-  return std::visit([&](const auto& level) -> Request {
-    if constexpr (std::is_same_v<std::decay_t<decltype(level)>, GeometricLevel>) {
-      return {
-        .target = static_cast<uint32_t>(condition.target), .level = level.altitude.deg(),
-        .above = condition.sense == AltitudeSense::ABOVE, .convention = 2,
-        .params = { .temperature_c = 0.0, .pressure_hpa = 0.0, .model = earth::refraction::Model::BENNETT },
-      };
-    } else {
-      if (level.params.model != earth::refraction::Model::BENNETT and level.params.model != earth::refraction::Model::SAEMUNDSSON) {
-        throw std::invalid_argument { "Unknown refraction model" };
-      }
-      return {
-        .target = static_cast<uint32_t>(condition.target), .level = level.altitude.deg(),
-        .above = condition.sense == AltitudeSense::ABOVE, .convention = static_cast<uint32_t>(level.params.model), .params = level.params,
-      };
-    }
-  }, condition.level);
+  return { .conditions = std::move(conditions), .composed = std::move(composed) };
 }
 
 /** @brief Attach physical-source and fixed-clock metadata to a resolved condition. */
@@ -918,7 +922,9 @@ struct Schedule {
   const SideState state
 ) -> AltitudeConditionState {
   return {
-    .condition = requested, .source = ephemeris::source_of(requested.target), .delta_t_model = delta_t::Model::ALGO5,
+    .condition = requested,
+    .source = ephemeris::source_of(requested.target),
+    .delta_t_model = delta_t::Model::ALGO5,
     .geometric_level = toolbox::AngleDeg { resolved.geometric_degrees },
     .initially_satisfied = state.initially_satisfied != 0,
   };
@@ -962,14 +968,12 @@ struct Schedule {
   const double end_jde_tt
 ) -> AltitudeEvents {
   namespace query = detail::altitude_events;
-  const std::array requests { query::request(condition) };
+  const std::array requests { condition };
   auto budget = query::query_budget();
-  const auto result = query::compute(
-    query::Kind::ALTITUDE,
+  const auto result = query::compute_conditions(
     observer,
     { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt },
     requests,
-    0,
     budget
   );
   return {
@@ -993,20 +997,21 @@ struct Schedule {
 ) -> std::vector<UpperTransit> {
   namespace query = detail::altitude_events;
   auto budget = query::query_budget();
-  const auto result = query::compute(
-    query::Kind::TRANSITS,
+  const auto result = query::compute_transits(
     observer,
     { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt },
-    {},
-    static_cast<uint32_t>(target),
+    target,
     budget
   );
   const auto transit = [target](const double jde_tt) -> UpperTransit {
     return {
-      .jde_tt = jde_tt, .target = target, .source = ephemeris::source_of(target), .delta_t_model = delta_t::Model::ALGO5,
+      .jde_tt = jde_tt,
+      .target = target,
+      .source = ephemeris::source_of(target),
+      .delta_t_model = delta_t::Model::ALGO5,
     };
   };
-  return result.transit_times | std::views::transform(transit) | std::ranges::to<std::vector>();
+  return result | std::views::transform(transit) | std::ranges::to<std::vector>();
 }
 
 /**
@@ -1027,14 +1032,11 @@ struct Schedule {
   if (conditions.size() > query::MAX_CONDITIONS) {
     throw std::runtime_error { "The condition-list work budget is exhausted" };
   }
-  const auto requests = conditions | std::views::transform(query::request) | std::ranges::to<std::vector>();
   auto budget = query::query_budget();
-  const auto computed = query::compute(
-    query::Kind::WINDOWS,
+  const auto computed = query::compute_conditions(
     observer,
     { .start_jde_tt = start_jde_tt, .end_jde_tt = end_jde_tt },
-    requests,
-    0,
+    conditions,
     budget
   );
   ObservingWindows result { .conditions = {}, .events = query::reported_events(computed.composed), .windows = {} };
