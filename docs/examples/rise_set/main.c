@@ -13,7 +13,15 @@
 #include <stdio.h>
 #include "celestial.h"
 
+/* Print the current thread's error before another recording call clears it. */
+static int32_t failure(void) {
+  fputs(celestial_last_error(), stderr);
+  fputc('\n', stderr);
+  return 1;
+}
+
 /* The native date selects a UT1 window, not local midnight. Display each TT event separately. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): The mask/bit pair selects this event's optional slot.
 static int32_t display(const char *label, const uint32_t mask, const uint32_t bit, const double jde_tt) {
   if (!(mask & bit)) {
     printf("%s: absent\n", label);
@@ -21,8 +29,7 @@ static int32_t display(const char *label, const uint32_t mask, const uint32_t bi
   }
   const CelestialUTCTime utc = celestial_jde_to_utc(jde_tt);
   if (!utc.valid) {
-    fprintf(stderr, "%s\n", celestial_last_error());
-    return 1;
+    return failure();
   }
   printf("%s: %d-%02u-%02u + %.6f day UTC\n", label, utc.year, utc.month, utc.day, utc.fraction);
   return 0;
@@ -31,8 +38,7 @@ static int32_t display(const char *label, const uint32_t mask, const uint32_t bi
 int main(void) {
   const CelestialSolarRiseSet sun = celestial_solar_rise_set(2025, 6, 21, 69.65, 18.96, -50.0 / 60.0);
   if (!sun.valid) {
-    fprintf(stderr, "%s\n", celestial_last_error());
-    return 1;
+    return failure();
   }
   printf("Sun polar topology: %u\n", sun.polar_code);
   if (display("sunrise", sun.present_fields, CELESTIAL_PRESENT_RISE, sun.rise_jde_tt)
@@ -43,16 +49,14 @@ int main(void) {
 
   const CelestialLunarRiseSet moon = celestial_lunar_rise_set(2025, 6, 21, 51.5, 0.0, CELESTIAL_REFRACTION_BENNETT, 15.0, 1013.25);
   if (!moon.valid) {
-    fprintf(stderr, "%s\n", celestial_last_error());
-    return 1;
+    return failure();
   }
   if (display("lunar transit", moon.present_fields, CELESTIAL_PRESENT_TRANSIT, moon.transit_jde_tt)) {
     return 1;
   }
   const CelestialPlanetRiseSet mars = celestial_planet_rise_set(CELESTIAL_TARGET_MARS, 2025, 6, 21, 51.5, 0.0, 50.0, -34.0 / 60.0);
   if (!mars.valid) {
-    fprintf(stderr, "%s\n", celestial_last_error());
-    return 1;
+    return failure();
   }
   return display("Mars rise", mars.present_fields, CELESTIAL_PRESENT_RISE, mars.rise_jde_tt);
 }

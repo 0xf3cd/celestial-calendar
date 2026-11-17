@@ -32,6 +32,7 @@ namespace astro::rise_set::test {
 namespace {
 
 /** @brief Require exact optional-value transport and canonical absent storage. */
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Value/mask/bit mirrors the C optional-event fields.
 auto expect_event(const double actual, const uint32_t mask, const uint32_t bit, const std::optional<double>& expected) -> void {
   EXPECT_EQ((mask & bit) != 0, expected.has_value());
   EXPECT_EQ(actual, expected.value_or(0.0));
@@ -45,9 +46,13 @@ auto expect_result(const auto& actual, const Result& expected) -> void {
   EXPECT_EQ(actual.delta_t_identity_code, CELESTIAL_DELTA_T_MODEL_ALGO5);
   EXPECT_EQ(actual.nutation_identity_code, CELESTIAL_NUTATION_MODEL_IAU_1980);
   EXPECT_EQ(actual.present_fields & ~(CELESTIAL_PRESENT_RISE | CELESTIAL_PRESENT_TRANSIT | CELESTIAL_PRESENT_SET), 0U);
-  const uint32_t polar = expected.polar == Polar::DAY ? CELESTIAL_RISE_SET_POLAR_DAY
-    : expected.polar == Polar::NIGHT ? CELESTIAL_RISE_SET_POLAR_NIGHT : CELESTIAL_RISE_SET_POLAR_NONE;
-  EXPECT_EQ(actual.polar_code, polar);
+  if (expected.polar == Polar::DAY) {
+    EXPECT_EQ(actual.polar_code, CELESTIAL_RISE_SET_POLAR_DAY);
+  } else if (expected.polar == Polar::NIGHT) {
+    EXPECT_EQ(actual.polar_code, CELESTIAL_RISE_SET_POLAR_NIGHT);
+  } else {
+    EXPECT_EQ(actual.polar_code, CELESTIAL_RISE_SET_POLAR_NONE);
+  }
   expect_event(actual.rise_jde_tt, actual.present_fields, CELESTIAL_PRESENT_RISE, expected.rise_jde_tt);
   expect_event(actual.transit_jde_tt, actual.present_fields, CELESTIAL_PRESENT_TRANSIT, expected.transit_jde_tt);
   expect_event(actual.set_jde_tt, actual.present_fields, CELESTIAL_PRESENT_SET, expected.set_jde_tt);
@@ -63,6 +68,7 @@ struct Day {
 };
 
 // Native wrapper parity, not a new numerical reference or tolerance.
+// NOLINTBEGIN(modernize-use-designated-initializers): Keep the fixed UT1 date/site parity columns aligned.
 constexpr std::array DAYS {
   Day { 2000,  1,  1,  40.0,    0.0,    0.0 },
   Day { 2025,  3, 20,  51.5,    0.0,    0.0 },
@@ -79,6 +85,7 @@ constexpr std::array DAYS {
   Day { 2099, 12, 30,  40.0,    0.0,    0.0 },
   Day { 2099, 12, 31,  40.0,    0.0,    0.0 },
 };
+// NOLINTEND(modernize-use-designated-initializers)
 
 } // namespace
 
@@ -96,7 +103,9 @@ TEST(RiseSetCabi, SolarAndLunarNativeParity) {
       const double temperature = model == CELESTIAL_REFRACTION_BENNETT ? 15.0 : -20.0;
       const double pressure = model == CELESTIAL_REFRACTION_BENNETT ? 1013.25 : 800.0;
       const auto params = lib::codes::refraction_params(model, temperature, pressure);
-      ASSERT_TRUE(params.has_value());
+      if (not params.has_value()) {
+        throw std::logic_error { "The lunar parity case requires horizon refraction" };
+      }
       const auto result = celestial_lunar_rise_set(day.year, day.month, day.day, day.latitude, day.longitude, model, temperature, pressure);
       expect_result(result, moon::calculate(date, location, *params));
       EXPECT_EQ(result.source_code, CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC);
@@ -196,9 +205,15 @@ TEST(RiseSetCabi, ExactMidnightAltitudeAndYearRollover) {
   const auto midnight = julian_day::ut1_to_jde(calendar::Datetime { util::to_ymd(2025, 1, 1), 0.0 });
   const auto provider = planet::detail::provider_for(site, ephemeris::Target::MARS);
   const auto h0 = detail::altitude(midnight, site.location, provider);
-  for (const auto day : { Day { 2024, 12, 31, 40.0, 0.0, 0.0 }, Day { 2025, 1, 1, 40.0, 0.0, 0.0 } }) {
-    const auto expected = planet::calculate(util::to_ymd(day.year, day.month, day.day), site, ephemeris::Target::MARS, h0);
-    const auto actual = celestial_planet_rise_set(CELESTIAL_TARGET_MARS, day.year, day.month, day.day, 40.0, 0.0, 0.0, h0.deg());
+  for (const auto& date : { util::to_ymd(2024, 12, 31), util::to_ymd(2025, 1, 1) }) {
+    const auto expected = planet::calculate(date, site, ephemeris::Target::MARS, h0);
+    const auto actual = celestial_planet_rise_set(
+      CELESTIAL_TARGET_MARS,
+      static_cast<int32_t>(date.year()),
+      static_cast<uint32_t>(date.month()),
+      static_cast<uint32_t>(date.day()),
+      40.0, 0.0, 0.0, h0.deg()
+    );
     expect_result(actual, expected);
     EXPECT_NE(actual.rise_jde_tt, midnight);
     EXPECT_NE(actual.set_jde_tt, midnight);
