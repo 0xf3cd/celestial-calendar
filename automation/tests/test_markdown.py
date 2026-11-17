@@ -563,7 +563,13 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
       python_reader.main()
   else:
     python_reader.main()
-    assert calls[1:] == ["print('root')\n", "print('one')\n", "print('two')\n", "print('altitude')\n"]
+    assert calls[1:] == [
+      "print('root')\n",
+      "print('one')\n",
+      "print('two')\n",
+      "print('altitude')\n",
+      "print('daily')\n",
+    ]
 
 
 def test_node_skipped_program_is_rejected(tmp_path):

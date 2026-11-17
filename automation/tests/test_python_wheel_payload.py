@@ -77,6 +77,7 @@ def wheel_payload(version):
       "events.py",
       "observer.py",
       "query.py",
+      "rise_set.py",
       "py.typed",
     )
   }
@@ -209,7 +210,7 @@ def test_wheel_project_metadata_accepts_reordered_headers_and_keywords(verifier)
   check(verifier, members, version)
 
 
-@pytest.mark.parametrize("name", ["_abi.py", "observer.py", "diameter.py", "altitude.py"])
+@pytest.mark.parametrize("name", ["_abi.py", "observer.py", "diameter.py", "altitude.py", "rise_set.py"])
 def test_wheel_allowlist_requires_the_real_source_modules(verifier, name):
   version = verifier.project_version()
   members = wheel_payload(version)
@@ -234,6 +235,7 @@ def test_wheel_allowlist_requires_the_real_source_modules(verifier, name):
     "events.py",
     "observer.py",
     "query.py",
+    "rise_set.py",
     "py.typed",
   ],
 )

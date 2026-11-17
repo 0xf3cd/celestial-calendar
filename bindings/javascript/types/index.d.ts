@@ -363,10 +363,10 @@ export interface PlanetRiseSet {
 export const riseSet: Readonly<{
   /** Standard h0 is -50/60 deg; -6/-12/-18 give twilight. No weather-to-h0 export.
    * Longitude ±180 can select transits a day apart. */
-  solar(dateUt1: GregorianDate, location: GeoLocation, options?: { h0Deg?: number | undefined }): SolarRiseSet;
+  solar(dateUt1: GregorianDate, location: GeoLocation & { elevationM?: never }, options?: { h0Deg?: number | undefined }): SolarRiseSet;
   /** Geocentric threshold uses midday parallax and horizon atmosphere (default Bennett).
    * Retains the later crossing of each kind, first selected transit and native exact-midnight exception. */
-  lunar(dateUt1: GregorianDate, location: GeoLocation, options?: { refraction?: RefractionOptions | undefined }): LunarRiseSet;
+  lunar(dateUt1: GregorianDate, location: GeoLocation & { elevationM?: never }, options?: { refraction?: RefractionOptions | undefined }): LunarRiseSet;
   /** WGS84 parallax is in the coordinates; standard h0 is -34/60 deg.
    * Every provider sample must fit its EQUATORIAL domain, including estimates outside the day.
    * All results are owned/frozen; invalid inputs throw RangeError, failures/malformed success CelestialError. */
