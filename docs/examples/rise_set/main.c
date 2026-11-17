@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include "celestial.h"
 
-/* Print the current thread's error before another recording call clears it. */
+/* Print the current thread's error before calling any other C export. */
 static int32_t failure(void) {
   fputs(celestial_last_error(), stderr);
   fputc('\n', stderr);

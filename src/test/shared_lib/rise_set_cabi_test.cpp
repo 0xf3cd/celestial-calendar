@@ -193,7 +193,7 @@ TEST(RiseSetCabi, ExecutableC11ExampleAndCapabilityText) {
   std::string text(count, '\0');
   EXPECT_EQ(celestial_capability_text(CELESTIAL_OPERATION_RISE_SET, CELESTIAL_TARGET_ALL, text.data(), count), count);
   EXPECT_NE(text.find("transit-centred"), std::string::npos);
-  EXPECT_NE(text.find("Midnight inside Pluto's domain"), std::string::npos);
+  EXPECT_NE(text.find("input date's 0h UT1"), std::string::npos);
   EXPECT_NE(text.find("TT"), std::string::npos);
 }
 

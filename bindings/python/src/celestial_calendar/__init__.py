@@ -1092,7 +1092,7 @@ def solar_rise_set(date_ut1: GregorianDate, location: GeoLocation, *, h0_deg: fl
   """Return TT events around local solar transit selected by a UT1 date.
 
   Rise/set can fall outside the input date; ±180° can select transits a day apart.
-  Pass -6, -12 or -18 for twilight. The weather-to-h0 helper remains C++-only.
+  Pass -6, -12 or -18 for twilight; weather parameters are not accepted.
   """
   date = _civil_date(date_ut1, "date_ut1")
   site = _location(location)
@@ -1109,7 +1109,8 @@ def lunar_rise_set(
 ) -> LunarRiseSet:
   """Return representative TT events in [0h,24h) UT1, with None for missing events.
 
-  Uses geocentric coordinates and a midday-parallax/horizon-refraction threshold.
+  Uses geocentric coordinates. The threshold is 0.7275 times the Moon's
+  horizontal parallax at midday, minus horizon refraction.
   Weather accepts finite temperature > -273°C and positive pressure.
   Of two rises or two sets, the later is returned; of two transits, the earlier.
   A rise or set exactly at 0h UT1 is returned for neither neighbouring day.
@@ -1141,8 +1142,9 @@ def planet_rise_set(
   """Return representative planetary TT events in [0h,24h) UT1 from a WGS84 site.
 
   The airless topocentric centre includes parallax; standard refraction is in h0.
-  All internal provider samples must fit its EQUATORIAL domain, including samples
-  outside the day. Missing transit is independent of polar topology.
+  All internal samples must fit the provider's TT domain, including samples
+  outside the day. Query capability_text(CapabilityOperation.EQUATORIAL, target)
+  for that domain. Missing transit is independent of polar topology.
   """
   checked_target = _enum(target, Target, "target")
   if checked_target not in (

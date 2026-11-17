@@ -1217,7 +1217,8 @@ CELESTIAL_API CelestialLunarRiseSet celestial_lunar_rise_set(int32_t year, uint3
  * @note Parallax is already in the coordinates; standard refraction is in h0. Elevation changes the
  *       site vector, not the horizon plane. Window and representative selection match the lunar query.
  *       Every provider sample must fit its EQUATORIAL domain, including estimates and derivatives
- *       outside the day; midnight inside Pluto's domain is insufficient. Fixed default Delta T/IAU1980.
+ *       outside the day. Even if the TT equivalent of the input date's 0h UT1 is in range, other samples may not be.
+ *       Fixed default Delta T/IAU1980.
  *       Read last_error_kind/message on failure.
  */
 CELESTIAL_API CelestialPlanetRiseSet celestial_planet_rise_set(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, double elevation_m, double h0_deg);

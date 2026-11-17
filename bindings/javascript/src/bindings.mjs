@@ -1663,7 +1663,7 @@ export const BINDINGS = deepFreeze([
 ]);
 
 export const C_DECLARATIONS = deepFreeze({
-  "source_sha256": "7f7ea14c6b3363275888f47d345e9e203d5bb4493d5b368f6e838ad2339c5626",
+  "source_sha256": "c0d25761ce9faf6246f4b9d4649e352ebd7780592b94cf136aaf526c87956c63",
   "functions": {
     "celestial_last_error": {
       "signature": "const char *celestial_last_error(void)",

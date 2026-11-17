@@ -21,7 +21,7 @@ from .observer import RefractionParams
 
 
 class PolarTopology(StrEnum):
-  """No polar verdict, or altitude entirely above/below the event threshold."""
+  """DAY is above the event threshold; NIGHT is below; NONE gives no polar verdict."""
 
   NONE = "none"
   DAY = "day"

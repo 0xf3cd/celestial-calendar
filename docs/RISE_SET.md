@@ -16,7 +16,10 @@ The threshold h0 is the altitude of the body's centre at rise and set.
 |---|---|---|
 | Solar | The query picks the transit nearest 12h local mean time on this date. Rise/set may lie outside this UT1 date. | Geocentric centre; standard h0 = −50′, twilight −6°/−12°/−18°. |
 | Lunar | Events in [0h,24h) UT1. | Geocentric centre; h0 = 0.7275 Π − horizon refraction, with Π evaluated at midday. |
-| Planetary | Events in [0h,24h) UT1. | Airless topocentric centre from a WGS84 site; horizon refraction is included in the standard threshold h0 = −34′. |
+| Planetary | Events in [0h,24h) UT1. | Topocentric centre from a WGS84 site, without atmospheric refraction. Standard h0 = −34′ includes horizon refraction. |
+
+For lunar and planetary queries, a rise or set exactly at 0h UT1 is excluded;
+see [selection and domains](#missing-events-selection-and-domains).
 
 Longitude is east-positive. For the solar query, +180° and −180° can select
 transits one day apart: 12h local mean time is 0h UT1 at +180° and 24h UT1 at −180°.
@@ -24,12 +27,11 @@ A UT1 date is neither a UTC-midnight boundary nor the
 observer's local calendar date. To display an event, convert its TT time first,
 then apply the application's time-zone rules.
 
-Solar queries take h0 directly, not weather parameters; the weather-to-h0
-helper is C++-only. Lunar queries take Bennett or Saemundsson
+Solar and planetary queries take h0 directly (`h0_deg` / `h0Deg`).
+Only C++ offers `sun::h0_from` to convert solar weather parameters to h0.
+Lunar queries take Bennett or Saemundsson
 horizon refraction, defaulting in the bindings to Bennett at 15°C/1013.25 hPa.
-Their weather domain is finite temperature > −273°C and finite positive pressure,
-whereas observer position and interval-altitude queries restrict weather to
-[−90,60]°C and [300,1100] hPa.
+Their weather domain is finite temperature > −273°C and finite positive pressure.
 The lunar result echoes the model, temperature and pressure used.
 
 Only planets take elevation, in metres above the WGS84 ellipsoid. It changes
@@ -112,8 +114,9 @@ if (twilight.h0Deg !== -6 || moon.refraction.pressureHpa !== 1000 || mars.h0Deg 
 This prints the same transit instant as `2025-06-21T10:46:00.296Z`.
 The `/date` helper constructs an ECMAScript `Date` from the library's civil UTC
 result. Use `Intl.DateTimeFormat` with the desired time zone for local display.
-The display time zone does not change the query's UT1 date or selected events. Results and their
-atmosphere objects are frozen and own their values.
+The display time zone does not change the query's UT1 date or selected events.
+Results and their `refraction` objects are frozen; they contain ordinary JavaScript
+values rather than borrowed WASM-memory views.
 
 The last three calls use the same altitude, weather and elevation choices as
 the Python example. TypeScript distinguishes the three result types; a solar
@@ -128,8 +131,8 @@ formatting and time zones belong to the application.
 
 See [Building](BUILDING.md) for the shared library and header.
 Each return value has a `valid` flag. On failure, read
-`celestial_last_error_kind` and `celestial_last_error` before another recording
-call clears them. On success, test `present_fields & CELESTIAL_PRESENT_RISE`
+`celestial_last_error_kind` and `celestial_last_error` before calling any other C export.
+These two error readers preserve the error state. On success, test `present_fields & CELESTIAL_PRESENT_RISE`
 before reading `rise_jde_tt`; use `CELESTIAL_PRESENT_TRANSIT` and
 `CELESTIAL_PRESENT_SET` for the other slots. Absent slots are zero.
 The example prints `Sun polar topology: 1`, where 1 is `CELESTIAL_RISE_SET_POLAR_DAY`.
@@ -147,16 +150,19 @@ For lists rather than one representative of each kind, use the
 [interval-event queries](ALTITUDE_EVENTS.md), whose sampling can miss events.
 Daily summaries are not lists of every event.
 
-All daily queries use fixed IAU1980 axes and the default Algo5 ΔT model. Each
-result reports concrete position-source, ΔT and nutation identities. C capability
+All daily queries use fixed IAU1980 nutation and the default Algo5 ΔT model.
+Python reports the models in `source`, `delta_t_model` and `nutation_model`;
+JavaScript uses `sourceCode`, `deltaTModel` and `nutationModel`. C capability
 text (`CELESTIAL_OPERATION_RISE_SET`) and Python
-`capability_text(CapabilityOperation.RISE_SET)` describe this policy. Use
-EQUATORIAL capabilities for the position providers' TT domains; JavaScript has
-no capability-query API. Pluto has the
+`capability_text(CapabilityOperation.RISE_SET)` describe this policy.
+`capability_text(CapabilityOperation.EQUATORIAL, target)` reports a body's TT domain;
+in C, query `CELESTIAL_OPERATION_EQUATORIAL` with the target code.
+JavaScript has no capability-query API. Pluto has the
 hard interval [2409543.875,2488069.125) TT, from 1885-01-02 09:00 to
 2099-12-31 15:00 TT with the end excluded. Every internal sample must fit,
 including transit estimates and derivative samples outside the input day.
-Midnight inside that domain does not guarantee a successful day query.
+Even if the TT equivalent of the input date's 0h UT1 lies inside that interval,
+the other samples can fall outside it.
 A date whose samples leave a provider's domain raises Python `ValueError` or
 JavaScript `RangeError`.
 
@@ -171,5 +177,5 @@ adapters also have their host date-range limits.
 
 Invalid inputs raise Python `ValueError` or JavaScript `RangeError`; wrong
 binding argument types raise `TypeError`. Numerical/resource failures and
-malformed successful native records raise `CelestialError`. Missing events
+inconsistent results returned by the native library raise `CelestialError`. Missing events
 are successful results, not failures.
