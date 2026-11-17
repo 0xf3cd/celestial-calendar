@@ -274,7 +274,7 @@ auto operation_model_text(const uint32_t operation) -> std::string {
         "Planets use WGS84 topocentric airless coordinates and h0 defaults to -34/60 degrees. "
         "Use EQUATORIAL provider domains for the ten physical targets. Every internal sample must fit, "
         "including estimates/derivatives outside the day. The TT equivalent of the input date's 0h UT1 can be "
-        "in range while other samples are not; an out-of-domain sample is invalid input. "
+        "in Pluto's range while other samples are not; an out-of-domain sample is invalid input. "
         "Fixed IAU1980 and Delta T {}. Validation: rise_set_cabi_test.cpp.",
         delta_t
       );

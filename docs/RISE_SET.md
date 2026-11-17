@@ -137,6 +137,8 @@ before reading `rise_jde_tt`; use `CELESTIAL_PRESENT_TRANSIT` and
 `CELESTIAL_PRESENT_SET` for the other slots. Absent slots are zero.
 The example prints `Sun polar topology: 1`, where 1 is `CELESTIAL_RISE_SET_POLAR_DAY`.
 
+<a id="missing-events-selection-and-domains"></a>
+
 ## Missing events, selection and domains
 
 `none`, `day` and `night` describe polar topology relative to the selected
