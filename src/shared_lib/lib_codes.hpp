@@ -16,12 +16,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <optional>
 #include <stdexcept>
 #include <string_view>
 
 #include "celestial.h"
 #include "delta_t.hpp"
 #include "earth.hpp"
+#include "earth/refraction.hpp"
 #include "ephemeris.hpp"
 #include "house.hpp"
 
@@ -212,8 +214,31 @@ static_assert(complete_targets());
   return detail::from_code(TARGETS, code).value;
 }
 
+/** @brief Decode refraction without reading weather storage when no correction is requested. */
+// NOLINTBEGIN(bugprone-easily-swappable-parameters): Names retain the published selector/temperature/pressure order.
+[[nodiscard]] inline auto refraction_params(
+  const uint32_t code,
+  const double temperature_c,
+  const double pressure_hpa
+) -> std::optional<astro::earth::refraction::Params> {
+  using astro::earth::refraction::Model;
+  switch (code) {
+    case CELESTIAL_REFRACTION_NONE: return std::nullopt;
+    case CELESTIAL_REFRACTION_BENNETT:
+      return astro::earth::refraction::Params {
+        .temperature_c = temperature_c, .pressure_hpa = pressure_hpa, .model = Model::BENNETT,
+      };
+    case CELESTIAL_REFRACTION_SAEMUNDSSON:
+      return astro::earth::refraction::Params {
+        .temperature_c = temperature_c, .pressure_hpa = pressure_hpa, .model = Model::SAEMUNDSSON,
+      };
+    default: throw std::invalid_argument { "Unknown refraction selector" };
+  }
+}
+// NOLINTEND(bugprone-easily-swappable-parameters)
+
 /** @brief Encode a resolved Delta T identity, never DEFAULT. */
-[[nodiscard]] inline auto code_of(const astro::delta_t::Model value) -> uint32_t {
+[[nodiscard]] constexpr auto code_of(const astro::delta_t::Model value) -> uint32_t {
   return detail::from_value(DELTA_T_MODELS, value).code;
 }
 
@@ -223,7 +248,7 @@ static_assert(complete_targets());
 }
 
 /** @brief Encode the provider identity attached to a computed position. */
-[[nodiscard]] inline auto code_of(const astro::ephemeris::PositionSource value) -> uint32_t {
+[[nodiscard]] constexpr auto code_of(const astro::ephemeris::PositionSource value) -> uint32_t {
   return detail::from_value(POSITION_SOURCES, value).code;
 }
 

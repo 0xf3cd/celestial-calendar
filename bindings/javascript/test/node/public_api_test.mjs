@@ -23,6 +23,7 @@ import { chartLabel } from "../support/chart_replay.mjs";
 import { testFakeNative } from "../support/fake_native.mjs";
 import { runObserverAcceptance } from "../support/observer_api.mjs";
 import { runDiameterAcceptance } from "../support/diameter_api.mjs";
+import { runAltitudeAcceptance } from "../support/altitude_api.mjs";
 
 if (process.argv.length !== 3) throw new Error("usage: node public_api_test.mjs <staged index.mjs>");
 
@@ -165,6 +166,9 @@ const edge = (label, action, ErrorType) => {
 const uninitializedCalls = [
   ["chart.snapshot", [{ year: 2026, month: 1, day: 1, fraction: 0.5 }, { scale: "utc", location: { latitudeDeg: 51.5, longitudeDeg: 0 }, system: "placidus" }]],
   ["observer.position", ["sun", { year: 2026, month: 11, day: 7, fraction: 0 }, { scale: "utc", observer: { latitudeDeg: -33.85, longitudeDeg: 151.2, elevationM: 50 } }]],
+  ["observer.altitudeEvents", [{ latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 }, { target: "sun", level: { kind: "geometric", altitudeDeg: 0 }, sense: "above" }, 2451545, 2451546]],
+  ["observer.upperTransits", [{ latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 }, "sun", 2451545, 2451546]],
+  ["observer.observingWindows", [{ latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 }, [], 2451545, 2451546]],
   ["diameter.query", ["moon", { year: 2026, month: 11, day: 7, fraction: 0 }, { scale: "utc" }]],
   ["time.ut1ToJd", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.ut1ToJde", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
@@ -635,6 +639,7 @@ assert.equal(celestial.jieqi.name(0), "立春", "module survives translated erro
 happy += await testChartApi(celestial, entryUrl);
 assert.deepEqual(runObserverAcceptance(celestial), { targets: 10, exactPoles: 2, refractionStates: 2 });
 assert.deepEqual(runDiameterAcceptance(celestial), { targets: 10, exactPoles: 2 });
+assert.deepEqual(runAltitudeAcceptance(celestial), { targets: 10, refractionModels: 2, unresolved: 2 });
 console.log("PASS observer public queries, poles, refraction and civil/provider guards");
 assert.equal(happy, 24, "public method denominator");
 assert.equal(edges, 31, "public edge denominator");

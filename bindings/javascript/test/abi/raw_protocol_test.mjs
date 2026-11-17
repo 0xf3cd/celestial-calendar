@@ -1018,6 +1018,85 @@ for (const entry of golden.sections.longitude_difference_events.entries) {
   ++goldenCount;
 }
 
+const altitudeCount = M._malloc(4);
+const altitudeInputs = M._malloc(80);
+const altitudeSlots = M._malloc(16 * 88);
+assert(altitudeCount && altitudeInputs && altitudeSlots);
+try {
+  const putCondition = (index, target, level, refraction = 0, temperature = 0, pressure = 0) => {
+    const pointer = altitudeInputs + index * 40;
+    const view = new DataView(M.HEAPU8.buffer);
+    [target, 1, refraction, 0].forEach((value, field) => view.setUint32(pointer + field * 4, value, true));
+    [level, temperature, pressure].forEach((value, field) => view.setFloat64(pointer + 16 + field * 8, value, true));
+    const actual = readLayout(pointer, "CelestialAltitudeCondition");
+    assert.equal(actual.target_code, target);
+    assert.equal(actual.level_deg, level);
+  };
+  putCondition(0, 0, 0);
+  putCondition(1, 0, -6);
+  const invoke = (name, prefix, capacity, site = [0, -77, 0], interval = [2451545, 2451546]) => {
+    M.HEAPU32[altitudeCount >> 2] = 0xDEADBEEF;
+    return M[`_${name}`](...prefix, ...site, ...interval, altitudeCount, capacity ? altitudeSlots : 0, capacity);
+  };
+  for (const [name, prefix, expectedTags] of [
+    ["celestial_altitude_events", [altitudeInputs], [0, 1, 1]],
+    ["celestial_upper_transits", [4], [3]],
+    ["celestial_observing_windows", [altitudeInputs, 2], [0, 0, 1, 1, 1, 1, 2, 2]],
+  ]) {
+    const total = expectedTags.length;
+    assert.equal(invoke(name, prefix, 16), total);
+    assert.equal(M._celestial_last_error_kind(), 0);
+    const full = M.HEAPU8.slice(altitudeSlots, altitudeSlots + total * 88);
+    const records = expectedTags.map((tag, index) => {
+      const record = readLayout(altitudeSlots + index * 88, "CelestialAltitudeRecord");
+      assert.equal(record.tag, tag);
+      assert.equal(record.reserved, 0);
+      return record;
+    });
+    for (let capacity = 0; capacity <= total + 1; ++capacity) {
+      M.HEAPU8.fill(0xA5, altitudeSlots, altitudeSlots + 16 * 88);
+      const written = invoke(name, prefix, capacity);
+      assert.equal(M._celestial_last_error_kind(), 0);
+      assert.equal(M.HEAPU32[altitudeCount >> 2], total);
+      assert.equal(written, Math.min(capacity, total));
+      assert.deepEqual(M.HEAPU8.slice(altitudeSlots, altitudeSlots + written * 88), full.slice(0, written * 88));
+      assert(M.HEAPU8.subarray(altitudeSlots + written * 88, altitudeSlots + 16 * 88).every((byte) => byte === 0xA5));
+    }
+    if (name === "celestial_altitude_events") {
+      assert.equal(records[0].initially_satisfied, 1);
+      assert.deepEqual(records.slice(1).map((record) => record.direction_code), [1, 0]);
+    }
+    happyExports.add(name);
+  }
+  for (const code of [1, 2]) {
+    putCondition(0, 0, 10, code, 15, 1013.25);
+    assert.equal(invoke("celestial_altitude_events", [altitudeInputs], 16, [90, -77, 0], [2451545, 2451545.25]), 1);
+    assert.equal(M._celestial_last_error_kind(), 0);
+    const record = readLayout(altitudeSlots, "CelestialAltitudeRecord");
+    assert.equal(record.refraction_code, code);
+    assert.equal(record.temperature_c, 15);
+    assert.equal(record.pressure_hpa, 1013.25);
+    assert(record.geometric_level_deg > 9 && record.geometric_level_deg < 10);
+  }
+  putCondition(0, 0, -89);
+  putCondition(1, 9, 48.605252016244656);
+  for (const [name, prefix, kind] of [
+    ["celestial_altitude_events", [altitudeInputs + 40], 2],
+    ["celestial_upper_transits", [10], 1],
+    ["celestial_observing_windows", [altitudeInputs, 2], 2],
+  ]) {
+    M.HEAPU8.fill(0xA5, altitudeSlots, altitudeSlots + 16 * 88);
+    recordedFailure(name, () => invoke(name, prefix, 16, [30, -77, 0], [2451545, 2451545.25]) === 0);
+    assert.equal(M._celestial_last_error_kind(), kind);
+    assert.equal(M.HEAPU32[altitudeCount >> 2], 0);
+    assert(M.HEAPU8.subarray(altitudeSlots, altitudeSlots + 16 * 88).every((byte) => byte === 0xA5));
+  }
+} finally {
+  M._free(altitudeCount);
+  M._free(altitudeInputs);
+  M._free(altitudeSlots);
+}
+
 const expectedExports = BINDINGS.map(({ cName }) => cName);
 assert.deepEqual(
   [...recordedNames].sort(),
@@ -1025,17 +1104,17 @@ assert.deepEqual(
   "all recording exports exercised a failure",
 );
 assert.equal(goldenCount, 395, "golden replay count");
-assert.equal(BINDINGS.length, 40, "C export inventory");
-assert.equal(Object.keys(manifest.layouts).length, 31, "C record inventory");
-assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 40 exports executed successfully");
-assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 31 layouts decoded");
+assert.equal(BINDINGS.length, 43, "C export inventory");
+assert.equal(Object.keys(manifest.layouts).length, 33, "C record inventory");
+assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 43 exports executed successfully");
+assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 33 layouts decoded");
 assert.deepEqual(
   [...new Set(manifest.exports.map(({ protocol }) => protocol.kind).filter((kind) => kind.endsWith("fill")))].sort(),
   ["companion-fill", "count-fill", "requested-fill"],
   "three count/fill protocol classes",
 );
 
-console.log("PASS raw exports 40/40; layouts 31/31; recording seams 38/38");
+console.log("PASS raw exports 43/43; layouts 33/33; recording seams 41/41");
 console.log(`PASS private chart sret: order, absence, units, systems, scales, DEFAULT/models; rejected inputs ${chartFailureCount}`);
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");

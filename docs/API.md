@@ -42,6 +42,7 @@ roots, including the subdirectory for nested headers. Include the headers your c
 | Planets, lunar nodes and illumination | `"planet.hpp"`, `"lunar_node.hpp"`, `"illumination.hpp"`, `"planet_phenomena.hpp"` |
 | Independent positions, rates and input capabilities | `"ephemeris.hpp"`, `"capability.hpp"` |
 | Topocentric observer coordinates | `"observer.hpp"`; [observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md) |
+| Interval altitude events and observing windows | `"altitude_events.hpp"`; [altitude guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/ALTITUDE_EVENTS.md) |
 | Apparent disk diameters | `"apparent_diameter.hpp"`; [diameter guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/APPARENT_DIAMETERS.md) |
 | Interval longitude events | `"ephemeris_events.hpp"` |
 | Houses and complete chart | `"house.hpp"`, `"chart.hpp"` |

@@ -38,6 +38,15 @@ struct Times {
   double jde_tt;
 };
 
+/** @brief First year admitted by the inverse calendar conversion. */
+inline constexpr int32_t INVERSE_START_YEAR = 401;
+
+/** @brief Inclusive inverse-calendar lower bound, 401-01-01 at midnight. */
+inline constexpr double INVERSE_START_JD = 1867522.5;
+
+/** @brief Exclusive inverse-calendar upper bound, 32768-01-01 at midnight. */
+inline constexpr double INVERSE_END_JD = 13689325.5;
+
 // According to https://aa.usno.navy.mil/data/JulianDate
 // > Note that the time scale that is the basis for Julian dates is Universal Time (UT1), 
 //   and that 0h UT1 corresponds to a Julian date fraction of 0.5.
@@ -121,7 +130,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
   }
 
   // #77: the public inverse domain starts at 401-01-01 (JD 1867522.5).
-  if (jd < 1867522.5) {
+  if (jd < INVERSE_START_JD) {
     throw std::invalid_argument {
       std::format("The julian day number {} is below JD 1867522.5 (401-01-01), "
                   "where the estimated gregorian year drops under 401.", jd)
@@ -129,7 +138,7 @@ inline constexpr double DAYS_PER_JULIAN_CENTURY = 36525.0;
   }
 
   // #67: JD 13689325.5 is conceptually 32768-01-01, beyond `std::chrono::year`.
-  if (jd >= 13689325.5) {
+  if (jd >= INVERSE_END_JD) {
     throw std::invalid_argument {
       std::format("The julian day number {} is beyond the representable years.", jd)
     };

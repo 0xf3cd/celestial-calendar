@@ -35,6 +35,7 @@
       import { runChartAcceptance } from "../chart_replay.mjs";
       import { runObserverAcceptance } from "../observer_api.mjs";
       import { runDiameterAcceptance } from "../diameter_api.mjs";
+      import { runAltitudeAcceptance } from "../altitude_api.mjs";
       import { renderDiameters } from "../diameter_example.mjs";
       import chartExample from "../chart_example.json";
 
@@ -80,6 +81,7 @@
             chart: runChartAcceptance(alias, chartExample),
             observer: runObserverAcceptance(alias),
             diameter: runDiameterAcceptance(alias),
+            altitude: runAltitudeAcceptance(alias),
             diameterExample: renderDiameters(alias, document.querySelector("#diameters")),
           };
         } catch (error) {

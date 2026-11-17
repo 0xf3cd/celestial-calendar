@@ -159,7 +159,9 @@ function exported by `src/shared_lib/celestial.h`, including `celestial_chart_sn
 `bindings/javascript/test/abi/manifest.json` is the checked list. The public JavaScript API of
 `@0xf3cd/celestial` is the set of namespaces declared in `bindings/javascript/types/index.d.ts`, where
 `chart.snapshot` wraps `celestial_chart_snapshot`. The public API does not expose the independent position,
-equatorial, house, event or capability queries. What stays private is the WASM glue, which keeps heap pointers,
+equatorial, house, longitude-event or capability queries. Interval altitude queries use
+[`observer.altitudeEvents`, `upperTransits` and `observingWindows`](ALTITUDE_EVENTS.md).
+What stays private is the WASM glue, which keeps heap pointers,
 the count/fill protocol, sret layout and both error readers inside the package, and the ABI checks
 (`toolbox/wasm_check.mjs` and `bindings/javascript/test/abi/`), which are not shipped.
 

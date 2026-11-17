@@ -1,7 +1,7 @@
 # Longitude events
 
 The interval searches are available from C++ (`ephemeris_events.hpp`), the C ABI
-(`celestial.h`) and Python (`celestial_calendar`); JavaScript exposes no event API.
+(`celestial.h`) and Python (`celestial_calendar`); JavaScript does not expose these longitude-event queries.
 All three surfaces share this page's contracts: half-open interval membership, deterministic
 ordering, exact numerical contacts, domains, limits and the conditional
 floating-point contract below. Include `ephemeris_events.hpp` with

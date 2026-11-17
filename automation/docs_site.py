@@ -36,6 +36,7 @@ GUIDES = (
   "README.md",
   "README_ZH.md",
   "docs/ALGORITHMS.md",
+  "docs/ALTITUDE_EVENTS.md",
   "docs/APPARENT_DIAMETERS.md",
   "docs/API.md",
   "docs/BUILDING.md",

@@ -917,7 +917,8 @@ def main():
   public = {
     name
     for name in vars(celestial)
-    if not name.startswith("_") and name not in {"chart", "events", "capability", "query", "observer", "diameter"}
+    if not name.startswith("_")
+    and name not in {"chart", "events", "capability", "query", "observer", "diameter", "altitude"}
   } | {"__version__"}
   assert set(celestial.__all__) == public
   print("PASS Python protocol construction controls")

@@ -46,6 +46,33 @@ const observed: celestial.TopocentricPosition = celestial.observer.position("moo
 });
 const optionalAzimuth: number | null = observed.azimuthDeg;
 const optionalRa: number | null = observed.rightAscensionDeg;
+const site: celestial.Observer = { latitudeDeg: 0, longitudeDeg: -77, elevationM: 0 };
+const condition: celestial.AltitudeCondition = { target: "sun", level: { kind: "geometric", altitudeDeg: 0 }, sense: "above" };
+const altitudeEvents: celestial.AltitudeEvents = celestial.observer.altitudeEvents(site, condition, 2451545, 2451546);
+const altitudeDirection: celestial.EventDirection = altitudeEvents.events[0].direction;
+const altitudeWindows: celestial.ObservingWindows = celestial.observer.observingWindows(site, [condition], 2451545, 2451546);
+const transits: readonly celestial.UpperTransit[] = celestial.observer.upperTransits(site, "mars", 2451545, 2451546);
+celestial.observer.altitudeEvents(site, { ...condition, level: {
+  kind: "refracted", altitudeDeg: 10, refraction: { model: "bennett" },
+} }, 2451545, 2451546);
+void [altitudeDirection, altitudeWindows, transits];
+// @ts-expect-error A geometric level has no weather.
+const mixedLevel: celestial.GeometricLevel = { kind: "geometric", altitudeDeg: 0, refraction: { model: "bennett" } };
+// @ts-expect-error Refracted levels require weather and a model.
+const missingWeather: celestial.RefractedLevel = { kind: "refracted", altitudeDeg: 10 };
+// @ts-expect-error Single-condition queries do not accept condition arrays.
+celestial.observer.altitudeEvents(site, [condition], 2451545, 2451546);
+// @ts-expect-error Transit queries take a physical target, not a condition.
+celestial.observer.upperTransits(site, condition, 2451545, 2451546);
+// @ts-expect-error Window queries take condition arrays.
+celestial.observer.observingWindows(site, condition, 2451545, 2451546);
+// @ts-expect-error Mathematical nodes are not physical transit targets.
+celestial.observer.upperTransits(site, "meanAscending", 2451545, 2451546);
+// @ts-expect-error Result states are immutable.
+altitudeEvents.condition.initiallySatisfied = false;
+// @ts-expect-error Companion collections are immutable.
+altitudeWindows.events.push(altitudeEvents.events[0]);
+void [mixedLevel, missingWeather];
 void [optionalAzimuth, optionalRa];
 // @ts-expect-error Mathematical nodes have no physical topocentric distance.
 celestial.observer.position("meanAscending", civil, { scale: "utc", observer: { latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 } });

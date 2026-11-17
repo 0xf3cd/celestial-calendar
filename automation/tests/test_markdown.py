@@ -287,6 +287,7 @@ def test_links_name_existing_paths_and_explicit_anchors():
     ),
     ("docs/OBSERVER.md", 0, 2, None, ""),
     ("docs/OBSERVER.md", 1, 2, None, ""),
+    ("docs/ALTITUDE_EVENTS.md", 0, 1, None, ""),
   ],
 )
 def test_cpp_quickstart_compiles_and_runs(tmp_path, guide, block_index, block_count, example, expected):
@@ -308,6 +309,43 @@ def test_cpp_quickstart_compiles_and_runs(tmp_path, guide, block_index, block_co
   subprocess.run(command, cwd=REPO, check=True, capture_output=True, text=True)
   output = subprocess.check_output([str(binary)], text=True, encoding="utf-8")
   assert output == expected if example or not expected else output.startswith(expected)
+
+
+def test_altitude_c_program_compiles_as_c11_and_runs_against_the_real_exports(tmp_path):
+  blocks = [code for info, code in code_blocks(document(REPO / "docs/ALTITUDE_EVENTS.md")) if info == "c"]
+  assert len(blocks) == 1, "expected one complete altitude C program"
+  source = tmp_path / "altitude.c"
+  source.write_text(blocks[0], encoding="utf-8")
+  obj = tmp_path / "altitude.o"
+  binary = tmp_path / "altitude"
+  c_compiler = shlex.split(os.environ.get("CC", "clang"))
+  cpp_compiler = shlex.split(os.environ.get("CXX", "clang++"))
+  subprocess.run(
+    [*c_compiler, "-std=c11", "-Isrc/shared_lib", "-c", str(source), "-o", str(obj)],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  subprocess.run(
+    [
+      *cpp_compiler,
+      "-std=c++23",
+      "-Isrc/astro",
+      "-Isrc/calendar",
+      "-Isrc/util",
+      str(obj),
+      "src/shared_lib/lib_altitude.cpp",
+      "src/shared_lib/lib.cpp",
+      "-o",
+      str(binary),
+    ],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  assert subprocess.check_output([str(binary)], text=True) == ""
 
 
 @pytest.fixture
@@ -450,6 +488,8 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
   )
   (root / "bindings/python/README.md").write_text(guide, encoding="utf-8")
   (root / "README.md").write_text("```python\nprint('root')\n```\n\n```text\nroot\n```\n", encoding="utf-8")
+  (root / "docs").mkdir()
+  (root / "docs/ALTITUDE_EVENTS.md").write_text("```python\nprint('altitude')\n```\n", encoding="utf-8")
   calls = []
 
   def run(code, cwd, expected=None):
@@ -473,7 +513,7 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
       python_reader.main()
   else:
     python_reader.main()
-    assert calls[1:] == ["print('root')\n", "print('one')\n", "print('two')\n"]
+    assert calls[1:] == ["print('root')\n", "print('one')\n", "print('two')\n", "print('altitude')\n"]
 
 
 def test_node_skipped_program_is_rejected(tmp_path):

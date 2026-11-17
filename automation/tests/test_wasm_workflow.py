@@ -37,7 +37,7 @@ WASM_CHECK = ROOT / "toolbox" / "wasm_check.mjs"
 def test_raw_wasm_size_budgets_agree():
   match = re.search(r"const MAX_WASM_BYTES = ([\d_]+);", WASM_CHECK.read_text(encoding="utf-8"))
   assert match is not None
-  assert int(match[1].replace("_", "")) == build_npm.MAX_WASM_BYTES == 1_320_000
+  assert int(match[1].replace("_", "")) == build_npm.MAX_WASM_BYTES == 1_326_000
   assert build_npm.MAX_TARBALL_BYTES == 800_000
 
 
@@ -58,7 +58,7 @@ def test_npm_raw_wasm_budget_boundary(tmp_path, monkeypatch, offset):
 
   monkeypatch.setattr(build_npm.subprocess, "run", pack)
   if offset > 0:
-    with pytest.raises(RuntimeError, match="raw WASM size .* exceeds 1320000 bytes"):
+    with pytest.raises(RuntimeError, match="raw WASM size .* exceeds 1326000 bytes"):
       build_npm.pack_package(tmp_path / "output", "1.1.1", build_npm.PACKAGE_NAME)
   else:
     with pytest.raises(PackReached):
@@ -181,6 +181,8 @@ def test_javascript_test_entries_match_their_execution_owners():
     "support/chart_api.mjs",
     "support/observer_api.mjs",
     "support/diameter_api.mjs",
+    "support/altitude_api.mjs",
+    "support/altitude_fake.mjs",
     "support/chart_replay.mjs",
     "support/doc_examples.mjs",
     "support/package_consumer.mjs",
@@ -255,6 +257,13 @@ def test_javascript_test_entries_match_their_execution_owners():
   assert registry_entries == {path for path in entries if path.startswith("registry/")}
   assert type_entries == {path for path in entries if path.startswith("types/")}
   assert package["scripts"]["test:types"] == "tsc --noEmit -p test/types/tsconfig.json"
+  assert 'import { testAltitudeFakeNative } from "./altitude_fake.mjs";' in (
+    test_root / "support/fake_native.mjs"
+  ).read_text(encoding="utf-8")
+  assert "runAltitudeAcceptance(celestial)" in (test_root / "support/package_consumer.mjs").read_text(encoding="utf-8")
+  assert "runAltitudeAcceptance(alias)" in (test_root / "browser/fixture/src/pages/index.astro").read_text(
+    encoding="utf-8"
+  )
   assert "node toolbox/wasm_check.mjs" in workflow_commands
   assert "npm run test:types --prefix bindings/javascript" in workflow_commands
 

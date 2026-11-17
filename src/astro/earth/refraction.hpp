@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -57,6 +58,12 @@ inline constexpr double BENNETT_INVERSE_TOL_DEG = 1e-12;
 /** @brief Bisection cap; 90 / 2^47 degrees is already below the required forward residual. */
 inline constexpr std::size_t BENNETT_INVERSE_MAX_ITER = 64;
 
+/** @brief Inclusive temperature support window for applying and inverting centre-altitude refraction, in °C. */
+inline constexpr std::array APPLICATION_TEMPERATURE_RANGE_C { -90.0, 60.0 };
+
+/** @brief Inclusive pressure support window for applying and inverting centre-altitude refraction, in hPa. */
+inline constexpr std::array APPLICATION_PRESSURE_RANGE_HPA { 300.0, 1100.0 };
+
 #pragma endregion
 
 
@@ -80,6 +87,14 @@ struct Params {
 
 
 namespace detail {
+
+/** @brief Whether weather lies within the centre-altitude application support window. */
+[[nodiscard]] inline auto supported_application_weather(const Params& params) -> bool {
+  return params.temperature_c >= APPLICATION_TEMPERATURE_RANGE_C.at(0)
+    and params.temperature_c <= APPLICATION_TEMPERATURE_RANGE_C.at(1)
+    and params.pressure_hpa >= APPLICATION_PRESSURE_RANGE_HPA.at(0)
+    and params.pressure_hpa <= APPLICATION_PRESSURE_RANGE_HPA.at(1);
+}
 
 /**
  * @brief Apply the standard temperature/pressure correction to a native refraction value.
@@ -237,8 +252,7 @@ inline auto validate_params(const Params& params) -> void {
   using toolbox::AngleDeg;
 
   detail::validate_params(params);
-  const bool supported_weather = params.temperature_c >= -90.0 and params.temperature_c <= 60.0
-    and params.pressure_hpa >= 300.0 and params.pressure_hpa <= 1100.0;
+  const bool supported_weather = detail::supported_application_weather(params);
   if (not supported_weather) {
     throw std::invalid_argument { "Refraction application requires T in [-90, 60] C and P in [300, 1100] hPa" };
   }

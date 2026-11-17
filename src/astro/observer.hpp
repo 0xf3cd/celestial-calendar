@@ -77,6 +77,25 @@ struct GeocentricSite {
   double polar;
 };
 
+/** @brief Dimensionless observer-to-body vector in the local meridian frame, with distance in AU. */
+struct Translation {
+  double meridian;
+  double forward;
+  double polar;
+  double norm;
+  double scale;
+  double distance_au;
+};
+
+/** @brief Local horizontal components and the two coordinate-plane direction norms. */
+struct Projection {
+  double east;
+  double north;
+  double up;
+  double horizontal_norm;
+  double equatorial_norm;
+};
+
 /** @brief Validate the inclusive polar geometry and conservative ellipsoidal-height admission. */
 inline auto validate(const Observer& observer) -> void {
   geolocation::validate_latitude(observer.location.latitude, "latitude");
@@ -101,15 +120,13 @@ inline auto validate(const Observer& observer) -> void {
 /**
  * @brief Translate a finite geocentric position for a validated observer and apparent sidereal angle.
  * @note The observer displacement and geocentric distance use the same WGS84 radius/AU relation.
- * @see Meeus, formulas (40.6), (40.7), and horizontal projection (13.5), (13.6).
+ * @see Meeus, formulas (40.6), (40.7).
  */
-[[nodiscard]] inline auto reduce(
+[[nodiscard]] inline auto translate(
   const ephemeris::EquatorialPosition& geocentric,
   const toolbox::AngleDeg θ,
   const Observer& observer
-) -> Position {
-  using toolbox::AngleDeg;
-
+) -> Translation {
   if (not geocentric.distance.has_value() or not std::isfinite(geocentric.distance->au())
       or geocentric.distance->au() <= 0.0) {
     throw std::runtime_error { "Topocentric reduction requires a finite positive physical distance" };
@@ -133,7 +150,26 @@ inline auto validate(const Observer& observer) -> void {
     throw std::runtime_error { "Observer-to-body direction or distance is unresolved" };
   }
 
-  const double φ = observer.location.latitude.rad();
+  return {
+    .meridian = A,
+    .forward = B,
+    .polar = C,
+    .norm = q,
+    .scale = scale,
+    .distance_au = distance,
+  };
+}
+
+/**
+ * @brief Project a resolved direction onto the horizontal axes at a validated geodetic latitude.
+ * @see Meeus (13.5), (13.6).
+ */
+[[nodiscard]] inline auto project(const Translation& direction, const toolbox::AngleDeg latitude) -> Projection {
+  const double A = direction.meridian;
+  const double B = direction.forward;
+  const double C = direction.polar;
+
+  const double φ = latitude.rad();
   const double east = -A;
   const double north = (C * std::cos(φ)) - (B * std::sin(φ));
   const double up = (C * std::sin(φ)) + (B * std::cos(φ));
@@ -144,6 +180,41 @@ inline auto validate(const Observer& observer) -> void {
   if (not finite_projection) {
     throw std::runtime_error { "Topocentric coordinate projection is not finite" };
   }
+
+  return {
+    .east = east,
+    .north = north,
+    .up = up,
+    .horizontal_norm = horizontal,
+    .equatorial_norm = equatorial,
+  };
+}
+
+/** @brief Local apparent sidereal angle for east-positive longitude on fixed IAU1980 axes. */
+[[nodiscard]] inline auto local_sidereal_angle(
+  const julian_day::Times& times,
+  const toolbox::AngleDeg longitude_east
+) -> toolbox::AngleDeg {
+  return sidereal::local_apparent(
+    times.jd_ut1,
+    times.jde_tt,
+    -longitude_east,
+    earth::nutation::Model::IAU_1980
+  );
+}
+
+/** @brief Assemble topocentric coordinates from the observer's translated and projected geometry. */
+[[nodiscard]] inline auto reduce(
+  const ephemeris::EquatorialPosition& geocentric,
+  const toolbox::AngleDeg θ,
+  const Observer& observer
+) -> Position {
+  using toolbox::AngleDeg;
+
+  const auto translated = translate(geocentric, θ, observer);
+  const auto& [A, B, C, q, scale, distance] = translated;
+  const auto projected = project(translated, observer.location.latitude);
+  const auto& [east, north, up, horizontal, equatorial] = projected;
 
   const bool geographic_pole = std::abs(observer.location.latitude.deg()) == 90.0;
   return Position {
@@ -187,12 +258,7 @@ inline auto validate(const Observer& observer) -> void {
     throw std::invalid_argument { "Topocentric queries require a physical target, not a lunar node" };
   }
 
-  const auto θ = sidereal::local_apparent(
-    times.jd_ut1,
-    times.jde_tt,
-    -observer.location.longitude,
-    earth::nutation::Model::IAU_1980
-  );
+  const auto θ = detail::local_sidereal_angle(times, observer.location.longitude);
   auto result = detail::reduce(ephemeris::equatorial_position(target, times.jde_tt), θ, observer);
   if (refraction.has_value()) {
     result.apparent_altitude = earth::refraction::apparent_altitude(result.altitude, *refraction);
