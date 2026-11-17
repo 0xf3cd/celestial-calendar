@@ -47,6 +47,25 @@ const observed: celestial.TopocentricPosition = celestial.observer.position("moo
 const optionalAzimuth: number | null = observed.azimuthDeg;
 const optionalRa: number | null = observed.rightAscensionDeg;
 const site: celestial.Observer = { latitudeDeg: 0, longitudeDeg: -77, elevationM: 0 };
+const dayUt1 = { year: 2025, month: 1, day: 1 };
+const solarDaily: celestial.SolarRiseSet = celestial.riseSet.solar(dayUt1, site, { h0Deg: -6 });
+const lunarDaily: celestial.LunarRiseSet = celestial.riseSet.lunar(dayUt1, site);
+const planetDaily: celestial.PlanetRiseSet = celestial.riseSet.planet("mars", dayUt1, site);
+const solarTransit: number = solarDaily.transitJdeTt;
+const lunarTransit: number | null = lunarDaily.transitJdeTt;
+const polar: celestial.PolarTopology = planetDaily.polar;
+void [solarTransit, lunarTransit, polar];
+// @ts-expect-error Lunar transits can be absent.
+const mandatoryLunarTransit: number = lunarDaily.transitJdeTt;
+// @ts-expect-error Sun is not a planet query target.
+celestial.riseSet.planet("sun", dayUt1, site);
+// @ts-expect-error Solar queries accept an altitude, not weather.
+celestial.riseSet.solar(dayUt1, site, { refraction: { model: "bennett" } });
+// @ts-expect-error Lunar queries derive their own altitude convention.
+celestial.riseSet.lunar(dayUt1, site, { h0Deg: 0 });
+// @ts-expect-error Returned atmosphere is immutable.
+lunarDaily.refraction.pressureHpa = 1000;
+void mandatoryLunarTransit;
 const condition: celestial.AltitudeCondition = { target: "sun", level: { kind: "geometric", altitudeDeg: 0 }, sense: "above" };
 const altitudeEvents: celestial.AltitudeEvents = celestial.observer.altitudeEvents(site, condition, 2451545, 2451546);
 const altitudeDirection: celestial.EventDirection = altitudeEvents.events[0].direction;

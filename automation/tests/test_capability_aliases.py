@@ -79,6 +79,7 @@ def test_operation_roster_and_tt_records_do_not_invent_house_domains():
     "DELTA_T": 6,
     "TOPOCENTRIC": 7,
     "APPARENT_DIAMETER": 8,
+    "RISE_SET": 9,
   }
   assert family("CELESTIAL_STATUS_") == {
     "SOURCE_WINDOW": 0,
@@ -98,6 +99,7 @@ def test_operation_roster_and_tt_records_do_not_invent_house_domains():
     "CELESTIAL_OPERATION_DELTA_T",
     "CELESTIAL_OPERATION_TOPOCENTRIC",
     "CELESTIAL_OPERATION_APPARENT_DIAMETER",
+    "CELESTIAL_OPERATION_RISE_SET",
   ]
   assert abi.PROTOCOLS["celestial_capability_text"]["subject_policy"] == (
     "concrete-target-for-target-operations-all-for-nontarget-operations"
@@ -115,7 +117,11 @@ def test_all_generated_code_views_preserve_exact_names_and_values():
     "RIGHT_ASCENSION": 4,
     "AZIMUTH": 8,
     "APPARENT_ALTITUDE": 16,
+    "RISE": 32,
+    "TRANSIT": 64,
+    "SET": 128,
   }
+  assert family("CELESTIAL_RISE_SET_POLAR_") == {"NONE": 0, "DAY": 1, "NIGHT": 2}
   assert family("CELESTIAL_REFRACTION_") == {"NONE": 0, "BENNETT": 1, "SAEMUNDSSON": 2}
 
 

@@ -311,6 +311,55 @@ def test_cpp_quickstart_compiles_and_runs(tmp_path, guide, block_index, block_co
   assert output == expected if example or not expected else output.startswith(expected)
 
 
+def test_rise_set_c11_example_runs_against_real_exports(tmp_path):
+  source = REPO / "docs/examples/rise_set/main.c"
+  obj = tmp_path / "rise_set.o"
+  binary = tmp_path / "rise_set"
+  c_compiler = shlex.split(os.environ.get("CC", "clang"))
+  cpp_compiler = shlex.split(os.environ.get("CXX", "clang++"))
+  subprocess.run(
+    [
+      *c_compiler,
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic",
+      "-Isrc/shared_lib",
+      "-c",
+      str(source),
+      "-o",
+      str(obj),
+    ],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  subprocess.run(
+    [
+      *cpp_compiler,
+      "-std=c++23",
+      "-Isrc/astro",
+      "-Isrc/calendar",
+      "-Isrc/util",
+      str(obj),
+      "src/shared_lib/lib_rise_set.cpp",
+      "src/shared_lib/lib_astro.cpp",
+      "src/shared_lib/lib.cpp",
+      "-o",
+      str(binary),
+    ],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  output = subprocess.check_output([str(binary)], text=True)
+  assert "sunrise: absent" in output and "sunset: absent" in output
+  assert "solar transit: 2025-06-21" in output and "day UTC" in output
+
+
 def test_altitude_c_program_compiles_as_c11_and_runs_against_the_real_exports(tmp_path):
   blocks = [code for info, code in code_blocks(document(REPO / "docs/ALTITUDE_EVENTS.md")) if info == "c"]
   assert len(blocks) == 1, "expected one complete altitude C program"
@@ -490,6 +539,7 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
   (root / "README.md").write_text("```python\nprint('root')\n```\n\n```text\nroot\n```\n", encoding="utf-8")
   (root / "docs").mkdir()
   (root / "docs/ALTITUDE_EVENTS.md").write_text("```python\nprint('altitude')\n```\n", encoding="utf-8")
+  (root / "docs/RISE_SET.md").write_text("```python\nprint('daily')\n```\n", encoding="utf-8")
   calls = []
 
   def run(code, cwd, expected=None):

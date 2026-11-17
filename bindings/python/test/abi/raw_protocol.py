@@ -65,6 +65,41 @@ def happy_celestial_ut1_to_jd() -> None:
   assert result.valid and abs(result.value - 2460463.0) < 1e-6
 
 
+def happy_celestial_solar_rise_set() -> None:
+  result = call("solar_rise_set", 2025, 1, 1, 40.0, 0.0, -50.0 / 60)
+  assert result.valid and result.source_code == 1 and result.present_fields == 224 and result.polar_code == 0
+  assert result.rise_jde_tt < result.transit_jde_tt < result.set_jde_tt
+  assert result.delta_t_identity_code == 5 and result.nutation_identity_code == 2
+
+
+def edge_celestial_solar_rise_set() -> None:
+  assert not call("solar_rise_set", 2025, 257, 1, 40.0, 0.0, 0.0).valid
+  assert _binding.last_error_kind() == 1
+
+
+def happy_celestial_lunar_rise_set() -> None:
+  result = call("lunar_rise_set", 2025, 1, 1, 40.0, 0.0, 1, -100.0, 200.0)
+  assert result.valid and result.source_code == 2 and result.refraction_code == 1
+  assert result.temperature_c == -100 and result.pressure_hpa == 200
+  assert result.delta_t_identity_code == 5 and result.nutation_identity_code == 2
+
+
+def edge_celestial_lunar_rise_set() -> None:
+  assert not call("lunar_rise_set", 2025, 1, 1, 40.0, 0.0, 257, 15.0, 1013.25).valid
+  assert _binding.last_error_kind() == 1
+
+
+def happy_celestial_planet_rise_set() -> None:
+  result = call("planet_rise_set", 4, 2025, 1, 1, 40.0, 0.0, 1000.0, -34.0 / 60)
+  assert result.valid and result.target_code == 4 and result.source_code == 3
+  assert result.delta_t_identity_code == 5 and result.nutation_identity_code == 2
+
+
+def edge_celestial_planet_rise_set() -> None:
+  assert not call("planet_rise_set", 258, 2025, 1, 1, 40.0, 0.0, 0.0, 0.0).valid
+  assert _binding.last_error_kind() == 1
+
+
 def happy_celestial_ut1_to_jde() -> None:
   result = call("ut1_to_jde", 2024, 6, 1, 0.5)
   assert result.valid and result.value > 2460463.0
@@ -648,6 +683,9 @@ def edge_celestial_capability_text() -> None:
 
 
 EXPORT_LABELS = (
+  "solar_rise_set",
+  "lunar_rise_set",
+  "planet_rise_set",
   "altitude_events",
   "upper_transits",
   "observing_windows",
@@ -986,7 +1024,7 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
 
 def main() -> None:
   """Require both fixed-denominator groups to pass in full."""
-  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 43
+  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 46
   assert set(HAPPY_TESTS) == set(EDGE_TESTS) == set(_binding.BINDING_SPECS)
   happy = run_group("HAPPY", HAPPY_TESTS)
   edge = run_group("EDGE", EDGE_TESTS)

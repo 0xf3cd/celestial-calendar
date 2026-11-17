@@ -148,7 +148,8 @@ export async function testFakeNative(entryUrl) {
     await writeFile(resolve(directory, "mock-module.mjs"), "export default () => globalThis.__celestialFakeFactory();\n");
     const fixture = await import(pathToFileURL(entry));
     assert.deepEqual(control.calls, [], "import does not query native domains");
-    for (const action of [() => fixture.observer.altitudeEvents(null, null, NaN, NaN),
+    for (const action of [() => fixture.riseSet.solar(null, null), () => fixture.riseSet.lunar(null, null),
+      () => fixture.riseSet.planet(null, null, null), () => fixture.observer.altitudeEvents(null, null, NaN, NaN),
       () => fixture.observer.upperTransits(null, null, NaN, NaN), () => fixture.observer.observingWindows(null, [], NaN, NaN)]) {
       assert.throws(action, { name: "CelestialError", recorded: false });
     }
@@ -176,7 +177,7 @@ export async function testFakeNative(entryUrl) {
       decodedJieqi.momentUt1.day, decodedJieqi.momentUt1.fraction], [7, 2024, 3, 7, 0.123456789],
     "Jieqi public decoder preserves distinct native fields");
     reset();
-    assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "diameter", "init", "jieqi", "lunar", "moon", "observer", "sun", "time"]);
+    assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "diameter", "init", "jieqi", "lunar", "moon", "observer", "riseSet", "sun", "time"]);
     assert.deepEqual(fixture.sun.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceAu: 2 });
     assert.deepEqual(fixture.moon.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceKm: 2 });
 
@@ -518,6 +519,59 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
     }
     reset({ sretPayload: { year: 400, month: 12, day: 31, fraction: 0.9 } });
     assert.equal(fixture.time.jdeToUtc(1867522.5).year, 400);
+    for (const kind of ["solar", "lunar", "planet"]) {
+      const date = { year: 2025, month: 1, day: 1 };
+      const location = { latitudeDeg: 40, longitudeDeg: 0 };
+      const query = () => kind === "planet" ? fixture.riseSet.planet("mars", date, { ...location, elevationM: 1000 })
+        : fixture.riseSet[kind](date, location);
+      const payload = {
+        valid: 1, target_code: 4, source_code: kind === "planet" ? 3 : kind === "solar" ? 1 : 2,
+        delta_t_identity_code: 5, nutation_identity_code: 2, present_fields: 224, polar_code: 0,
+        rise_jde_tt: 2460000.1, transit_jde_tt: 2460000.5, set_jde_tt: 2460000.9,
+        h0_deg: kind === "solar" ? -50 / 60 : -34 / 60,
+        refraction_code: 1, temperature_c: 15, pressure_hpa: 1013.25,
+      };
+      reset({ sretPayload: payload, grow: true });
+      const owned = query();
+      const args = kind === "planet" ? [4, 2025, 1, 1, 40, 0, 1000, -34 / 60]
+        : kind === "solar" ? [2025, 1, 1, 40, 0, -50 / 60] : [2025, 1, 1, 40, 0, 1, 15, 1013.25];
+      assert.deepEqual(control.calls, [[`celestial_${kind}_rise_set`, ...args]]);
+      assert.equal(control.live.size, 0);
+      assert(Object.isFrozen(owned));
+      if (kind === "lunar") assert(Object.isFrozen(owned.refraction));
+      const corruptions = [
+        { valid: 0 }, { valid: 2 }, { source_code: 99 }, { source_code: 4 },
+        { delta_t_identity_code: 0 }, { delta_t_identity_code: 2 },
+        { nutation_identity_code: 0 }, { nutation_identity_code: 1 },
+        { present_fields: 225 }, { polar_code: 3 }, { polar_code: 1 },
+        { present_fields: 96, set_jde_tt: 1 },
+        ...["rise_jde_tt", "transit_jde_tt", "set_jde_tt"].flatMap((field) =>
+          [NaN, Infinity].map((value) => ({ [field]: value }))),
+      ];
+      if (kind === "solar") corruptions.push({ present_fields: 160 }, { h0_deg: 0 });
+      if (kind === "planet") corruptions.push({ target_code: 0 }, { h0_deg: 0 });
+      if (kind === "lunar") corruptions.push({ refraction_code: 2 }, { temperature_c: 16 }, { pressure_hpa: NaN });
+      for (const changes of corruptions) {
+        reset({ sretPayload: { ...payload, ...changes } }); libraryError(query);
+        assert.equal(control.live.size, 0);
+      }
+      for (const mask of kind === "solar" ? [64] : [0, 32, 64, 96, 128, 160, 192, 224]) {
+        const clean = { ...payload, present_fields: mask };
+        for (const [field, bit] of [["rise_jde_tt", 32], ["transit_jde_tt", 64], ["set_jde_tt", 128]]) {
+          if (!(mask & bit)) clean[field] = 0;
+        }
+        reset({ sretPayload: clean });
+        assert.equal(query().transitJdeTt === null, !(mask & 64));
+      }
+      for (const errorKind of [1, 2, 3, 4]) {
+        reset({ failPass: "sret", errorKind, message: "" });
+        assert.throws(query, errorKind === 1 ? RangeError : fixture.CelestialError);
+        assert.equal(control.live.size, 0);
+      }
+      reset({ failAllocation: 1 }); libraryError(query);
+      reset({ sretPayload: { ...payload, transit_jde_tt: 2460001 } }); query();
+      assert.equal(owned.transitJdeTt, 2460000.5, "daily values survive freed/reused storage and growth");
+    }
     testAltitudeFakeNative(fixture, M, control, reset, called, LAYOUTS);
     console.log("PASS fake native: loader retry; error kinds/empty messages; count/fill errors/totals; 10 allocation-failure paths; sized UTF-8; malformed successes; FFI widths/resource caps; UTC decoders");
   } finally {

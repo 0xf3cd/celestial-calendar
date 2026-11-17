@@ -263,6 +263,20 @@ auto operation_model_text(const uint32_t operation) -> std::string {
         "Validation: apparent_diameter_test.cpp.",
         delta_t
       );
+    case CELESTIAL_OPERATION_RISE_SET:
+      return std::format(
+        "Solar rise/set is transit-centred on a UT1 date: events can lie outside that date. "
+        "Lunar and planetary queries use [0h,24h) UT1, retaining the later crossing of each kind "
+        "and first selected transit, including the native exact-midnight crossing exception. "
+        "Missing events are independent of polar topology; returned times are TT. "
+        "Sun/Moon use geocentric coordinates; solar h0 defaults to -50/60 degrees in the bindings, "
+        "lunar h0 uses midday parallax and supplied horizon atmosphere. "
+        "Planets use WGS84 topocentric airless coordinates and h0 defaults to -34/60 degrees. "
+        "Use EQUATORIAL provider domains for the ten physical targets. Every internal sample must fit, "
+        "including estimates/derivatives outside the day; Pluto midnight admission is insufficient. "
+        "Fixed IAU1980 and Delta T {}. Validation: rise_set_cabi_test.cpp.",
+        delta_t
+      );
     case CELESTIAL_OPERATION_HOUSES:
     case CELESTIAL_OPERATION_CHART:
       return std::format(
@@ -282,7 +296,8 @@ auto operation_model_text(const uint32_t operation) -> std::string {
 auto capability_text(const uint32_t operation_code, const uint32_t subject) -> std::string {
   const bool no_target = operation_code == CELESTIAL_OPERATION_HOUSES or operation_code == CELESTIAL_OPERATION_CHART
     or operation_code == CELESTIAL_OPERATION_DELTA_T or operation_code == CELESTIAL_OPERATION_TOPOCENTRIC
-    or operation_code == CELESTIAL_OPERATION_APPARENT_DIAMETER;
+    or operation_code == CELESTIAL_OPERATION_APPARENT_DIAMETER
+    or operation_code == CELESTIAL_OPERATION_RISE_SET;
   if (no_target) {
     if (subject != CELESTIAL_TARGET_ALL) {
       throw std::invalid_argument { "This operation requires CELESTIAL_TARGET_ALL because it has no target" };

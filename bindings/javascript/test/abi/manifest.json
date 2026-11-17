@@ -361,6 +361,57 @@
         {"name": "diameter_arcsec", "type": "double", "offset": 56}
       ]
     },
+    "CelestialSolarRiseSet": {
+      "size": 56,
+      "alignment": 8,
+      "fields": [
+        {"name": "valid", "type": "bool", "offset": 0},
+        {"name": "source_code", "type": "uint32_t", "offset": 4},
+        {"name": "delta_t_identity_code", "type": "uint32_t", "offset": 8},
+        {"name": "nutation_identity_code", "type": "uint32_t", "offset": 12},
+        {"name": "present_fields", "type": "uint32_t", "offset": 16},
+        {"name": "polar_code", "type": "uint32_t", "offset": 20},
+        {"name": "rise_jde_tt", "type": "double", "offset": 24},
+        {"name": "transit_jde_tt", "type": "double", "offset": 32},
+        {"name": "set_jde_tt", "type": "double", "offset": 40},
+        {"name": "h0_deg", "type": "double", "offset": 48}
+      ]
+    },
+    "CelestialLunarRiseSet": {
+      "size": 72,
+      "alignment": 8,
+      "fields": [
+        {"name": "valid", "type": "bool", "offset": 0},
+        {"name": "source_code", "type": "uint32_t", "offset": 4},
+        {"name": "delta_t_identity_code", "type": "uint32_t", "offset": 8},
+        {"name": "nutation_identity_code", "type": "uint32_t", "offset": 12},
+        {"name": "refraction_code", "type": "uint32_t", "offset": 16},
+        {"name": "present_fields", "type": "uint32_t", "offset": 20},
+        {"name": "polar_code", "type": "uint32_t", "offset": 24},
+        {"name": "rise_jde_tt", "type": "double", "offset": 32},
+        {"name": "transit_jde_tt", "type": "double", "offset": 40},
+        {"name": "set_jde_tt", "type": "double", "offset": 48},
+        {"name": "temperature_c", "type": "double", "offset": 56},
+        {"name": "pressure_hpa", "type": "double", "offset": 64}
+      ]
+    },
+    "CelestialPlanetRiseSet": {
+      "size": 64,
+      "alignment": 8,
+      "fields": [
+        {"name": "valid", "type": "bool", "offset": 0},
+        {"name": "target_code", "type": "uint32_t", "offset": 4},
+        {"name": "source_code", "type": "uint32_t", "offset": 8},
+        {"name": "delta_t_identity_code", "type": "uint32_t", "offset": 12},
+        {"name": "nutation_identity_code", "type": "uint32_t", "offset": 16},
+        {"name": "present_fields", "type": "uint32_t", "offset": 20},
+        {"name": "polar_code", "type": "uint32_t", "offset": 24},
+        {"name": "rise_jde_tt", "type": "double", "offset": 32},
+        {"name": "transit_jde_tt", "type": "double", "offset": 40},
+        {"name": "set_jde_tt", "type": "double", "offset": 48},
+        {"name": "h0_deg", "type": "double", "offset": 56}
+      ]
+    },
     "CelestialAltitudeCondition": {
       "size": 40,
       "alignment": 8,
@@ -454,6 +505,7 @@
     "CELESTIAL_OPERATION_DELTA_T": 6,
     "CELESTIAL_OPERATION_TOPOCENTRIC": 7,
     "CELESTIAL_OPERATION_APPARENT_DIAMETER": 8,
+    "CELESTIAL_OPERATION_RISE_SET": 9,
     "CELESTIAL_STATUS_SOURCE_WINDOW": 0,
     "CELESTIAL_STATUS_IMPLEMENTATION_WINDOW": 1,
     "CELESTIAL_STATUS_FINITE_INPUT_EVALUATION": 2,
@@ -474,6 +526,12 @@
     "CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL": 1,
     "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN": 2,
     "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3,
+    "CELESTIAL_PRESENT_RISE": 32,
+    "CELESTIAL_PRESENT_TRANSIT": 64,
+    "CELESTIAL_PRESENT_SET": 128,
+    "CELESTIAL_RISE_SET_POLAR_NONE": 0,
+    "CELESTIAL_RISE_SET_POLAR_DAY": 1,
+    "CELESTIAL_RISE_SET_POLAR_NIGHT": 2,
     "CELESTIAL_ALTITUDE_SENSE_BELOW": 0,
     "CELESTIAL_ALTITUDE_SENSE_ABOVE": 1,
     "CELESTIAL_ALTITUDE_RECORD_CONDITION": 0,
@@ -748,7 +806,8 @@
           "CELESTIAL_OPERATION_CHART",
           "CELESTIAL_OPERATION_DELTA_T",
           "CELESTIAL_OPERATION_TOPOCENTRIC",
-          "CELESTIAL_OPERATION_APPARENT_DIAMETER"
+          "CELESTIAL_OPERATION_APPARENT_DIAMETER",
+          "CELESTIAL_OPERATION_RISE_SET"
         ],
         "error_channel": "kind"
       },
@@ -794,6 +853,27 @@
       "signature": "CelestialApparentDiameter celestial_apparent_diameter(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t centre_code, double latitude_deg, double longitude_deg, double elevation_m)",
       "return": {"kind": "sret", "layout": "CelestialApparentDiameter"},
       "protocol": {"kind": "sret", "identity": "resolved-explicit-model-key-position-source-and-radius-definition", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_solar_rise_set",
+      "signature": "CelestialSolarRiseSet celestial_solar_rise_set(int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, double h0_deg)",
+      "return": {"kind": "sret", "layout": "CelestialSolarRiseSet"},
+      "protocol": {"kind": "sret", "identity": "solar-transit-centred", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_lunar_rise_set",
+      "signature": "CelestialLunarRiseSet celestial_lunar_rise_set(int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, uint32_t refraction_code, double temperature_c, double pressure_hpa)",
+      "return": {"kind": "sret", "layout": "CelestialLunarRiseSet"},
+      "protocol": {"kind": "sret", "identity": "lunar-ut1-day", "error_channel": "kind"},
+      "recording": true
+    },
+    {
+      "name": "celestial_planet_rise_set",
+      "signature": "CelestialPlanetRiseSet celestial_planet_rise_set(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, double elevation_m, double h0_deg)",
+      "return": {"kind": "sret", "layout": "CelestialPlanetRiseSet"},
+      "protocol": {"kind": "sret", "identity": "planetary-ut1-day", "error_channel": "kind"},
       "recording": true
     },
     {

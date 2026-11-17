@@ -1097,6 +1097,44 @@ try {
   M._free(altitudeSlots);
 }
 
+const dailyGolden = JSON.parse(await readFile(resolve(REPO, "toolbox/rise_set_golden.json"), "utf8"));
+const dailyPins = {
+  CelestialSolarRiseSet: [56, [0, 4, 8, 12, 16, 20, 24, 32, 40, 48]],
+  CelestialLunarRiseSet: [72, [0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64]],
+  CelestialPlanetRiseSet: [64, [0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56]],
+};
+for (const [name, [size, offsets]] of Object.entries(dailyPins)) {
+  assert.equal(manifest.layouts[name].size, size);
+  assert.equal(manifest.layouts[name].alignment, 8);
+  assert.deepEqual(manifest.layouts[name].fields.map((field) => field.offset), offsets);
+}
+for (const entry of dailyGolden.entries) {
+  const [year, month, day, latitude, longitude, elevation] = dailyGolden.days[entry.day_index];
+  let name;
+  let args = [year, month, day, latitude, longitude];
+  if (entry.target === 0) {
+    name = "celestial_solar_rise_set"; args.push(entry.custom ? -18 : -50 / 60);
+  } else if (entry.target === 1) {
+    name = "celestial_lunar_rise_set"; args.push(...(entry.custom ? [2, -20, 800] : [1, 15, 1013.25]));
+  } else {
+    name = "celestial_planet_rise_set"; args = [entry.target, ...args, elevation, entry.custom ? 0 : -34 / 60];
+  }
+  if (entry.error) {
+    recordedFailure(name, () => !rawSret(name, args).valid);
+    assert.equal(M._celestial_last_error_kind(), entry.error);
+    continue;
+  }
+  const record = validSret(name, args);
+  for (const [field, value] of Object.entries(entry.fields)) {
+    if (typeof value === "string") close(record[field], bitsOf(value), field.endsWith("_jde_tt") ? MAX_MOMENT_DIFF_DAYS : 0, field);
+    else assert.equal(record[field], value, field);
+  }
+}
+for (const [name, args] of [
+  ["celestial_solar_rise_set", [2025, 257, 1, 40, 0, 0]],
+  ["celestial_lunar_rise_set", [2025, 1, 1, 40, 0, 257, 15, 1013.25]],
+  ["celestial_planet_rise_set", [258, 2025, 1, 1, 40, 0, 0, 0]],
+]) recordedFailure(name, () => !rawSret(name, args).valid);
 const expectedExports = BINDINGS.map(({ cName }) => cName);
 assert.deepEqual(
   [...recordedNames].sort(),
@@ -1104,17 +1142,17 @@ assert.deepEqual(
   "all recording exports exercised a failure",
 );
 assert.equal(goldenCount, 395, "golden replay count");
-assert.equal(BINDINGS.length, 43, "C export inventory");
-assert.equal(Object.keys(manifest.layouts).length, 33, "C record inventory");
-assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 43 exports executed successfully");
-assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 33 layouts decoded");
+assert.equal(BINDINGS.length, 46, "C export inventory");
+assert.equal(Object.keys(manifest.layouts).length, 36, "C record inventory");
+assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 46 exports executed successfully");
+assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 36 layouts decoded");
 assert.deepEqual(
   [...new Set(manifest.exports.map(({ protocol }) => protocol.kind).filter((kind) => kind.endsWith("fill")))].sort(),
   ["companion-fill", "count-fill", "requested-fill"],
   "three count/fill protocol classes",
 );
 
-console.log("PASS raw exports 43/43; layouts 33/33; recording seams 41/41");
+console.log("PASS raw exports 46/46; layouts 36/36; recording seams 44/44; daily native cases 360");
 console.log(`PASS private chart sret: order, absence, units, systems, scales, DEFAULT/models; rejected inputs ${chartFailureCount}`);
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");

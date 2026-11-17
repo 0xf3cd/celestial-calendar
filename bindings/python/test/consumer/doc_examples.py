@@ -145,6 +145,7 @@ def main() -> None:
       ("root", (REPO / "README.md").read_text(encoding="utf-8"), True),
       ("python-package", installed, False),
       ("altitude-guide", (REPO / "docs/ALTITUDE_EVENTS.md").read_text(encoding="utf-8"), False),
+      ("rise-set-guide", (REPO / "docs/RISE_SET.md").read_text(encoding="utf-8"), False),
     ):
       selected = programs(text)
       executed = 0

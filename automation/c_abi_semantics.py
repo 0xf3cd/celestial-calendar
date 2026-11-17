@@ -201,6 +201,7 @@ EXPORT_SEMANTICS = {
         "CELESTIAL_OPERATION_DELTA_T",
         "CELESTIAL_OPERATION_TOPOCENTRIC",
         "CELESTIAL_OPERATION_APPARENT_DIAMETER",
+        "CELESTIAL_OPERATION_RISE_SET",
       ],
     },
     "recording": True,
@@ -241,6 +242,18 @@ EXPORT_SEMANTICS = {
   },
   "celestial_apparent_diameter": {
     "protocol": {"identity": "resolved-explicit-model-key-position-source-and-radius-definition"},
+    "recording": True,
+  },
+  "celestial_solar_rise_set": {
+    "protocol": {"identity": "solar-transit-centred", "ownership": "owned; absent event slots are zero"},
+    "recording": True,
+  },
+  "celestial_lunar_rise_set": {
+    "protocol": {"identity": "lunar-ut1-day", "ownership": "owned; absent event slots are zero"},
+    "recording": True,
+  },
+  "celestial_planet_rise_set": {
+    "protocol": {"identity": "planetary-ut1-day", "ownership": "owned; absent event slots are zero"},
     "recording": True,
   },
   "celestial_altitude_events": {

@@ -35,12 +35,12 @@ const entries = Object.entries(C_DECLARATIONS.functions);
 const names = entries.map(([name]) => name);
 const readers = new Set(["celestial_last_error", "celestial_last_error_kind"]);
 const recording = names.filter((name) => !readers.has(name));
-assert.equal(names.length, 43);
-assert.equal(recording.length, 41);
+assert.equal(names.length, 46);
+assert.equal(recording.length, 44);
 sameSet(names, BINDINGS.map(({ cName }) => cName));
 sameSet(names, Object.keys(WASM_SIGNATURES));
 sameSet([...names, "malloc", "free"], recipeExports);
-assert.equal(recipeExports.length, 45);
+assert.equal(recipeExports.length, 48);
 assert(recipe.includes('"-sALLOW_MEMORY_GROWTH=1"'));
 assert(recipe.includes('"HEAPU16"'));
 assert.equal((recipe.match(/-sEXPORTED_FUNCTIONS=/g) ?? []).length, 1);
@@ -92,11 +92,11 @@ sameSet(Object.entries(PROTOCOLS).filter(([, p]) => p.kind === "sized-string").m
 ]);
 
 const verifyManifest = (candidate) => {
-  assert.equal(candidate.exports.length, 43);
+  assert.equal(candidate.exports.length, 46);
   sameSet(candidate.exports.map(({ name }) => name), names);
   assert.deepEqual(candidate.codes, C_DECLARATIONS.constants);
   assert.deepEqual(candidate.layouts, LAYOUTS);
-  assert.equal(Object.keys(candidate.layouts).length, 33);
+  assert.equal(Object.keys(candidate.layouts).length, 36);
   assert.deepEqual(candidate.wasm_width_bits, {
     bool: 8, uint8_t: 8, uint16_t: 16, int32_t: 32, uint32_t: 32, pointer: 32, double: 64,
   });

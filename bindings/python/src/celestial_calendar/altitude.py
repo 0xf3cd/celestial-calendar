@@ -18,7 +18,7 @@ from itertools import groupby
 
 from . import _abi
 from ._codes import constant, enum_code
-from ._models import ModelKey, ModelKind, Target
+from ._models import ModelKey, ModelKind, Target, position_source_code
 from ._protocol import finite
 from .events import EventDirection, decode_direction
 from .observer import RefractionModel, RefractionParams
@@ -157,8 +157,7 @@ def _identities(record: _abi.CelestialAltitudeRecord, target: Target) -> tuple[M
   code = enum_code("TARGET", target)
   if record.target_code != code or not 0 <= code <= 9:
     raise ValueError("unexpected physical altitude target")
-  source = {0: "SUN_VSOP87D", 1: "MOON_ELP2000_82B_TRUNC", 9: "PLUTO_PLUTO95_APPARENT"}.get(code, "PLANET_VSOP87D")
-  if record.position_source_code != constant("POSITION_SOURCE_" + source):
+  if record.position_source_code != position_source_code(target):
     raise ValueError("unexpected altitude position source")
   if record.delta_t_model_code != constant("DELTA_T_MODEL_ALGO5"):
     raise ValueError("unexpected altitude clock model")

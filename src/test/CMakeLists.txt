@@ -67,6 +67,11 @@ macro(CELESTIAL_ADD_TEST test_path test_name)
       set_source_files_properties(${ERFA_CALENDAR_ORACLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-w")
     endif()
   endif()
+  if("${test_name}" STREQUAL "rise_set_cabi_test")
+    set(RISE_SET_C_EXAMPLE ${CMAKE_SOURCE_DIR}/../docs/examples/rise_set/main.c)
+    target_sources(${test_name} PRIVATE ${RISE_SET_C_EXAMPLE})
+    set_source_files_properties(${RISE_SET_C_EXAMPLE} PROPERTIES COMPILE_DEFINITIONS "main=rise_set_example_main")
+  endif()
   target_link_libraries(
     ${test_name}
     GTest::gtest_main

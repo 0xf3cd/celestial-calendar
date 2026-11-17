@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- C, Python and JavaScript/TypeScript rise/transit/set queries for the Sun, Moon and planets.
+  Distinct result types retain solar transit-centred versus lunar/planetary UT1-day semantics,
+  optional TT events, polar topology and source/model identities. See the [daily query guide](RISE_SET.md).
+
 ### Changed
 
 - Refreshed Algo5 Delta T coefficients and the right-edge anchor from updated IERS Bulletin A inputs.

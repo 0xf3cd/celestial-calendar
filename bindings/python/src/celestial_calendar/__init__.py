@@ -29,6 +29,7 @@ from . import capability as _capability, chart as _chart, events as _events, que
 from . import observer as _observer
 from . import diameter as _diameter
 from . import altitude as _altitude
+from . import rise_set as _rise_set
 from ._codes import constant as _constant, enum_code as _enum_code
 from ._models import DeltaTModel as DeltaTModel
 from ._models import ModelKey as ModelKey
@@ -76,6 +77,12 @@ from .observer import TopocentricPosition as TopocentricPosition
 from .diameter import ApparentDiameter as ApparentDiameter
 from .diameter import DiameterCentre as DiameterCentre
 from .diameter import RadiusDefinition as RadiusDefinition
+from .rise_set import SolarRiseSet as SolarRiseSet
+from .rise_set import LunarRiseSet as LunarRiseSet
+from .rise_set import PlanetRiseSet as PlanetRiseSet
+from .rise_set import PolarTopology as PolarTopology
+
+_LUNAR_STANDARD_ATMOSPHERE = RefractionParams(RefractionModel.BENNETT)
 
 
 class MoonPhase(_StrEnum):
@@ -1081,7 +1088,96 @@ def apparent_diameter(
   return decoded
 
 
+def solar_rise_set(date_ut1: GregorianDate, location: GeoLocation, *, h0_deg: float = -50.0 / 60.0) -> SolarRiseSet:
+  """Return TT events around local solar transit of a UT1 date, not a civil-day cell.
+
+  Rise/set can fall outside the input date; ±180° can select transits a day apart.
+  Pass -6, -12 or -18 for twilight. The weather-to-h0 helper remains C++-only.
+  """
+  date = _civil_date(date_ut1, "date_ut1")
+  site = _location(location)
+  h0 = _finite(h0_deg, "h0_deg")
+  native = _result("celestial_solar_rise_set", "solar_rise_set", *date, *site, h0)
+  return _protocol.decode("solar_rise_set", _rise_set.decode_solar, native, h0)
+
+
+def lunar_rise_set(
+  date_ut1: GregorianDate,
+  location: GeoLocation,
+  *,
+  refraction: RefractionParams = _LUNAR_STANDARD_ATMOSPHERE,
+) -> LunarRiseSet:
+  """Return representative TT events in [0h,24h) UT1, preserving missing events.
+
+  Uses geocentric coordinates and a midday-parallax/horizon-refraction threshold.
+  Weather admits finite temperature > -273°C and positive pressure. The native
+  exact-midnight crossing exception and representative-event selection are retained.
+  """
+  date = _civil_date(date_ut1, "date_ut1")
+  site = _location(location)
+  if not isinstance(refraction, RefractionParams):
+    raise TypeError("refraction must be RefractionParams")
+  model = _enum(refraction.model, RefractionModel, "refraction.model")
+  temperature = _finite(refraction.temperature_c, "temperature_c")
+  pressure = _finite(refraction.pressure_hpa, "pressure_hpa")
+  native = _result(
+    "celestial_lunar_rise_set",
+    "lunar_rise_set",
+    *date,
+    *site,
+    _enum_code("REFRACTION", model),
+    temperature,
+    pressure,
+  )
+  return _protocol.decode(
+    "lunar_rise_set", _rise_set.decode_lunar, native, RefractionParams(model, temperature, pressure)
+  )
+
+
+def planet_rise_set(
+  target: Target, date_ut1: GregorianDate, observer: Observer, *, h0_deg: float = -34.0 / 60.0
+) -> PlanetRiseSet:
+  """Return representative planetary TT events in [0h,24h) UT1 from a WGS84 site.
+
+  The airless topocentric centre includes parallax; standard refraction is in h0.
+  All internal provider samples must fit its EQUATORIAL domain, including samples
+  outside the day. Missing transit is independent of polar topology.
+  """
+  checked_target = _enum(target, Target, "target")
+  if checked_target not in (
+    Target.MERCURY,
+    Target.VENUS,
+    Target.MARS,
+    Target.JUPITER,
+    Target.SATURN,
+    Target.URANUS,
+    Target.NEPTUNE,
+    Target.PLUTO,
+  ):
+    raise ValueError("planet_rise_set requires Mercury through Pluto")
+  date = _civil_date(date_ut1, "date_ut1")
+  if not isinstance(observer, Observer):
+    raise TypeError("observer must be an Observer")
+  site = (
+    _finite(observer.latitude_deg, "observer.latitude_deg"),
+    _finite(observer.longitude_deg, "observer.longitude_deg"),
+    _finite(observer.elevation_m, "observer.elevation_m"),
+  )
+  h0 = _finite(h0_deg, "h0_deg")
+  native = _result(
+    "celestial_planet_rise_set", "planet_rise_set", _enum_code("TARGET", checked_target), *date, *site, h0
+  )
+  return _protocol.decode("planet_rise_set", _rise_set.decode_planet, native, checked_target, h0)
+
+
 __all__ = [
+  "SolarRiseSet",
+  "LunarRiseSet",
+  "PlanetRiseSet",
+  "PolarTopology",
+  "solar_rise_set",
+  "lunar_rise_set",
+  "planet_rise_set",
   "AltitudeCondition",
   "AltitudeConditionState",
   "AltitudeEvent",

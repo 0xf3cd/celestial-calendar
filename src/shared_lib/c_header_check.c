@@ -26,6 +26,63 @@
 // NOLINTEND(bugprone-macro-parentheses)
 #define ABI_CODE(N, V) _Static_assert((N) == UINT32_C(V), #N " code drifted")
 
+ABI_RECORD(CelestialSolarRiseSet, 56, 8);
+ABI_FIELD(CelestialSolarRiseSet, valid, bool, 0);
+ABI_FIELD(CelestialSolarRiseSet, source_code, uint32_t, 4);
+ABI_FIELD(CelestialSolarRiseSet, delta_t_identity_code, uint32_t, 8);
+ABI_FIELD(CelestialSolarRiseSet, nutation_identity_code, uint32_t, 12);
+ABI_FIELD(CelestialSolarRiseSet, present_fields, uint32_t, 16);
+ABI_FIELD(CelestialSolarRiseSet, polar_code, uint32_t, 20);
+ABI_FIELD(CelestialSolarRiseSet, rise_jde_tt, double, 24);
+ABI_FIELD(CelestialSolarRiseSet, transit_jde_tt, double, 32);
+ABI_FIELD(CelestialSolarRiseSet, set_jde_tt, double, 40);
+ABI_FIELD(CelestialSolarRiseSet, h0_deg, double, 48);
+
+ABI_RECORD(CelestialLunarRiseSet, 72, 8);
+ABI_FIELD(CelestialLunarRiseSet, valid, bool, 0);
+ABI_FIELD(CelestialLunarRiseSet, source_code, uint32_t, 4);
+ABI_FIELD(CelestialLunarRiseSet, delta_t_identity_code, uint32_t, 8);
+ABI_FIELD(CelestialLunarRiseSet, nutation_identity_code, uint32_t, 12);
+ABI_FIELD(CelestialLunarRiseSet, refraction_code, uint32_t, 16);
+ABI_FIELD(CelestialLunarRiseSet, present_fields, uint32_t, 20);
+ABI_FIELD(CelestialLunarRiseSet, polar_code, uint32_t, 24);
+ABI_FIELD(CelestialLunarRiseSet, rise_jde_tt, double, 32);
+ABI_FIELD(CelestialLunarRiseSet, transit_jde_tt, double, 40);
+ABI_FIELD(CelestialLunarRiseSet, set_jde_tt, double, 48);
+ABI_FIELD(CelestialLunarRiseSet, temperature_c, double, 56);
+ABI_FIELD(CelestialLunarRiseSet, pressure_hpa, double, 64);
+
+ABI_RECORD(CelestialPlanetRiseSet, 64, 8);
+ABI_FIELD(CelestialPlanetRiseSet, valid, bool, 0);
+ABI_FIELD(CelestialPlanetRiseSet, target_code, uint32_t, 4);
+ABI_FIELD(CelestialPlanetRiseSet, source_code, uint32_t, 8);
+ABI_FIELD(CelestialPlanetRiseSet, delta_t_identity_code, uint32_t, 12);
+ABI_FIELD(CelestialPlanetRiseSet, nutation_identity_code, uint32_t, 16);
+ABI_FIELD(CelestialPlanetRiseSet, present_fields, uint32_t, 20);
+ABI_FIELD(CelestialPlanetRiseSet, polar_code, uint32_t, 24);
+ABI_FIELD(CelestialPlanetRiseSet, rise_jde_tt, double, 32);
+ABI_FIELD(CelestialPlanetRiseSet, transit_jde_tt, double, 40);
+ABI_FIELD(CelestialPlanetRiseSet, set_jde_tt, double, 48);
+ABI_FIELD(CelestialPlanetRiseSet, h0_deg, double, 56);
+
+ABI_CODE(CELESTIAL_PRESENT_RISE, 32);
+ABI_CODE(CELESTIAL_OPERATION_RISE_SET, 9);
+ABI_CODE(CELESTIAL_PRESENT_TRANSIT, 64);
+ABI_CODE(CELESTIAL_PRESENT_SET, 128);
+ABI_CODE(CELESTIAL_RISE_SET_POLAR_NONE, 0);
+ABI_CODE(CELESTIAL_RISE_SET_POLAR_DAY, 1);
+ABI_CODE(CELESTIAL_RISE_SET_POLAR_NIGHT, 2);
+
+_Static_assert(_Generic(&celestial_solar_rise_set,
+               CelestialSolarRiseSet (*)(int32_t, uint32_t, uint32_t, double, double, double): 1,
+               default: 0) != 0, "celestial_solar_rise_set signature drifted");
+_Static_assert(_Generic(&celestial_lunar_rise_set,
+               CelestialLunarRiseSet (*)(int32_t, uint32_t, uint32_t, double, double, uint32_t, double, double): 1,
+               default: 0) != 0, "celestial_lunar_rise_set signature drifted");
+_Static_assert(_Generic(&celestial_planet_rise_set,
+               CelestialPlanetRiseSet (*)(uint32_t, int32_t, uint32_t, uint32_t, double, double, double, double): 1,
+               default: 0) != 0, "celestial_planet_rise_set signature drifted");
+
 ABI_RECORD(CelestialJulianDay, 16, 8);
 ABI_FIELD(CelestialJulianDay, valid, bool, 0);
 ABI_FIELD(CelestialJulianDay, value, double, 8);

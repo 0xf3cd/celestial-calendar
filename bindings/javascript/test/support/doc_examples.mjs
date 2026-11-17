@@ -105,6 +105,9 @@ export async function runDocExamples(consumer, packageName) {
   console.log(`PASS displayed root JavaScript programs ${count}/${count} via ${packageName}`);
   const altitudeGuide = await readFile(new URL("../../../../docs/ALTITUDE_EVENTS.md", import.meta.url), "utf8");
   const altitudeCount = await runPrograms(altitudeGuide, consumer, packageName);
+  const riseSetGuide = await readFile(new URL("../../../../docs/RISE_SET.md", import.meta.url), "utf8");
+  const riseSetCount = await runPrograms(riseSetGuide, consumer, packageName);
+  if (riseSetCount !== 1) throw new Error("Expected one executable daily rise/set JavaScript program");
   console.log(`PASS displayed altitude JavaScript programs ${altitudeCount}/${altitudeCount} via ${packageName}`);
   for (const name of packageName === "celestial-calendar" ? ["@0xf3cd/celestial", "celestial-calendar"] : [packageName]) {
     const directory = name === "celestial-calendar" ? "javascript-alias" : "javascript";

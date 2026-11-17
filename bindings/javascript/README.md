@@ -52,6 +52,10 @@ For interval altitude events, upper transits and intersections such as
 “Mars above 20° while the Sun is below −18°”, see [altitude events and observing windows](../../docs/ALTITUDE_EVENTS.md).
 The queries take explicit JDE(TT) intervals. Sampled searches can miss events without reporting an error.
 
+For daily Sun, Moon and planet summaries, use `riseSet.solar`, `riseSet.lunar`
+and `riseSet.planet`. The [rise/set guide](../../docs/RISE_SET.md) explains their
+different UT1 windows, optional TT events and civil-clock display.
+
 For full scalar disk sizes in arcseconds, use `diameter.query` with an optional
 WGS84 observer. See [apparent diameters](../../docs/APPARENT_DIAMETERS.md) for radius
 conventions, supported targets and browser scaling.
@@ -247,7 +251,7 @@ and have the static server send it with `Content-Type: application/wasm`.
 <a id="api-contract"></a>
 ## API Contract
 
-The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, `chart`, `observer`, and `diameter` namespaces, and the
+The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, `chart`, `observer`, `diameter`, and `riseSet` namespaces, and the
 package ships TypeScript declarations. Model and Moon phase options are string-literal unions such as `"full"` and
 `"algo3"`. The existing `sun`/`moon` geocentric helpers, `observer.position()` and `diameter.query()` are public. The general independent
 geocentric ecliptic/equatorial position, house, interval-event, capability and model-text query families are not exposed.
