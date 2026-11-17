@@ -276,7 +276,10 @@ TEST(CapabilityCAbi, RejectsWrongOperationsSubjectsAndFullWidthCodes) {
       EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);
     }
   }
-  for (const uint32_t operation : { CELESTIAL_OPERATION_HOUSES, CELESTIAL_OPERATION_CHART, CELESTIAL_OPERATION_DELTA_T }) {
+  for (const uint32_t operation : {
+    CELESTIAL_OPERATION_HOUSES, CELESTIAL_OPERATION_CHART, CELESTIAL_OPERATION_DELTA_T,
+    CELESTIAL_OPERATION_TOPOCENTRIC, CELESTIAL_OPERATION_APPARENT_DIAMETER, CELESTIAL_OPERATION_RISE_SET,
+  }) {
     for (const uint32_t subject : { CELESTIAL_TARGET_SUN, CELESTIAL_TARGET_SATURN, 14U, 256U, UINT32_C(0x10000000) }) {
       EXPECT_EQ(celestial_capability_text(operation, subject, nullptr, 0), 0U);
       EXPECT_EQ(celestial_last_error_kind(), CELESTIAL_ERROR_INVALID_INPUT);

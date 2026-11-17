@@ -1127,8 +1127,8 @@ CELESTIAL_API CelestialApparentDiameter celestial_apparent_diameter(uint32_t tar
 /** @brief Solar events around the selected local transit, with the supplied geocentric altitude. */
 typedef struct CelestialSolarRiseSet {
   bool valid;
-  uint32_t source_code;           /* CELESTIAL_POSITION_SOURCE_* */
-  uint32_t delta_t_identity_code; /* CELESTIAL_DELTA_T_MODEL_* */
+  uint32_t source_code;            /* CELESTIAL_POSITION_SOURCE_* */
+  uint32_t delta_t_identity_code;  /* CELESTIAL_DELTA_T_MODEL_* */
   uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
   uint32_t present_fields; /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
   uint32_t polar_code;     /* CELESTIAL_RISE_SET_POLAR_*; DAY/NIGHT have no rise or set. */
@@ -1141,8 +1141,8 @@ typedef struct CelestialSolarRiseSet {
 /** @brief Representative lunar events in [0h,24h) UT1, with the supplied horizon atmosphere. */
 typedef struct CelestialLunarRiseSet {
   bool valid;
-  uint32_t source_code;           /* CELESTIAL_POSITION_SOURCE_* */
-  uint32_t delta_t_identity_code; /* CELESTIAL_DELTA_T_MODEL_* */
+  uint32_t source_code;            /* CELESTIAL_POSITION_SOURCE_* */
+  uint32_t delta_t_identity_code;  /* CELESTIAL_DELTA_T_MODEL_* */
   uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
   uint32_t refraction_code;
   uint32_t present_fields; /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
@@ -1158,8 +1158,8 @@ typedef struct CelestialLunarRiseSet {
 typedef struct CelestialPlanetRiseSet {
   bool valid;
   uint32_t target_code;
-  uint32_t source_code;           /* CELESTIAL_POSITION_SOURCE_* */
-  uint32_t delta_t_identity_code; /* CELESTIAL_DELTA_T_MODEL_* */
+  uint32_t source_code;            /* CELESTIAL_POSITION_SOURCE_* */
+  uint32_t delta_t_identity_code;  /* CELESTIAL_DELTA_T_MODEL_* */
   uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
   uint32_t present_fields; /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
   uint32_t polar_code;     /* CELESTIAL_RISE_SET_POLAR_*; DAY/NIGHT have no rise or set. */

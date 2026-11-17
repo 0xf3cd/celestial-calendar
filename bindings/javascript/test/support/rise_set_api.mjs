@@ -69,7 +69,7 @@ export function runRiseSetAcceptance(celestial, golden) {
     }
     throw new Error("daily argument accepted");
   };
-  for (const target of ["sun", "moon", "trueAscendingNode", "unknown"]) {
+  for (const target of ["sun", "moon", "trueAscending", "unknown"]) {
     reject(() => celestial.riseSet.planet(target, date, site), RangeError);
   }
   for (const query of [celestial.riseSet.solar, celestial.riseSet.lunar]) {

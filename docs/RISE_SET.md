@@ -153,7 +153,8 @@ text (`CELESTIAL_OPERATION_RISE_SET`) and Python
 `capability_text(CapabilityOperation.RISE_SET)` describe this policy. Use
 EQUATORIAL capabilities for the position providers' TT domains; JavaScript has
 no capability-query API. Pluto has the
-hard interval [2409543.875,2488069.125) TT; every internal sample must fit,
+hard interval [2409543.875,2488069.125) TT, from 1885-01-02 09:00 to
+2099-12-31 15:00 TT with the end excluded. Every internal sample must fit,
 including transit estimates and derivative samples outside the input day.
 Midnight inside that domain does not guarantee a successful day query.
 A date whose samples leave a provider's domain raises Python `ValueError` or

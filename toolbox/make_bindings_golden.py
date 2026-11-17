@@ -401,7 +401,11 @@ def generate_rise_set() -> dict:
 def main() -> None:
   """Write the selected native dataset to its default or explicit destination."""
   parser = argparse.ArgumentParser(description="Regenerate the native binding golden dataset.")
-  parser.add_argument("--out-path", type=Path, help=f"output path (default {OUT_PATH})")
+  parser.add_argument(
+    "--out-path",
+    type=Path,
+    help="output path (default: bindings_golden.json, or rise_set_golden.json with --rise-set)",
+  )
   parser.add_argument("--rise-set", action="store_true", help="generate the separate daily-query parity dataset")
   args = parser.parse_args()
 

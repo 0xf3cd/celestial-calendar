@@ -81,6 +81,7 @@ def main():
     ):
       raises(ValueError, lambda weather=weather: c.lunar_rise_set(date, location, refraction=weather))
   standard = c.lunar_rise_set(date, location)
+  assert c.solar_rise_set(date, location).h0_deg == -50.0 / 60
   assert standard.refraction == c.RefractionParams(c.RefractionModel.BENNETT, 15, 1013.25)
   assert c.planet_rise_set(c.Target.MARS, date, observer).h0_deg == -34.0 / 60
 

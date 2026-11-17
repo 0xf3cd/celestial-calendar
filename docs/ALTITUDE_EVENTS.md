@@ -115,7 +115,7 @@ The other functions are `altitude_events(site, condition, start_jde_tt, end_jde_
 `upper_transits(site, target, start_jde_tt, end_jde_tt)`. `AltitudeLevel` is a variant of
 `GeometricLevel` and `RefractedLevel`; geometric input has no unused weather. Conditions and
 transits retain their position source and fixed Delta T model. The [daily rise/set bindings](RISE_SET.md)
-return the existing representative-event summaries rather than interval lists.
+return representative-event summaries rather than interval lists.
 
 ## Time, levels and result meaning
 
