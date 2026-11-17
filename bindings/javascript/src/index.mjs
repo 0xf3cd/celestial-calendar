@@ -1017,11 +1017,11 @@ export const moon = Object.freeze({
 export const jieqi = Object.freeze({ moment: jieqiMoment, name: jieqiName });
 export const lunar = Object.freeze({ supportedYearRange, yearInfo, fromGregorian, toGregorian });
 export const chart = Object.freeze({ snapshot });
-const riseSetOptions = (value, keys) => {
-  requiredRecord(value, "options", [], []);
+const riseSetOptions = (value, keys, name = "options") => {
+  requiredRecord(value, name, [], []);
   if (Reflect.ownKeys(value).some((key) => !keys.includes(key))
     || keys.some((key) => key in value && !Object.hasOwn(value, key))) {
-    throw new TypeError(`options requires own ${keys.join("/")} fields only.`);
+    throw new TypeError(`${name} requires own ${keys.join("/")} fields only.`);
   }
   return value;
 };
@@ -1030,10 +1030,10 @@ const dailyRiseSet = (kind, target, dateUt1, site, options) => {
   const operation = `riseSet.${kind}`;
   requireModule(operation);
   const date = nativeGregorianDate(dateUt1, "dateUt1");
-  const location = requiredRecord(site, "site", kind === "planet"
-    ? ["latitudeDeg", "longitudeDeg", "elevationM"] : ["latitudeDeg", "longitudeDeg"], []);
   const siteKeys = kind === "planet" ? ["latitudeDeg", "longitudeDeg", "elevationM"] : ["latitudeDeg", "longitudeDeg"];
-  if (Reflect.ownKeys(location).some((key) => !siteKeys.includes(key))) throw new TypeError("Unknown site field.");
+  const location = requiredRecord(site, "site", siteKeys, []);
+  if (Reflect.ownKeys(location).some((key) => !siteKeys.includes(key))
+    || (kind !== "planet" && "elevationM" in location)) throw new TypeError("Unknown site field.");
   const coordinates = siteKeys.map((key) => finiteNumber(location[key], `site.${key}`));
   const code = enumValue(target, "target", CHART_CODES.targets);
   if (kind === "planet" && (code < CHART_CODES.targets.mercury || code > CHART_CODES.targets.pluto)) {
@@ -1046,7 +1046,7 @@ const dailyRiseSet = (kind, target, dateUt1, site, options) => {
     riseSetOptions(options, ["refraction"]);
     const weather = options.refraction === undefined ? { model: "bennett" } : options.refraction;
     requiredRecord(weather, "refraction", ["model"], []);
-    riseSetOptions(weather, ["model", "temperatureC", "pressureHpa"]);
+    riseSetOptions(weather, ["model", "temperatureC", "pressureHpa"], "refraction");
     const model = enumValue(weather.model, "refraction.model", {
       bennett: CODES.CELESTIAL_REFRACTION_BENNETT,
       saemundsson: CODES.CELESTIAL_REFRACTION_SAEMUNDSSON,

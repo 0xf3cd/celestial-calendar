@@ -266,14 +266,15 @@ auto operation_model_text(const uint32_t operation) -> std::string {
     case CELESTIAL_OPERATION_RISE_SET:
       return std::format(
         "Solar rise/set is transit-centred on a UT1 date: events can lie outside that date. "
-        "Lunar and planetary queries use [0h,24h) UT1, retaining the later crossing of each kind "
-        "and first selected transit, including the native exact-midnight crossing exception. "
+        "Lunar and planetary queries use [0h,24h) UT1: of two rises or sets, return the later; "
+        "of two transits, the earlier. A rise or set exactly at 0h UT1 belongs to neither neighbouring day. "
         "Missing events are independent of polar topology; returned times are TT. "
         "Sun/Moon use geocentric coordinates; solar h0 defaults to -50/60 degrees in the bindings, "
         "lunar h0 uses midday parallax and supplied horizon atmosphere. "
         "Planets use WGS84 topocentric airless coordinates and h0 defaults to -34/60 degrees. "
         "Use EQUATORIAL provider domains for the ten physical targets. Every internal sample must fit, "
-        "including estimates/derivatives outside the day; Pluto midnight admission is insufficient. "
+        "including estimates/derivatives outside the day. Midnight inside Pluto's domain alone does not "
+        "guarantee a successful day query; an out-of-domain sample is invalid input. "
         "Fixed IAU1980 and Delta T {}. Validation: rise_set_cabi_test.cpp.",
         delta_t
       );

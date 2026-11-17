@@ -40,7 +40,7 @@ The queries take explicit JDE(TT) intervals. Sampled searches can miss events wi
 
 For daily Sun, Moon and planet summaries, use `solar_rise_set`, `lunar_rise_set`
 and `planet_rise_set`. The [rise/set guide](../../docs/RISE_SET.md) explains their
-different UT1 windows, optional TT events and civil-clock display.
+UT1-date selection, missing events, and conversion from TT to clock times.
 
 For full scalar disk sizes in arcseconds, use `apparent_diameter` with an optional
 WGS84 observer. See [apparent diameters](../../docs/APPARENT_DIAMETERS.md) for radius

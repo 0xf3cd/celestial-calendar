@@ -46,8 +46,9 @@ class SolarRiseSet:
 class LunarRiseSet:
   """Representative TT events in a UT1 day; a missing event is not a polar verdict.
 
-  The later crossing of each kind and first selected transit are retained. The
-  geocentric threshold uses midday parallax and the supplied horizon atmosphere.
+  Of two rises or sets, the later is returned; of two transits, the earlier.
+  A rise or set exactly at 0h UT1 belongs to neither neighbouring day.
+  The geocentric threshold uses midday parallax and the supplied horizon atmosphere.
   """
 
   source: ModelKey

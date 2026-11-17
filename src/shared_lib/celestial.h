@@ -1127,10 +1127,10 @@ CELESTIAL_API CelestialApparentDiameter celestial_apparent_diameter(uint32_t tar
 /** @brief Solar events around the selected local transit, with the supplied geocentric altitude. */
 typedef struct CelestialSolarRiseSet {
   bool valid;
-  uint32_t source_code;
-  uint32_t delta_t_identity_code;
-  uint32_t nutation_identity_code;
-  uint32_t present_fields; /* Only RISE, TRANSIT and SET; absent event slots are zero. */
+  uint32_t source_code;           /* CELESTIAL_POSITION_SOURCE_* */
+  uint32_t delta_t_identity_code; /* CELESTIAL_DELTA_T_MODEL_* */
+  uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
+  uint32_t present_fields; /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
   uint32_t polar_code;     /* CELESTIAL_RISE_SET_POLAR_*; DAY/NIGHT have no rise or set. */
   double rise_jde_tt;
   double transit_jde_tt;
@@ -1141,11 +1141,11 @@ typedef struct CelestialSolarRiseSet {
 /** @brief Representative lunar events in [0h,24h) UT1, with the supplied horizon atmosphere. */
 typedef struct CelestialLunarRiseSet {
   bool valid;
-  uint32_t source_code;
-  uint32_t delta_t_identity_code;
-  uint32_t nutation_identity_code;
+  uint32_t source_code;           /* CELESTIAL_POSITION_SOURCE_* */
+  uint32_t delta_t_identity_code; /* CELESTIAL_DELTA_T_MODEL_* */
+  uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
   uint32_t refraction_code;
-  uint32_t present_fields; /* Only RISE, TRANSIT and SET; absent event slots are zero. */
+  uint32_t present_fields; /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
   uint32_t polar_code;     /* Independent of missing transit; DAY/NIGHT have no rise or set. */
   double rise_jde_tt;
   double transit_jde_tt;
@@ -1158,11 +1158,11 @@ typedef struct CelestialLunarRiseSet {
 typedef struct CelestialPlanetRiseSet {
   bool valid;
   uint32_t target_code;
-  uint32_t source_code;
-  uint32_t delta_t_identity_code;
-  uint32_t nutation_identity_code;
-  uint32_t present_fields; /* Only RISE, TRANSIT and SET; absent event slots are zero. */
-  uint32_t polar_code;
+  uint32_t source_code;           /* CELESTIAL_POSITION_SOURCE_* */
+  uint32_t delta_t_identity_code; /* CELESTIAL_DELTA_T_MODEL_* */
+  uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
+  uint32_t present_fields; /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
+  uint32_t polar_code;     /* CELESTIAL_RISE_SET_POLAR_*; DAY/NIGHT have no rise or set. */
   double rise_jde_tt;
   double transit_jde_tt;
   double set_jde_tt;
@@ -1173,14 +1173,14 @@ typedef struct CelestialPlanetRiseSet {
  * @brief Return solar rise, upper transit and set around local mean noon of a UT1 date.
  * @param year Gregorian UT1 year in [1,32767]; all internal time conversions must remain supported.
  * @param month Gregorian month in [1,12].
- * @param day Valid Gregorian day, checked before narrowing.
+ * @param day Valid Gregorian day.
  * @param latitude_deg Geodetic latitude in [-90,90].
  * @param longitude_deg East longitude in [-180,180]; the endpoint signs can select transits a day apart.
  * @param h0_deg Geocentric centre altitude in [-90,90]; use -50/60 for standard sunrise/set,
  *        or -6, -12, -18 for civil, nautical or astronomical twilight.
- * @return Owned TT events and concrete source/default Delta T/IAU1980 identities, or valid=false.
+ * @return TT events by value, with position source/default Delta T/IAU1980 codes, or valid=false.
  * @note This is transit-centred: rise/set can lie outside the input date. Transit is always present
- *       on success. DAY/NIGHT describe the no-crossing topology. Read last_error_kind/message on failure.
+ *       on success. DAY/NIGHT mean polar day/night at h0. Read last_error_kind/message on failure.
  *       The weather-to-h0 helper sun::h0_from is available only in C++.
  */
 CELESTIAL_API CelestialSolarRiseSet celestial_solar_rise_set(int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, double h0_deg);
@@ -1195,10 +1195,10 @@ CELESTIAL_API CelestialSolarRiseSet celestial_solar_rise_set(int32_t year, uint3
  * @param refraction_code BENNETT or SAEMUNDSSON; NONE is rejected.
  * @param temperature_c Finite temperature greater than -273 Celsius.
  * @param pressure_hpa Finite positive pressure in hPa.
- * @return Owned TT events, independent polar topology and concrete identities, or valid=false.
+ * @return TT events by value, polar topology and source/model codes, or valid=false.
  * @note Uses geocentric coordinates and h0 = 0.7275 * midday horizontal parallax - horizon refraction.
- *       Any event can be absent without polar day/night. The later crossing of each kind and first
- *       selected transit are retained, including the native exact-midnight crossing exception.
+ *       Any event can be absent without polar day/night. Of two rises or sets, returns the later;
+ *       of two transits, the earlier. A rise or set exactly at 0h UT1 belongs to neither neighbouring day.
  *       Fixed default Delta T/IAU1980; convert TT for civil display. Read last_error_kind/message on failure.
  */
 CELESTIAL_API CelestialLunarRiseSet celestial_lunar_rise_set(int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, uint32_t refraction_code, double temperature_c, double pressure_hpa);
@@ -1213,7 +1213,7 @@ CELESTIAL_API CelestialLunarRiseSet celestial_lunar_rise_set(int32_t year, uint3
  * @param longitude_deg East longitude in [-180,180].
  * @param elevation_m Signed WGS84 ellipsoidal height in metres, subject to the observer's admission.
  * @param h0_deg Airless topocentric centre altitude in [-90,90]; standard rise/set uses -34/60.
- * @return Owned TT events, independent polar topology and concrete identities, or valid=false.
+ * @return TT events by value, polar topology and source/model codes, or valid=false.
  * @note Parallax is already in the coordinates; standard refraction is in h0. Elevation changes the
  *       site vector, not the horizon plane. Window and representative selection match the lunar query.
  *       Every provider sample must fit its EQUATORIAL domain, including estimates and derivatives

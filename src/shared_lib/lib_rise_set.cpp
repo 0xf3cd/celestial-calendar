@@ -97,6 +97,7 @@ auto celestial_lunar_rise_set(
       { .latitude = astro::toolbox::AngleDeg { latitude_deg }, .longitude = astro::toolbox::AngleDeg { longitude_deg } },
       *params
     );
+
     return CelestialLunarRiseSet {
       .valid = true,
       .source_code = lib::codes::code_of(astro::ephemeris::source_of(astro::ephemeris::Target::MOON)),

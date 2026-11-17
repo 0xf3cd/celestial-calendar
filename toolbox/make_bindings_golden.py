@@ -398,7 +398,8 @@ def generate_rise_set() -> dict:
   }
 
 
-if __name__ == "__main__":
+def main() -> None:
+  """Write the selected native dataset to its default or explicit destination."""
   parser = argparse.ArgumentParser(description="Regenerate the native binding golden dataset.")
   parser.add_argument("--out-path", type=Path, help=f"output path (default {OUT_PATH})")
   parser.add_argument("--rise-set", action="store_true", help="generate the separate daily-query parity dataset")
@@ -409,3 +410,7 @@ if __name__ == "__main__":
   destination = args.out_path or (OUT_PATH.with_name("rise_set_golden.json") if args.rise_set else OUT_PATH)
   destination.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
   print(f"[ make_bindings_golden ] {total} points -> {destination}")
+
+
+if __name__ == "__main__":
+  main()

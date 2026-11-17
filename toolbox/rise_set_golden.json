@@ -1,9 +1,9 @@
 {
   "schema": "celestial-calendar/rise-set-parity@1",
   "provenance": {
-    "source_commit": null,
+    "source_commit": "ecd3a41c0e9925c11da576bc301ca08470fe27e4",
     "source_snapshot_sha256": "9363c6c50492e971afae9ccb1baac73c7e2da177a0d4743272b21024470675e0",
-    "generated_on": "Linux x86_64, 2026-11-16",
+    "generated_on": "Linux x86_64, 2026-11-17",
     "reference": "Native C++ wrappers compared exactly with C in rise_set_cabi_test.cpp"
   },
   "days": [

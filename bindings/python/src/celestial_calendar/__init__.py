@@ -825,8 +825,8 @@ def observing_windows(
 def capabilities(operation: CapabilityOperation, subject: Target | None = None) -> tuple[CapabilityRecord, ...]:
   """Return native TT capability records for POSITION, LONGITUDE_RATE, EVENTS or EQUATORIAL.
 
-  subject selects a Target; None selects every target. HOUSES, CHART, DELTA_T, TOPOCENTRIC
-  and APPARENT_DIAMETER raise ValueError. Use house_capability(delta_t_model=...) for civil-house policy
+  subject selects a Target; None selects every target. HOUSES, CHART, DELTA_T, TOPOCENTRIC,
+  APPARENT_DIAMETER and RISE_SET raise ValueError. Use house_capability(delta_t_model=...) for civil-house policy
   and capability_text() for operation-wide descriptions.
   """
   checked = _enum(operation, CapabilityOperation, "operation")
@@ -877,8 +877,8 @@ def model_identity_text(key: ModelKey) -> str:
 def capability_text(operation: CapabilityOperation, subject: Target | None = None) -> str:
   """Describe an operation's sources, corrections, defaults and domains.
 
-  Target operations require a concrete Target subject. HOUSES, CHART, DELTA_T, TOPOCENTRIC
-  and APPARENT_DIAMETER require subject=None for operation-wide text; a Target there raises ValueError.
+  Target operations require a concrete Target subject. HOUSES, CHART, DELTA_T, TOPOCENTRIC,
+  APPARENT_DIAMETER and RISE_SET require subject=None for operation-wide text; a Target there raises ValueError.
   Use model_identity_text() for a model key, not a registry ordinal.
   """
   checked = _enum(operation, CapabilityOperation, "operation")
@@ -1089,7 +1089,7 @@ def apparent_diameter(
 
 
 def solar_rise_set(date_ut1: GregorianDate, location: GeoLocation, *, h0_deg: float = -50.0 / 60.0) -> SolarRiseSet:
-  """Return TT events around local solar transit of a UT1 date, not a civil-day cell.
+  """Return TT events around local solar transit selected by a UT1 date.
 
   Rise/set can fall outside the input date; ±180° can select transits a day apart.
   Pass -6, -12 or -18 for twilight. The weather-to-h0 helper remains C++-only.
@@ -1107,11 +1107,12 @@ def lunar_rise_set(
   *,
   refraction: RefractionParams = _LUNAR_STANDARD_ATMOSPHERE,
 ) -> LunarRiseSet:
-  """Return representative TT events in [0h,24h) UT1, preserving missing events.
+  """Return representative TT events in [0h,24h) UT1, with None for missing events.
 
   Uses geocentric coordinates and a midday-parallax/horizon-refraction threshold.
-  Weather admits finite temperature > -273°C and positive pressure. The native
-  exact-midnight crossing exception and representative-event selection are retained.
+  Weather accepts finite temperature > -273°C and positive pressure.
+  Of two rises or two sets, the later is returned; of two transits, the earlier.
+  A rise or set exactly at 0h UT1 is returned for neither neighbouring day.
   """
   date = _civil_date(date_ut1, "date_ut1")
   site = _location(location)

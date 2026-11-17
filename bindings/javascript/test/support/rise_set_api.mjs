@@ -60,6 +60,49 @@ export function runRiseSetAcceptance(celestial, golden) {
     }
   }
   const date = { year: 2025, month: 1, day: 1 };
+  const location = { latitudeDeg: 40, longitudeDeg: 0 };
+  const site = { ...location, elevationM: 0 };
+  const reject = (call, type, message) => {
+    try { call(); } catch (error) {
+      check(error instanceof type && (!message || error.message.includes(message)), "daily argument error");
+      return;
+    }
+    throw new Error("daily argument accepted");
+  };
+  for (const target of ["sun", "moon", "trueAscendingNode", "unknown"]) {
+    reject(() => celestial.riseSet.planet(target, date, site), RangeError);
+  }
+  for (const query of [celestial.riseSet.solar, celestial.riseSet.lunar]) {
+    reject(() => query(null, location), TypeError);
+    reject(() => query(date, null), TypeError);
+    reject(() => query(date, { ...location, elevationM: 0 }), TypeError);
+    reject(() => query(date, Object.assign(Object.create({ elevationM: 1000 }), location)), TypeError);
+    reject(() => query(date, Object.create(location)), TypeError);
+    reject(() => query(date, location, null), TypeError);
+    reject(() => query(date, location, { unknown: 1 }), TypeError);
+  }
+  reject(() => celestial.riseSet.planet("mars", date, location), TypeError);
+  reject(() => celestial.riseSet.solar(date, location, { refraction: {} }), TypeError);
+  reject(() => celestial.riseSet.lunar(date, location, { h0Deg: 0 }), TypeError);
+  reject(() => celestial.riseSet.solar(date, location, Object.create({ h0Deg: 0 })), TypeError);
+  reject(() => celestial.riseSet.lunar(date, location, { refraction: null }), TypeError);
+  reject(() => celestial.riseSet.lunar(date, location, { refraction: { model: "none" } }), RangeError);
+  reject(() => celestial.riseSet.lunar(date, location, {
+    refraction: Object.assign(Object.create({ temperatureC: 15 }), { model: "bennett" }),
+  }), TypeError, "refraction");
+  for (const value of [NaN, Infinity, -Infinity]) {
+    reject(() => celestial.riseSet.solar(date, location, { h0Deg: value }), RangeError);
+    reject(() => celestial.riseSet.planet("mars", date, site, { h0Deg: value }), RangeError);
+    reject(() => celestial.riseSet.planet("mars", date, { ...site, elevationM: value }), RangeError);
+    for (const query of [celestial.riseSet.solar, celestial.riseSet.lunar]) {
+      reject(() => query(date, { ...location, latitudeDeg: value }), RangeError);
+    }
+    for (const field of ["temperatureC", "pressureHpa"]) {
+      reject(() => celestial.riseSet.lunar(date, location, {
+        refraction: { model: "bennett", [field]: value },
+      }), RangeError);
+    }
+  }
   const cold = celestial.riseSet.lunar(date, { latitudeDeg: 40, longitudeDeg: 0 }, {
     refraction: { model: "bennett", temperatureC: -100, pressureHpa: 200 },
   });

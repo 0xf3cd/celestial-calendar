@@ -245,7 +245,10 @@ TEST(CapabilityCAbi, TextExportSizersThenFills) {
       EXPECT_NE(text.find("true-ecliptic longitude"), std::string::npos);
     }
   }
-  for (const uint32_t operation : { CELESTIAL_OPERATION_HOUSES, CELESTIAL_OPERATION_CHART, CELESTIAL_OPERATION_DELTA_T }) {
+  for (const uint32_t operation : {
+    CELESTIAL_OPERATION_HOUSES, CELESTIAL_OPERATION_CHART, CELESTIAL_OPERATION_DELTA_T,
+    CELESTIAL_OPERATION_TOPOCENTRIC, CELESTIAL_OPERATION_APPARENT_DIAMETER, CELESTIAL_OPERATION_RISE_SET,
+  }) {
     EXPECT_FALSE(expect_sized_text([operation](char* buffer, const uint32_t capacity) {
       return celestial_capability_text(operation, CELESTIAL_TARGET_ALL, buffer, capacity);
     }).empty());

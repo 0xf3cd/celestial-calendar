@@ -43,17 +43,47 @@ def request(day, target, custom):
     return (
       "celestial_lunar_rise_set",
       args + ([2, -20.0, 800.0] if custom else [1, 15.0, 1013.25]),
-      lambda: c.lunar_rise_set(label, site, refraction=weather),
+      lambda: c.lunar_rise_set(label, site, refraction=weather) if custom else c.lunar_rise_set(label, site),
     )
   h0 = 0.0 if custom else -34.0 / 60
   return (
     "celestial_planet_rise_set",
     [target, *args, elevation, h0],
-    lambda: c.planet_rise_set(tuple(c.Target)[target], label, c.Observer(latitude, longitude, elevation), h0_deg=h0),
+    lambda: (
+      c.planet_rise_set(tuple(c.Target)[target], label, c.Observer(latitude, longitude, elevation), h0_deg=h0)
+      if custom
+      else c.planet_rise_set(tuple(c.Target)[target], label, c.Observer(latitude, longitude, elevation))
+    ),
   )
 
 
 def main():
+  date = c.GregorianDate(2025, 1, 1)
+  location = c.GeoLocation(40, 0)
+  observer = c.Observer(40, 0, 0)
+  for target in (c.Target.SUN, c.Target.MOON, c.Target.TRUE_ASCENDING):
+    raises(ValueError, lambda target=target: c.planet_rise_set(target, date, observer))
+  raises(TypeError, lambda: c.planet_rise_set("mars", date, observer))
+  raises(TypeError, lambda: c.planet_rise_set(c.Target.MARS, date, location))
+  for query in (c.solar_rise_set, c.lunar_rise_set):
+    raises(TypeError, lambda query=query: query((2025, 1, 1), location))
+    raises(TypeError, lambda query=query: query(date, observer))
+  raises(TypeError, lambda: c.lunar_rise_set(date, location, refraction=1))
+  for value in (math.nan, math.inf, -math.inf):
+    raises(ValueError, lambda value=value: c.solar_rise_set(date, location, h0_deg=value))
+    raises(ValueError, lambda value=value: c.planet_rise_set(c.Target.MARS, date, observer, h0_deg=value))
+    raises(ValueError, lambda value=value: c.planet_rise_set(c.Target.MARS, date, c.Observer(40, 0, value)))
+    for query in (c.solar_rise_set, c.lunar_rise_set):
+      raises(ValueError, lambda query=query, value=value: query(date, c.GeoLocation(value, 0)))
+    for weather in (
+      c.RefractionParams(c.RefractionModel.BENNETT, value, 1013.25),
+      c.RefractionParams(c.RefractionModel.BENNETT, 15, value),
+    ):
+      raises(ValueError, lambda weather=weather: c.lunar_rise_set(date, location, refraction=weather))
+  standard = c.lunar_rise_set(date, location)
+  assert standard.refraction == c.RefractionParams(c.RefractionModel.BENNETT, 15, 1013.25)
+  assert c.planet_rise_set(c.Target.MARS, date, observer).h0_deg == -34.0 / 60
+
   # Independent C11/native64 pins, deliberately not read from a generated manifest.
   layouts = (
     (_abi.CelestialSolarRiseSet, 56, [0, 4, 8, 12, 16, 20, 24, 32, 40, 48]),
