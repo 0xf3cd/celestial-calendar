@@ -243,7 +243,8 @@ console.log(celestial.lunar.toGregorian("algo3", result));
 <a id="api-contract"></a>
 ## API 契约
 
-根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart`、`observer`、`diameter` 命名空间，并随包提供 TypeScript 声明。
+根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart`、`position`、`events`、
+`observer`、`diameter` 和 `riseSet` 命名空间，并随包提供 TypeScript 声明。
 模型和月相选项使用字符串联合类型，如 `"full"`、`"algo3"`。
 现有的 `sun`／`moon` 地心辅助查询、`observer.position()` 和 `diameter.query()` 均为公开 API。
 `position.ecliptic(targets, jdeTt)` 和 `position.equatorial(targets, jdeTt)` 提供独立地心位置，

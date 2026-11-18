@@ -228,7 +228,8 @@ const countThenFill = (cName, operation, args, layoutName = null, readRecord = r
   const countPtr = allocate(M, 4, operation);
 
   try {
-    M.HEAPU32[countPtr >> 2] = 0;
+    // Both passes must write their total, including an empty success.
+    M.HEAPU32[countPtr >> 2] = 0xFFFFFFFF;
     const queried = M[binding.wasmName](...args, countPtr, 0, 0);
     checkError(M, operation);
     const count = M.HEAPU32[countPtr >> 2];
@@ -250,6 +251,7 @@ const countThenFill = (cName, operation, args, layoutName = null, readRecord = r
           }
         }
       }
+      M.HEAPU32[countPtr >> 2] = 0xFFFFFFFF;
       const written = M[binding.wasmName](...args, countPtr, slots, count);
       checkError(M, operation);
       if (written !== count || M.HEAPU32[countPtr >> 2] !== count) {

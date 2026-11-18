@@ -34,7 +34,7 @@ export function testPositionEventsFakeNative(fixture, M, control, reset, called,
   const configure = (records, changes = {}) => {
     rows = records;
     reset({ count: records.length, total: records.length, fillWritten: records.length,
-      omit: undefined, guardAbsentDistance: false, ...changes });
+      omit: undefined, omitCount: undefined, guardAbsentDistance: false, ...changes });
   };
   for (const [name, layoutName] of cases) {
     const layout = layouts[layoutName];
@@ -50,7 +50,9 @@ export function testPositionEventsFakeNative(fixture, M, control, reset, called,
           : name === "celestial_longitude_stations" ? [0, start, end] : [1, 0, 60, start, end];
         assert.deepEqual(args.slice(0, -3), expected, "literal event argument order");
       }
-      M.HEAPU32[count >> 2] = slots ? control.total : control.count;
+      if ((slots ? "fill" : "count") !== control.omitCount) {
+        M.HEAPU32[count >> 2] = slots ? control.total : control.count;
+      }
       if (!slots) return control.countWritten;
       rows.slice(0, capacity).forEach((record, index) => {
         for (const field of layout.fields) {
@@ -79,6 +81,7 @@ export function testPositionEventsFakeNative(fixture, M, control, reset, called,
     assert.equal(control.live.size, 0, "position/event failure leaked memory");
   };
   let corruptions = 0;
+  let missingCounts = 0;
   for (const [name, layoutName, action, clean, allocations] of cases) {
     configure([clean], { grow: true });
     const owned = action();
@@ -93,6 +96,9 @@ export function testPositionEventsFakeNative(fixture, M, control, reset, called,
     }
     for (const changes of [{ countWritten: 1 }, { total: 2 }, { fillWritten: 0 }, { count: 0xFFFFFFFF }]) {
       configure([clean], changes); fails(action);
+    }
+    for (const pass of ["count", "fill"]) {
+      configure([clean], { omitCount: pass }); fails(action); ++missingCounts;
     }
     for (const pass of ["count", "fill"]) {
       for (const kind of [1, 2, 3, 4, 99]) {
@@ -154,5 +160,5 @@ export function testPositionEventsFakeNative(fixture, M, control, reset, called,
   configure([station]);
   assert.equal(cases[3][2]()[0].longitudeDeg, 721, "station longitude stays raw");
   reset();
-  console.log(`PASS position/events fake native: ${corruptions} malformed controls; 12 allocation paths; errors; growth; ownership; raw longitudes`);
+  console.log(`PASS position/events fake native: ${corruptions} malformed controls; ${missingCounts} unwritten-count controls; 12 allocation paths; errors; growth; ownership; raw longitudes`);
 }
