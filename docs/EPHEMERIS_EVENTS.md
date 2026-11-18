@@ -122,8 +122,9 @@ console.log(differences.map(({ signedDifferenceDeg }) => signedDifferenceDeg));
 ```
 
 These searches use geocentric longitude, not the local centre altitude searched
-by [`observer.altitudeEvents`](ALTITUDE_EVENTS.md), and do not describe apparent-disk
-contacts. Use [`position.ecliptic/equatorial`](../bindings/javascript/README.md#independent-positions)
+by [`observer.altitudeEvents`](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/ALTITUDE_EVENTS.md),
+and do not describe apparent-disk contacts.
+Use [`position.ecliptic/equatorial`](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README.md#independent-positions)
 to obtain coordinates at a single TT instant instead of searching an interval.
 The older `sun.longitudeCrossings(year, longitudeDeg)` remains an annual query
 with its own domain and endpoint rules.

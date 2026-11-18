@@ -285,6 +285,7 @@ The C++ `capability::domain_record` / `domain_records` facade composes typed ope
 values with optional intervals/span limits. Raw NaN/code encoding and runtime model/text registries belong to
 `shared_lib`, not the core facade. All these domains describe admission rules, not accuracy guarantees.
 
+<a id="c-independent-position-and-house-queries"></a>
 ## C Independent Position and House Queries
 
 `celestial_positions` evaluates the caller's selected targets at one finite JDE(TT) under the
@@ -302,7 +303,7 @@ the AU distance the nodes never carry.
 resolved source. It projects all fourteen targets with fixed IAU 1980 longitude nutation and true obliquity;
 mathematical nodes have no distance. Neither query evaluates rates, houses or civil conversion.
 JavaScript exposes these operations as
-[`position.ecliptic` and `position.equatorial`](../bindings/javascript/README.md#independent-positions),
+[`position.ecliptic` and `position.equatorial`](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README.md#independent-positions),
 with frozen records, nullable AU distances and the same numeric source identities.
 
 `celestial_house_query` returns `CelestialHouseQueryResult` by value using the public

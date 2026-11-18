@@ -64,6 +64,25 @@ if (!(sky.distanceAu > 0) || sky.apparentAltitudeDeg !== null) throw new Error("
 console.log(sky.altitudeDeg, sky.azimuthDeg);
 ```
 
+<a id="independent-positions"></a>
+### 按需查询地心位置
+
+```js
+import { init, position } from "@0xf3cd/celestial";
+
+await init();
+const bodies = position.ecliptic(["moon", "trueAscending"], 2451545.0);
+console.log(bodies[0].longitudeDeg, bodies[0].distanceAu);
+console.log(bodies[1].distanceAu); // null: a mathematical node has no distance
+const equatorial = position.equatorial(["mars"], 2451545.0);
+console.log(equatorial[0].rightAscensionDeg, equatorial[0].declinationDeg);
+```
+
+传入 JDE(TT) 后，结果按目标顺序返回，数组和记录均冻结。经纬度、赤经和赤纬以度为单位；
+距离为 AU（月球也一样），交点距离为 `null`。空选和重复目标会失败；
+只检查所选目标各自的位置模型域，不计算速率、宫位或民用时间转换。
+字段、来源码与模型窗口见[英文说明](README.md#independent-positions)。
+
 <a id="chart-snapshot"></a>
 ### 固定时刻的星盘快照
 
