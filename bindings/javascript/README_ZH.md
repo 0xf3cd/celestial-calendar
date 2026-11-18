@@ -227,7 +227,13 @@ console.log(celestial.lunar.toGregorian("algo3", result));
 根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart`、`observer`、`diameter` 命名空间，并随包提供 TypeScript 声明。
 模型和月相选项使用字符串联合类型，如 `"full"`、`"algo3"`。
 现有的 `sun`／`moon` 地心辅助查询、`observer.position()` 和 `diameter.query()` 均为公开 API。
-JavaScript 未提供通用的独立地心黄道／赤道位置、宫位、区间事件、能力与模型文本查询接口。
+`position.ecliptic(targets, jdeTt)` 和 `position.equatorial(targets, jdeTt)` 提供独立地心位置，
+按所选目标顺序返回冻结记录；时间为 JDE(TT)，距离为 AU（月球也一样），交点距离为 `null`。
+空选、重复目标和任一目标超出自身模型域会失败，不套全盘联合窗口，也不计算速率。
+字段、来源码与示例见[独立位置用法（英文）](README.md#independent-positions)。
+`events.longitudeCrossings`、`longitudeStations`、`longitudeDifferences` 搜索半开 TT 区间，
+保留原生切触／方向语义；见[黄经事件指南（英文）](../../docs/EPHEMERIS_EVENTS.md#javascript)。
+独立宫位、能力与模型文本查询仍只提供 C／Python 接口。
 `Jieqi` 是冻结对象，包含 24 个具名常量，从 `Jieqi.LICHUN = 0` 到 `Jieqi.DAHAN = 23`，拼写与 Python 包一致。
 TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `number` 变量须先收窄类型，
 才能传给 `jieqi.moment()` 或 `jieqi.name()`。`jieqi.name()` 返回中文名，如 `Jieqi.LICHUN` 对应 `"立春"`。

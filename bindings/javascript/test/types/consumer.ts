@@ -47,6 +47,35 @@ const observed: celestial.TopocentricPosition = celestial.observer.position("moo
 const optionalAzimuth: number | null = observed.azimuthDeg;
 const optionalRa: number | null = observed.rightAscensionDeg;
 const site: celestial.Observer = { latitudeDeg: 0, longitudeDeg: -77, elevationM: 0 };
+const selectedTargets = ["sun", "trueAscending"] as const;
+const selected: readonly celestial.Position[] = celestial.position.ecliptic(selectedTargets, 2451545);
+const equatorial: readonly celestial.EquatorialPosition[] = celestial.position.equatorial(selectedTargets, 2451545);
+const crossingEvents: readonly celestial.LongitudeEvent[] = celestial.events.longitudeCrossings("mars", 360, 2451545, 2451555);
+const stationEvents: readonly celestial.StationEvent[] = celestial.events.longitudeStations("mercury", 2451545, 2451555);
+const differenceEvents: readonly celestial.LongitudeDifferenceEvent[] = celestial.events.longitudeDifferences("moon", "sun", -60, 2451545, 2451555);
+const stationMotion: celestial.StationMotion = stationEvents[0].motionAfter;
+const eventDirection: celestial.EventDirection = crossingEvents[0].direction;
+const selectedDistance: number | null = equatorial[0].distanceAu;
+void [stationMotion, eventDirection, selectedDistance, differenceEvents];
+// @ts-expect-error Position results have no instantaneous longitude rate.
+const selectedRate: number = selected[0].longitudeRateDegPerTtDay;
+// @ts-expect-error The selection is an array, not one target.
+celestial.position.ecliptic("sun", 2451545);
+// @ts-expect-error Civil timestamps are not JDE(TT) instants.
+celestial.position.equatorial(["sun"], civil);
+// @ts-expect-error Target spelling is checked statically.
+celestial.events.longitudeStations("earth", 2451545, 2451555);
+// @ts-expect-error Directed difference requires an explicit second target.
+celestial.events.longitudeDifferences("moon", 60, 2451545, 2451555);
+// @ts-expect-error Selected position records are frozen.
+selected[0].longitudeDeg = 0;
+// @ts-expect-error Selected position arrays are frozen.
+selected.push(selected[0]);
+// @ts-expect-error Event records are frozen.
+crossingEvents[0].direction = "increasing";
+// @ts-expect-error Node distance can be absent.
+const mandatoryDistance: number = selected[1].distanceAu;
+void [selectedRate, mandatoryDistance];
 const dayUt1 = { year: 2025, month: 1, day: 1 };
 const dailyLocation = { latitudeDeg: 0, longitudeDeg: -77 };
 const solarDaily: celestial.SolarRiseSet = celestial.riseSet.solar(dayUt1, dailyLocation, { h0Deg: -6 });

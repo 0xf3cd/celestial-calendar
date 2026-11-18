@@ -145,7 +145,7 @@ The Jieqi API is in [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp), includin
 and `JieqiGenerator`. Other self-contained headers are organized under `src/astro/`, `src/calendar/`, and `src/util/`.
 The headers for lunar nodes, longitude rates, charts, planetary illumination and planetary events are described
 in the [C++ guide of the API reference](docs/API.md#cpp-guide). Of these, the chart snapshot is also available
-from C, Python and JavaScript, the interval longitude events from C and Python, and the operation capabilities
+from C, Python and JavaScript, as are the interval longitude events; the operation capabilities
 and model identities from C and Python ([`capabilities`](bindings/python/README.md#capabilities)).
 
 [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) adds C++ interval searches for a supplied longitude,
@@ -157,6 +157,8 @@ instant are available without a full snapshot, from C, Python and C++
 ([`positions` / `equatorial_positions` / `house_query`](bindings/python/README.md#independent-queries)).
 Position queries use each selected target's provider window; the civil house query uses the shared civil policy,
 without the snapshot's joint target/rate window. C and Python results record resolved model/source identities.
+JavaScript exposes the selected position operations as
+[`position.ecliptic/equatorial`](bindings/javascript/README.md#independent-positions), with source codes.
 
 The [C++ header list](docs/API.md#cpp-headers) gives include spellings and separates query headers from
 physical types and lower-level support. A runnable [Next Jieqi example](docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8)
@@ -299,13 +301,13 @@ OS version floor is declared.
   available as C++ [`chart.hpp`](src/astro/chart.hpp), C [`celestial_chart_snapshot`](docs/API.md#c-chart-snapshot),
   Python [`chart_snapshot`](bindings/python/README.md#chart-snapshot-example) and JavaScript
   [`chart.snapshot`](bindings/javascript/README.md#chart-snapshot). The C ABI and both packages still expose
-  instantaneous longitude-rate queries only through this snapshot; C and Python also provide interval longitude events and
-  [independent position/house queries](bindings/python/README.md#independent-queries), which JavaScript does not expose.
+   instantaneous longitude-rate queries only through this snapshot. Independent positions and interval
+   longitude events are also available; independent house queries remain C/Python-only.
 - Interval longitude crossings, stations and directed two-body longitude differences: C++ provides
   [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp), C exposes `celestial_longitude_events` /
   `celestial_longitude_stations` / `celestial_longitude_difference_events`, and Python provides
   [`longitude_events` and related queries](bindings/python/README.md#interval-longitude-events).
-  See the [event guide](docs/EPHEMERIS_EVENTS.md); JavaScript does not expose these longitude-event queries.
+   JavaScript provides [`events.longitudeCrossings/longitudeStations/longitudeDifferences`](docs/EPHEMERIS_EVENTS.md#javascript).
 - Operation input bounds and model identities: C exposes `celestial_capabilities`, `celestial_house_capability`,
   `celestial_model_identities` and operation/model descriptions. Python provides
   [`capabilities` and related queries](bindings/python/README.md#capabilities); C++ provides
@@ -316,7 +318,8 @@ OS version floor is declared.
   `celestial_equatorial_positions` and `celestial_house_query`; Python provides
   [`positions`, `equatorial_positions` and `house_query`](bindings/python/README.md#independent-queries).
   Results carry resolved model/source identities. C++ provides `ephemeris::position`, `equatorial_position`
-  and the numeric operations in [`house.hpp`](src/astro/house.hpp). JavaScript exposes none of these queries.
+   and the numeric operations in [`house.hpp`](src/astro/house.hpp). JavaScript provides the two
+   [position queries](bindings/javascript/README.md#independent-positions), but not independent houses.
 - C++ yearly searches for planetary conjunction, opposition, quadrature, greatest elongation and exact stations
   return events ordered by JDE(TT). Events belong to `[Jan 1, next Jan 1)` UTC, with the library's UT1
   substitute before 1972. The `[1, 32766]` input year domain is not a guarantee of successful evaluation or modern

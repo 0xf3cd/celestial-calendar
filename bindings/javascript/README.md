@@ -48,6 +48,11 @@ Each JavaScript block below is a standalone ES module for `example.mjs` in your 
 <a id="examples"></a>
 ## Examples
 
+For selected geocentric positions without a full chart, use
+[`position.ecliptic` and `position.equatorial`](#independent-positions).
+For longitude crossings, stations and directed two-body differences, use
+[`events`](../../docs/EPHEMERIS_EVENTS.md#javascript).
+
 For interval altitude events, upper transits and intersections such as
 “Mars above 20° while the Sun is below −18°”, see [altitude events and observing windows](../../docs/ALTITUDE_EVENTS.md).
 The queries take explicit JDE(TT) intervals. Sampled searches can miss events without reporting an error.
@@ -77,6 +82,41 @@ const sky = observer.position("moon", { year: 2026, month: 11, day: 7, fraction:
 if (!(sky.distanceAu > 0) || sky.apparentAltitudeDeg !== null) throw new Error("observer result");
 console.log(sky.altitudeDeg, sky.azimuthDeg);
 ```
+
+<a id="independent-positions"></a>
+### Selected geocentric positions
+
+```js
+import { init, position } from "@0xf3cd/celestial";
+
+await init();
+const bodies = position.ecliptic(["moon", "trueAscending"], 2451545.0);
+console.log(bodies[0].longitudeDeg, bodies[0].distanceAu);
+console.log(bodies[1].distanceAu); // null: a mathematical node has no distance
+const equatorial = position.equatorial(["mars"], 2451545.0);
+console.log(equatorial[0].rightAscensionDeg, equatorial[0].declinationDeg);
+```
+
+The time is JDE(TT), not JD(UT1) or a JavaScript timestamp. Both operations return
+frozen arrays of frozen records in the supplied target order. Selections use the
+same fourteen names as `chart.snapshot`; empty or repeated selections fail.
+Ecliptic results give `longitudeDeg` and `latitudeDeg`; equatorial results give
+`rightAscensionDeg` and `declinationDeg`. Longitudes and right ascensions are in
+`[0,360)` degrees. Distances are AU, including the Moon's, or `null` for nodes.
+Later queries and WASM memory growth do not change an earlier result.
+
+Each selected target uses its own position-provider domain. No chart-wide joint
+window, house calculation, civil conversion or rate sampling is required.
+Pluto positions accept `[2409543.5,2488069.5)` JDE(TT); longitude-event searches
+reserve an additional `±3/8` day for their rate stencil. Position projection uses
+fixed IAU 1980 nutation and true obliquity.
+
+`sourceCode` is the existing C position-source identity: 1 for Sun/VSOP87D,
+2 for Moon/truncated ELP2000-82B, 3 for planets/VSOP87D, 4 for Pluto/Pluto95,
+5 for mean nodes, and 6 for Meeus five-term true nodes. These codes identify
+providers, not an accuracy bound. See the
+[C query contracts](../../docs/API.md#c-independent-position-and-house-queries)
+and [model descriptions](../python/README.md#capabilities).
 
 <a id="chart-snapshot"></a>
 ### Chart Snapshot at a Fixed Instant
@@ -251,10 +291,10 @@ and have the static server send it with `Content-Type: application/wasm`.
 <a id="api-contract"></a>
 ## API Contract
 
-The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, `chart`, `observer`, `diameter`, and `riseSet` namespaces, and the
+The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, `chart`, `position`, `events`, `observer`, `diameter`, and `riseSet` namespaces, and the
 package ships TypeScript declarations. Model and Moon phase options are string-literal unions such as `"full"` and
-`"algo3"`. The existing `sun`/`moon` geocentric helpers, `observer.position()` and `diameter.query()` are public. The general independent
-geocentric ecliptic/equatorial position, house, interval-event, capability and model-text query families are not exposed.
+`"algo3"`. Independent positions and interval longitude events are also public.
+Independent house, capability and model-text query families remain C/Python-only.
 `Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to
 `Jieqi.DAHAN = 23`, spelled as in the Python package. The TypeScript type `Jieqi` is the matching
 `0 | 1 | ... | 23` union; a plain `number` variable must be narrowed before it is passed to `jieqi.moment()` or
