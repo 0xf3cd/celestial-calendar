@@ -21,7 +21,7 @@ from .observer import RefractionParams
 
 
 class PolarTopology(StrEnum):
-  """DAY is above the event threshold; NIGHT is below; NONE gives no polar verdict."""
+  """DAY stays above the event threshold all day; NIGHT stays below; NONE is neither."""
 
   NONE = "none"
   DAY = "day"
@@ -44,7 +44,7 @@ class SolarRiseSet:
 
 @dataclass(frozen=True)
 class LunarRiseSet:
-  """Representative TT events in a UT1 day; a missing event is not a polar verdict.
+  """Representative TT events in a UT1 day; a missing event does not mean polar day or night.
 
   Of two rises or sets, the later is returned; of two transits, the earlier.
   A rise or set exactly at 0h UT1 belongs to neither neighbouring day.
@@ -76,7 +76,17 @@ class PlanetRiseSet:
   h0_deg: float
 
 
-def _events(native, target: Target) -> dict:
+def _slot(value: float, field: str, bit: int, mask: int) -> float | None:
+  value = finite(value, field)
+  if not mask & bit and value != 0.0:
+    raise ValueError("nonzero absent event slot")
+  return value if mask & bit else None
+
+
+def _events(
+  native: _abi.CelestialSolarRiseSet | _abi.CelestialLunarRiseSet | _abi.CelestialPlanetRiseSet,
+  target: Target,
+) -> dict:
   """Validate identities, topology and every absent slot before copying the scalar values."""
   if native.source_code != position_source_code(target):
     raise ValueError("unexpected rise/set position source")
@@ -84,7 +94,9 @@ def _events(native, target: Target) -> dict:
     raise ValueError("unexpected rise/set Delta T model")
   if native.nutation_identity_code != constant("NUTATION_MODEL_IAU_1980"):
     raise ValueError("unexpected rise/set nutation model")
-  rise, transit, setting = (constant("PRESENT_" + name) for name in ("RISE", "TRANSIT", "SET"))
+  rise = constant("PRESENT_RISE")
+  transit = constant("PRESENT_TRANSIT")
+  setting = constant("PRESENT_SET")
   mask = native.present_fields
   if mask & ~(rise | transit | setting):
     raise ValueError("unknown rise/set presence bits")
@@ -94,18 +106,15 @@ def _events(native, target: Target) -> dict:
   if target is Target.SUN and not mask & transit:
     raise ValueError("solar transit is absent")
 
-  result = {
+  return {
     "source": ModelKey(ModelKind.POSITION_SOURCE, native.source_code),
     "delta_t_model": ModelKey(ModelKind.DELTA_T, native.delta_t_identity_code),
     "nutation_model": ModelKey(ModelKind.NUTATION, native.nutation_identity_code),
     "polar": polar,
+    "rise_jde_tt": _slot(native.rise_jde_tt, "rise_jde_tt", rise, mask),
+    "transit_jde_tt": _slot(native.transit_jde_tt, "transit_jde_tt", transit, mask),
+    "set_jde_tt": _slot(native.set_jde_tt, "set_jde_tt", setting, mask),
   }
-  for field, bit in (("rise_jde_tt", rise), ("transit_jde_tt", transit), ("set_jde_tt", setting)):
-    value = finite(getattr(native, field), field)
-    if not mask & bit and value != 0.0:
-      raise ValueError("nonzero absent event slot")
-    result[field] = value if mask & bit else None
-  return result
 
 
 def decode_solar(native: _abi.CelestialSolarRiseSet, h0: float) -> SolarRiseSet:
@@ -125,8 +134,7 @@ def decode_lunar(native: _abi.CelestialLunarRiseSet, refraction: RefractionParam
     or finite(native.pressure_hpa, "pressure_hpa") != refraction.pressure_hpa
   ):
     raise ValueError("unexpected lunar atmosphere")
-  atmosphere = RefractionParams(refraction.model, native.temperature_c, native.pressure_hpa)
-  return LunarRiseSet(**_events(native, Target.MOON), refraction=atmosphere)
+  return LunarRiseSet(**_events(native, Target.MOON), refraction=refraction)
 
 
 def decode_planet(native: _abi.CelestialPlanetRiseSet, target: Target, h0: float) -> PlanetRiseSet:

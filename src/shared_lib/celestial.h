@@ -1130,8 +1130,8 @@ typedef struct CelestialSolarRiseSet {
   uint32_t source_code;            /* CELESTIAL_POSITION_SOURCE_* */
   uint32_t delta_t_identity_code;  /* CELESTIAL_DELTA_T_MODEL_* */
   uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
-  uint32_t present_fields; /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
-  uint32_t polar_code;     /* CELESTIAL_RISE_SET_POLAR_*; DAY/NIGHT have no rise or set. */
+  uint32_t present_fields;         /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
+  uint32_t polar_code;             /* CELESTIAL_RISE_SET_POLAR_*; DAY/NIGHT have no rise or set. */
   double rise_jde_tt;
   double transit_jde_tt;
   double set_jde_tt;
@@ -1144,9 +1144,9 @@ typedef struct CelestialLunarRiseSet {
   uint32_t source_code;            /* CELESTIAL_POSITION_SOURCE_* */
   uint32_t delta_t_identity_code;  /* CELESTIAL_DELTA_T_MODEL_* */
   uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
-  uint32_t refraction_code;
-  uint32_t present_fields; /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
-  uint32_t polar_code;     /* Independent of missing transit; DAY/NIGHT have no rise or set. */
+  uint32_t refraction_code;        /* CELESTIAL_REFRACTION_* */
+  uint32_t present_fields;         /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
+  uint32_t polar_code;             /* Independent of missing transit; DAY/NIGHT have no rise or set. */
   double rise_jde_tt;
   double transit_jde_tt;
   double set_jde_tt;
@@ -1161,8 +1161,8 @@ typedef struct CelestialPlanetRiseSet {
   uint32_t source_code;            /* CELESTIAL_POSITION_SOURCE_* */
   uint32_t delta_t_identity_code;  /* CELESTIAL_DELTA_T_MODEL_* */
   uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
-  uint32_t present_fields; /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
-  uint32_t polar_code;     /* CELESTIAL_RISE_SET_POLAR_*; DAY/NIGHT have no rise or set. */
+  uint32_t present_fields;         /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
+  uint32_t polar_code;             /* CELESTIAL_RISE_SET_POLAR_*; DAY/NIGHT have no rise or set. */
   double rise_jde_tt;
   double transit_jde_tt;
   double set_jde_tt;
@@ -1187,7 +1187,7 @@ CELESTIAL_API CelestialSolarRiseSet celestial_solar_rise_set(int32_t year, uint3
 
 /**
  * @brief Return representative lunar rise, upper transit and set for one UT1 date.
- * @param year Gregorian UT1 year in [1,32767], subject to all internal time conversions.
+ * @param year Gregorian UT1 year in [1,32767]; all internal time conversions must remain supported.
  * @param month Gregorian month in [1,12].
  * @param day Valid Gregorian day.
  * @param latitude_deg Geodetic latitude in [-90,90].
@@ -1206,7 +1206,8 @@ CELESTIAL_API CelestialLunarRiseSet celestial_lunar_rise_set(int32_t year, uint3
 /**
  * @brief Return representative planetary rise, upper transit and set for one UT1 date.
  * @param target_code Mercury through Pluto; Sun, Moon, nodes and unknown codes are rejected.
- * @param year Gregorian UT1 year in [1,32767], subject to provider samples and time conversions.
+ * @param year Gregorian UT1 year in [1,32767]; all internal time conversions must remain supported.
+ *        Provider samples must also remain inside the target's domain.
  * @param month Gregorian month in [1,12].
  * @param day Valid Gregorian day.
  * @param latitude_deg WGS84 geodetic latitude in [-90,90].

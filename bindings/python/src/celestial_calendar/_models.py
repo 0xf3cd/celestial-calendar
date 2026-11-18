@@ -108,6 +108,19 @@ def is_node(target: Target) -> bool:
   return target in (Target.MEAN_ASCENDING, Target.MEAN_DESCENDING, Target.TRUE_ASCENDING, Target.TRUE_DESCENDING)
 
 
+def is_planet(target: Target) -> bool:
+  return target in (
+    Target.MERCURY,
+    Target.VENUS,
+    Target.MARS,
+    Target.JUPITER,
+    Target.SATURN,
+    Target.URANUS,
+    Target.NEPTUNE,
+    Target.PLUTO,
+  )
+
+
 def position_source_code(target: Target) -> int:
   """Expected position provider for a physical target."""
   if is_node(target):

@@ -36,6 +36,7 @@ from ._models import ModelKey as ModelKey
 from ._models import ModelKind as ModelKind
 from ._models import NutationModel as NutationModel
 from ._models import Target as Target
+from ._models import is_planet as _is_planet
 from ._models import selector_code as _selector_code
 from ._protocol import CelestialError as CelestialError
 from ._version import VERSION as __version__
@@ -306,6 +307,16 @@ def _location(value: object) -> tuple[float, float]:
   if not isinstance(value, GeoLocation):
     raise TypeError("location must be a GeoLocation")
   return _finite(value.latitude_deg, "location.latitude_deg"), _finite(value.longitude_deg, "location.longitude_deg")
+
+
+def _observer_site(value: object) -> tuple[float, float, float]:
+  if not isinstance(value, Observer):
+    raise TypeError("observer must be an Observer")
+  return (
+    _finite(value.latitude_deg, "observer.latitude_deg"),
+    _finite(value.longitude_deg, "observer.longitude_deg"),
+    _finite(value.elevation_m, "observer.elevation_m"),
+  )
 
 
 def _result(export: str, operation: str, *args: object) -> object:
@@ -1147,25 +1158,10 @@ def planet_rise_set(
   for that domain. Missing transit is independent of polar topology.
   """
   checked_target = _enum(target, Target, "target")
-  if checked_target not in (
-    Target.MERCURY,
-    Target.VENUS,
-    Target.MARS,
-    Target.JUPITER,
-    Target.SATURN,
-    Target.URANUS,
-    Target.NEPTUNE,
-    Target.PLUTO,
-  ):
+  if not _is_planet(checked_target):
     raise ValueError("planet_rise_set requires Mercury through Pluto")
   date = _civil_date(date_ut1, "date_ut1")
-  if not isinstance(observer, Observer):
-    raise TypeError("observer must be an Observer")
-  site = (
-    _finite(observer.latitude_deg, "observer.latitude_deg"),
-    _finite(observer.longitude_deg, "observer.longitude_deg"),
-    _finite(observer.elevation_m, "observer.elevation_m"),
-  )
+  site = _observer_site(observer)
   h0 = _finite(h0_deg, "h0_deg")
   native = _result(
     "celestial_planet_rise_set", "planet_rise_set", _enum_code("TARGET", checked_target), *date, *site, h0

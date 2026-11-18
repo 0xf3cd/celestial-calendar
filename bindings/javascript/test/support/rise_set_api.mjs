@@ -62,6 +62,13 @@ export function runRiseSetAcceptance(celestial, golden) {
   const date = { year: 2025, month: 1, day: 1 };
   const location = { latitudeDeg: 40, longitudeDeg: 0 };
   const site = { ...location, elevationM: 0 };
+  const twilight = celestial.riseSet.solar(date, location, { h0Deg: -6 });
+  const moon = celestial.riseSet.lunar(date, location, {
+    refraction: { model: "bennett", temperatureC: 10, pressureHpa: 1000 },
+  });
+  const mars = celestial.riseSet.planet("mars", date, { ...location, elevationM: 100 });
+  check(twilight.h0Deg === -6 && moon.refraction.pressureHpa === 1000 && mars.h0Deg === -34 / 60,
+    "displayed altitude and weather choices");
   const reject = (call, type, message) => {
     try { call(); } catch (error) {
       check(error instanceof type && (!message || error.message.includes(message)), "daily argument error");

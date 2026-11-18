@@ -334,7 +334,7 @@ export interface SolarRiseSet {
   readonly h0Deg: number;
 }
 
-/** Representative TT instants in [0h,24h) UT1; a missing transit is not a polar verdict. */
+/** Representative TT instants in [0h,24h) UT1; a missing transit does not mean polar day or night. */
 export interface LunarRiseSet {
   readonly target: "moon";
   readonly sourceCode: number;
@@ -367,12 +367,12 @@ export const riseSet: Readonly<{
    * Longitude ±180 can select transits a day apart. */
   solar(dateUt1: GregorianDate, location: GeoLocation & { elevationM?: never }, options?: { h0Deg?: number | undefined }): SolarRiseSet;
   /** Geocentric threshold uses midday parallax and horizon atmosphere (default Bennett).
-    * Of two rises or sets, returns the later; of two transits, the earlier.
-    * A rise or set exactly at 0h UT1 is returned for neither neighbouring day. */
+   * Of two rises or sets, returns the later; of two transits, the earlier.
+   * A rise or set exactly at 0h UT1 is returned for neither neighbouring day. */
   lunar(dateUt1: GregorianDate, location: GeoLocation & { elevationM?: never }, options?: { refraction?: RefractionOptions | undefined }): LunarRiseSet;
   /** Topocentric coordinates already include parallax; standard h0 is -34/60 deg.
-    * Every provider sample must fit its TT domain, including estimates outside the day.
-    * The daily-query guide describes provider limits; JavaScript has no capability-query API. */
+   * Every provider sample must fit its TT domain, including estimates outside the day.
+   * The daily-query guide describes provider limits; JavaScript has no capability-query API. */
   planet(target: PlanetTarget, dateUt1: GregorianDate, site: Observer, options?: { h0Deg?: number | undefined }): PlanetRiseSet;
 }>;
 

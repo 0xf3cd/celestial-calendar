@@ -39,6 +39,19 @@ auto present_fields(const astro::rise_set::Result& result) -> uint32_t {
     | (result.set_jde_tt.has_value() ? CELESTIAL_PRESENT_SET : UINT32_C(0));
 }
 
+/** @brief Map the core polar classification to the stable C codes. */
+auto polar_code(const astro::rise_set::Result& result) -> uint32_t {
+  return lib::codes::detail::from_value(POLAR_CODES, result.polar).code;
+}
+
+/** @brief Construct a geodetic location from C coordinates in degrees. */
+auto location(const double latitude_deg, const double longitude_deg) -> astro::GeoLocation {
+  return {
+    .latitude = astro::toolbox::AngleDeg { latitude_deg },
+    .longitude = astro::toolbox::AngleDeg { longitude_deg },
+  };
+}
+
 } // namespace
 
 extern "C" {
@@ -56,7 +69,7 @@ auto celestial_solar_rise_set(
     lib::civil::validate(year, month, day, 0.0);
     const auto result = astro::rise_set::sun::calculate(
       util::to_ymd(year, month, day),
-      { .latitude = astro::toolbox::AngleDeg { latitude_deg }, .longitude = astro::toolbox::AngleDeg { longitude_deg } },
+      location(latitude_deg, longitude_deg),
       astro::toolbox::AngleDeg { h0_deg }
     );
 
@@ -66,7 +79,7 @@ auto celestial_solar_rise_set(
       .delta_t_identity_code = lib::codes::code_of(astro::delta_t::DEFAULT_MODEL),
       .nutation_identity_code = lib::codes::code_of(astro::earth::nutation::Model::IAU_1980),
       .present_fields = present_fields(result),
-      .polar_code = lib::codes::detail::from_value(POLAR_CODES, result.polar).code,
+      .polar_code = polar_code(result),
       .rise_jde_tt = result.rise_jde_tt.value_or(0.0),
       .transit_jde_tt = result.transit_jde_tt.value_or(0.0),
       .set_jde_tt = result.set_jde_tt.value_or(0.0),
@@ -94,7 +107,7 @@ auto celestial_lunar_rise_set(
 
     const auto result = astro::rise_set::moon::calculate(
       util::to_ymd(year, month, day),
-      { .latitude = astro::toolbox::AngleDeg { latitude_deg }, .longitude = astro::toolbox::AngleDeg { longitude_deg } },
+      location(latitude_deg, longitude_deg),
       *params
     );
 
@@ -105,7 +118,7 @@ auto celestial_lunar_rise_set(
       .nutation_identity_code = lib::codes::code_of(astro::earth::nutation::Model::IAU_1980),
       .refraction_code = refraction_code,
       .present_fields = present_fields(result),
-      .polar_code = lib::codes::detail::from_value(POLAR_CODES, result.polar).code,
+      .polar_code = polar_code(result),
       .rise_jde_tt = result.rise_jde_tt.value_or(0.0),
       .transit_jde_tt = result.transit_jde_tt.value_or(0.0),
       .set_jde_tt = result.set_jde_tt.value_or(0.0),
@@ -131,10 +144,7 @@ auto celestial_planet_rise_set(
     const auto result = astro::rise_set::planet::calculate(
       util::to_ymd(year, month, day),
       {
-        .location = {
-          .latitude = astro::toolbox::AngleDeg { latitude_deg },
-          .longitude = astro::toolbox::AngleDeg { longitude_deg },
-        },
+        .location = location(latitude_deg, longitude_deg),
         .elevation = astro::toolbox::DistanceKm { elevation_m / 1000.0 },
       },
       target,
@@ -148,7 +158,7 @@ auto celestial_planet_rise_set(
       .delta_t_identity_code = lib::codes::code_of(astro::delta_t::DEFAULT_MODEL),
       .nutation_identity_code = lib::codes::code_of(astro::earth::nutation::Model::IAU_1980),
       .present_fields = present_fields(result),
-      .polar_code = lib::codes::detail::from_value(POLAR_CODES, result.polar).code,
+      .polar_code = polar_code(result),
       .rise_jde_tt = result.rise_jde_tt.value_or(0.0),
       .transit_jde_tt = result.transit_jde_tt.value_or(0.0),
       .set_jde_tt = result.set_jde_tt.value_or(0.0),

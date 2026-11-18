@@ -998,6 +998,112 @@ const diameterQuery = (target, civil, options) => {
   });
 };
 
+const riseSetOptions = (value, keys, name = "options") => {
+  requiredRecord(value, name, [], []);
+  if (Reflect.ownKeys(value).some((key) => !keys.includes(key))
+    || keys.some((key) => key in value && !Object.hasOwn(value, key))) {
+    throw new TypeError(`${name} requires own ${keys.join("/")} fields only.`);
+  }
+  return value;
+};
+
+const riseSetSite = (value, keys) => {
+  const site = requiredRecord(value, "site", keys, []);
+  if (Reflect.ownKeys(site).some((key) => !keys.includes(key))
+    || (!keys.includes("elevationM") && "elevationM" in site)) throw new TypeError("Unknown site field.");
+  return keys.map((key) => finiteNumber(site[key], `site.${key}`));
+};
+
+const riseSetRefraction = (options) => {
+  riseSetOptions(options, ["refraction"]);
+  const weather = options.refraction === undefined ? { model: "bennett" } : options.refraction;
+  requiredRecord(weather, "refraction", ["model"], []);
+  riseSetOptions(weather, ["model", "temperatureC", "pressureHpa"], "refraction");
+  const code = enumValue(weather.model, "refraction.model", {
+    bennett: CODES.CELESTIAL_REFRACTION_BENNETT,
+    saemundsson: CODES.CELESTIAL_REFRACTION_SAEMUNDSSON,
+  });
+  const temperatureC = finiteNumber(weather.temperatureC === undefined ? 15 : weather.temperatureC, "temperatureC");
+  const pressureHpa = finiteNumber(weather.pressureHpa === undefined ? 1013.25 : weather.pressureHpa, "pressureHpa");
+  return { code, params: Object.freeze({ model: weather.model, temperatureC, pressureHpa }) };
+};
+
+const riseSetEvents = (native, operation, target) => {
+  const code = CHART_CODES.targets[target];
+  if (native.source_code !== physicalSource(code)
+    || native.delta_t_identity_code !== CODES.CELESTIAL_DELTA_T_MODEL_ALGO5
+    || native.nutation_identity_code !== CODES.CELESTIAL_NUTATION_MODEL_IAU_1980
+    || (target !== "sun" && target !== "moon" && native.target_code !== code)) malformed(operation, "target/source/models");
+  const rise = CODES.CELESTIAL_PRESENT_RISE;
+  const transit = CODES.CELESTIAL_PRESENT_TRANSIT;
+  const setting = CODES.CELESTIAL_PRESENT_SET;
+  const mask = native.present_fields;
+  const polar = {
+    [CODES.CELESTIAL_RISE_SET_POLAR_NONE]: "none",
+    [CODES.CELESTIAL_RISE_SET_POLAR_DAY]: "day",
+    [CODES.CELESTIAL_RISE_SET_POLAR_NIGHT]: "night",
+  }[native.polar_code];
+  if (mask & ~(rise | transit | setting) || polar === undefined
+    || (polar !== "none" && mask & (rise | setting))
+    || (target === "sun" && !(mask & transit))) malformed(operation, "presence/topology");
+  const event = (field, bit) => {
+    if (!(mask & bit) && native[field] !== 0) malformed(operation, `absent ${field}`);
+    return mask & bit ? native[field] : null;
+  };
+  return {
+    target, sourceCode: native.source_code, deltaTModel: "algo5", nutationModel: "iau1980", polar,
+    riseJdeTt: event("rise_jde_tt", rise),
+    transitJdeTt: event("transit_jde_tt", transit),
+    setJdeTt: event("set_jde_tt", setting),
+  };
+};
+
+const solarRiseSet = (dateUt1, location, options = {}) => {
+  const operation = "riseSet.solar";
+  requireModule(operation);
+  const date = nativeGregorianDate(dateUt1, "dateUt1");
+  const site = riseSetSite(location, ["latitudeDeg", "longitudeDeg"]);
+  riseSetOptions(options, ["h0Deg"]);
+  const h0 = finiteNumber(options.h0Deg === undefined ? -50 / 60 : options.h0Deg, "h0Deg");
+  const native = callSret("celestial_solar_rise_set", operation, [date.year, date.month, date.day, ...site, h0]);
+  const result = riseSetEvents(native, operation, "sun");
+  if (native.h0_deg !== h0) malformed(operation, "h0");
+  return Object.freeze({ ...result, h0Deg: h0 });
+};
+
+const lunarRiseSet = (dateUt1, location, options = {}) => {
+  const operation = "riseSet.lunar";
+  requireModule(operation);
+  const date = nativeGregorianDate(dateUt1, "dateUt1");
+  const site = riseSetSite(location, ["latitudeDeg", "longitudeDeg"]);
+  const refraction = riseSetRefraction(options);
+  const native = callSret("celestial_lunar_rise_set", operation, [
+    date.year, date.month, date.day, ...site,
+    refraction.code, refraction.params.temperatureC, refraction.params.pressureHpa,
+  ]);
+  const result = riseSetEvents(native, operation, "moon");
+  if (native.refraction_code !== refraction.code || native.temperature_c !== refraction.params.temperatureC
+    || native.pressure_hpa !== refraction.params.pressureHpa) malformed(operation, "atmosphere");
+  return Object.freeze({ ...result, refraction: refraction.params });
+};
+
+const planetRiseSet = (target, dateUt1, observer, options = {}) => {
+  const operation = "riseSet.planet";
+  requireModule(operation);
+  const date = nativeGregorianDate(dateUt1, "dateUt1");
+  const site = riseSetSite(observer, ["latitudeDeg", "longitudeDeg", "elevationM"]);
+  const code = enumValue(target, "target", CHART_CODES.targets);
+  if (code < CHART_CODES.targets.mercury || code > CHART_CODES.targets.pluto) {
+    throw new RangeError("riseSet.planet requires Mercury through Pluto.");
+  }
+  riseSetOptions(options, ["h0Deg"]);
+  const h0 = finiteNumber(options.h0Deg === undefined ? -34 / 60 : options.h0Deg, "h0Deg");
+  const native = callSret("celestial_planet_rise_set", operation, [code, date.year, date.month, date.day, ...site, h0]);
+  const result = riseSetEvents(native, operation, target);
+  if (native.h0_deg !== h0) malformed(operation, "h0");
+  return Object.freeze({ ...result, h0Deg: h0 });
+};
+
 export const diameter = Object.freeze({ query: diameterQuery });
 export const time = Object.freeze({ ut1ToJd, ut1ToJde, jdeToUt1, utcToJde, jdeToUtc, localApparentSiderealTime, deltaT });
 export const sun = Object.freeze({
@@ -1017,91 +1123,10 @@ export const moon = Object.freeze({
 export const jieqi = Object.freeze({ moment: jieqiMoment, name: jieqiName });
 export const lunar = Object.freeze({ supportedYearRange, yearInfo, fromGregorian, toGregorian });
 export const chart = Object.freeze({ snapshot });
-const riseSetOptions = (value, keys, name = "options") => {
-  requiredRecord(value, name, [], []);
-  if (Reflect.ownKeys(value).some((key) => !keys.includes(key))
-    || keys.some((key) => key in value && !Object.hasOwn(value, key))) {
-    throw new TypeError(`${name} requires own ${keys.join("/")} fields only.`);
-  }
-  return value;
-};
-
-const dailyRiseSet = (kind, target, dateUt1, site, options) => {
-  const operation = `riseSet.${kind}`;
-  requireModule(operation);
-  const date = nativeGregorianDate(dateUt1, "dateUt1");
-  const siteKeys = kind === "planet" ? ["latitudeDeg", "longitudeDeg", "elevationM"] : ["latitudeDeg", "longitudeDeg"];
-  const location = requiredRecord(site, "site", siteKeys, []);
-  if (Reflect.ownKeys(location).some((key) => !siteKeys.includes(key))
-    || (kind !== "planet" && "elevationM" in location)) throw new TypeError("Unknown site field.");
-  const coordinates = siteKeys.map((key) => finiteNumber(location[key], `site.${key}`));
-  const code = enumValue(target, "target", CHART_CODES.targets);
-  if (kind === "planet" && (code < CHART_CODES.targets.mercury || code > CHART_CODES.targets.pluto)) {
-    throw new RangeError("riseSet.planet requires Mercury through Pluto.");
-  }
-  let atmosphere;
-  let h0;
-  let tail;
-  if (kind === "lunar") {
-    riseSetOptions(options, ["refraction"]);
-    const weather = options.refraction === undefined ? { model: "bennett" } : options.refraction;
-    requiredRecord(weather, "refraction", ["model"], []);
-    riseSetOptions(weather, ["model", "temperatureC", "pressureHpa"], "refraction");
-    const model = enumValue(weather.model, "refraction.model", {
-      bennett: CODES.CELESTIAL_REFRACTION_BENNETT,
-      saemundsson: CODES.CELESTIAL_REFRACTION_SAEMUNDSSON,
-    });
-    const temperatureC = finiteNumber(weather.temperatureC === undefined ? 15 : weather.temperatureC, "temperatureC");
-    const pressureHpa = finiteNumber(weather.pressureHpa === undefined ? 1013.25 : weather.pressureHpa, "pressureHpa");
-    atmosphere = Object.freeze({ model: weather.model, temperatureC, pressureHpa });
-    tail = [model, temperatureC, pressureHpa];
-  } else {
-    riseSetOptions(options, ["h0Deg"]);
-    h0 = finiteNumber(options.h0Deg === undefined ? (kind === "solar" ? -50 / 60 : -34 / 60) : options.h0Deg, "h0Deg");
-    tail = [h0];
-  }
-  const args = [date.year, date.month, date.day, ...coordinates, ...tail];
-  if (kind === "planet") args.unshift(code);
-  const native = callSret(`celestial_${kind}_rise_set`, operation, args);
-  if (native.source_code !== physicalSource(code)
-    || native.delta_t_identity_code !== CODES.CELESTIAL_DELTA_T_MODEL_ALGO5
-    || native.nutation_identity_code !== CODES.CELESTIAL_NUTATION_MODEL_IAU_1980
-    || (kind === "planet" && native.target_code !== code)) malformed(operation, "target/source/models");
-  const rise = CODES.CELESTIAL_PRESENT_RISE;
-  const transit = CODES.CELESTIAL_PRESENT_TRANSIT;
-  const setting = CODES.CELESTIAL_PRESENT_SET;
-  const mask = native.present_fields;
-  const polar = {
-    [CODES.CELESTIAL_RISE_SET_POLAR_NONE]: "none",
-    [CODES.CELESTIAL_RISE_SET_POLAR_DAY]: "day",
-    [CODES.CELESTIAL_RISE_SET_POLAR_NIGHT]: "night",
-  }[native.polar_code];
-  if (mask & ~(rise | transit | setting) || polar === undefined
-    || (polar !== "none" && mask & (rise | setting))
-    || (kind === "solar" && !(mask & transit))) malformed(operation, "presence/topology");
-  const event = (field, bit) => {
-    if (!(mask & bit) && native[field] !== 0) malformed(operation, `absent ${field}`);
-    return mask & bit ? native[field] : null;
-  };
-  const result = {
-    target, sourceCode: native.source_code, deltaTModel: "algo5", nutationModel: "iau1980", polar,
-    riseJdeTt: event("rise_jde_tt", rise),
-    transitJdeTt: event("transit_jde_tt", transit),
-    setJdeTt: event("set_jde_tt", setting),
-  };
-  if (kind === "lunar") {
-    if (native.refraction_code !== tail[0] || native.temperature_c !== atmosphere.temperatureC
-      || native.pressure_hpa !== atmosphere.pressureHpa) malformed(operation, "atmosphere");
-    return Object.freeze({ ...result, refraction: atmosphere });
-  }
-  if (native.h0_deg !== h0) malformed(operation, "h0");
-  return Object.freeze({ ...result, h0Deg: h0 });
-};
-
 export const riseSet = Object.freeze({
-  solar: (dateUt1, location, options = {}) => dailyRiseSet("solar", "sun", dateUt1, location, options),
-  lunar: (dateUt1, location, options = {}) => dailyRiseSet("lunar", "moon", dateUt1, location, options),
-  planet: (target, dateUt1, site, options = {}) => dailyRiseSet("planet", target, dateUt1, site, options),
+  solar: solarRiseSet,
+  lunar: lunarRiseSet,
+  planet: planetRiseSet,
 });
 
 export const observer = Object.freeze({

@@ -84,6 +84,11 @@ def main():
   assert c.solar_rise_set(date, location).h0_deg == -50.0 / 60
   assert standard.refraction == c.RefractionParams(c.RefractionModel.BENNETT, 15, 1013.25)
   assert c.planet_rise_set(c.Target.MARS, date, observer).h0_deg == -34.0 / 60
+  twilight = c.solar_rise_set(date, location, h0_deg=-6.0)
+  weather = c.RefractionParams(c.RefractionModel.BENNETT, 10, 1000)
+  moon = c.lunar_rise_set(date, location, refraction=weather)
+  assert twilight.h0_deg == -6.0 and moon.refraction.pressure_hpa == 1000
+  assert moon.refraction == weather and moon.refraction is not weather
 
   # Independent C11/native64 pins, deliberately not read from a generated manifest.
   layouts = (

@@ -7,7 +7,19 @@ as Julian ephemeris day numbers on the TT scale. Missing events are `None` in
 Python and `null` in JavaScript; a successful solar query always has a transit.
 The separate `polar` field reports polar day, polar night or neither.
 
-## Choose the date and altitude convention
+```python
+from celestial_calendar import GregorianDate, GeoLocation, solar_rise_set
+
+events = solar_rise_set(GregorianDate(2025, 6, 21), GeoLocation(69.65, 18.96))
+print(events.polar.value)  # day
+print(events.rise_jde_tt)  # None
+```
+
+This is polar day in Tromsø: there is no sunrise, but the result still has a
+transit time. The input is a UT1 date; convert each returned TT instant before
+displaying it as a clock time.
+
+## Which date and altitude does each query use?
 
 The threshold h0 is the altitude of the body's centre at rise and set.
 Π is the Moon's horizontal parallax.
@@ -71,8 +83,9 @@ location = GeoLocation(69.65, 18.96)
 twilight = solar_rise_set(date, location, h0_deg=-6.0)
 moon = lunar_rise_set(date, location, refraction=RefractionParams(RefractionModel.BENNETT, 10, 1000))
 mars = planet_rise_set(Target.MARS, date, Observer(69.65, 18.96, 100))
-assert twilight.h0_deg == -6.0 and moon.refraction.pressure_hpa == 1000
-assert mars.h0_deg == -34.0 / 60
+print("twilight h0", twilight.h0_deg)
+print("lunar pressure", moon.refraction.pressure_hpa)
+print("Mars h0", mars.h0_deg)
 ```
 
 The displayed result is `day`, with absent rise and set and a transit at
@@ -106,9 +119,9 @@ const moon = riseSet.lunar(date, location, {
   refraction: { model: "bennett", temperatureC: 10, pressureHpa: 1000 },
 });
 const mars = riseSet.planet("mars", date, { ...location, elevationM: 100 });
-if (twilight.h0Deg !== -6 || moon.refraction.pressureHpa !== 1000 || mars.h0Deg !== -34 / 60) {
-  throw new Error("unexpected altitude or weather");
-}
+console.log("twilight h0", twilight.h0Deg);
+console.log("lunar pressure", moon.refraction.pressureHpa);
+console.log("Mars h0", mars.h0Deg);
 ```
 
 This prints the same transit instant as `2025-06-21T10:46:00.296Z`.
@@ -161,21 +174,14 @@ text (`CELESTIAL_OPERATION_RISE_SET`) and Python
 in C, query `CELESTIAL_OPERATION_EQUATORIAL` with the target code.
 JavaScript has no capability-query API. Pluto has the
 hard interval [2409543.875,2488069.125) TT, from 1885-01-02 09:00 to
-2099-12-31 15:00 TT with the end excluded. Every internal sample must fit,
-including transit estimates and derivative samples outside the input day.
-Even if the TT equivalent of the input date's 0h UT1 lies inside that interval,
-the other samples can fall outside it.
+2099-12-31 15:00 TT with the end excluded. A daily query near either endpoint
+can fail even if the TT equivalent of the input date's 0h UT1 is inside that interval.
 A date whose samples leave a provider's domain raises Python `ValueError` or
 JavaScript `RangeError`.
 
-Gregorian input years are [1,32767], subject to all internal time conversions
-and provider admission. Event display has separate time-conversion limits:
-`jde_to_utc` and `jde_to_ut1` accept TT in [1867522.5,13689325.5).
-Before the leap-second table begins at 1972-01-01, `jde_to_utc` uses an Algo5
-UT1 approximation for its civil fields; use `jde_to_ut1` to label that display
-as UT1. JavaScript names these helpers `time.jdeToUtc` and `time.jdeToUt1`.
-Future UTC holds the last known leap-table offset. The Python/JavaScript date
-adapters also have their host date-range limits.
+Gregorian input years are [1,32767], subject to time-conversion and provider limits.
+Clock display has a separate [conversion domain and historical/future UTC policy](UTC_CONVERSIONS.md).
+The Python/JavaScript date adapters also have their host date-range limits.
 
 Invalid inputs raise Python `ValueError` or JavaScript `RangeError`; wrong
 binding argument types raise `TypeError`. Numerical/resource failures and
