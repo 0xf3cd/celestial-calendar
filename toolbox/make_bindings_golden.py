@@ -327,12 +327,94 @@ def generate() -> dict:
   }
 
 
-if __name__ == "__main__":
+def generate_rise_set() -> dict:
+  """Capture representative daily results from the receipt-verified native C boundary."""
+  artifact = find_shared_lib()
+  receipt = verify_library(artifact, paths.proj_root())
+  lib = ctypes.CDLL(str(artifact))
+  abi = load_abi()
+  for name in (
+    "celestial_solar_rise_set",
+    "celestial_lunar_rise_set",
+    "celestial_planet_rise_set",
+    "celestial_last_error_kind",
+  ):
+    getattr(lib, name).argtypes, getattr(lib, name).restype = abi.BINDING_SPECS[name]
+
+  # Fixed parity inputs, shared with rise_set_cabi_test.cpp; no random sampling.
+  days = [
+    (2000, 1, 1, 40.0, 0.0, 0.0),
+    (2025, 3, 20, 51.5, 0.0, 0.0),
+    (2025, 6, 21, 67.0, 20.0, 0.0),
+    (2025, 12, 21, -67.0, 100.0, 0.0),
+    (2026, 11, 16, 40.0, 116.0, 0.0),
+    (2000, 1, 1, 40.0, 180.0, 1000.0),
+    (2000, 1, 1, 40.0, -180.0, 1000.0),
+    (2000, 1, 1, 90.0, 0.0, 0.0),
+    (2000, 1, 1, -90.0, 0.0, 0.0),
+    (2019, 8, 27, 75.0, 0.0, 0.0),
+    (1885, 1, 2, 40.0, 0.0, 0.0),
+    (1885, 1, 3, 40.0, 0.0, 0.0),
+    (2099, 12, 30, 40.0, 0.0, 0.0),
+    (2099, 12, 31, 40.0, 0.0, 0.0),
+    (1, 1, 1, 40.0, 0.0, 0.0),
+    (32767, 12, 31, 40.0, 0.0, 0.0),
+    (2024, 2, 29, 40.0, 0.0, 0.0),
+    (2024, 12, 31, 40.0, 0.0, 0.0),
+  ]
+  entries = []
+  for day_index, (year, month, day, latitude, longitude, elevation) in enumerate(days):
+    for target in range(10):
+      for custom in (False, True):
+        args = [year, month, day, latitude, longitude]
+        if target == 0:
+          name = "celestial_solar_rise_set"
+          args += [-18.0 if custom else -50.0 / 60.0]
+        elif target == 1:
+          name = "celestial_lunar_rise_set"
+          args += [2, -20.0, 800.0] if custom else [1, 15.0, 1013.25]
+        else:
+          name = "celestial_planet_rise_set"
+          args = [target, *args, elevation, 0.0 if custom else -34.0 / 60.0]
+        native = getattr(lib, name)(*args)
+        error = lib.celestial_last_error_kind()
+        if (native.valid and error) or (not native.valid and error != 1):
+          raise RuntimeError(f"Unexpected daily-query outcome at {(day_index, target, custom)}: error={error}")
+        fields = {
+          field: f64_bits(getattr(native, field)) if kind is c_double else getattr(native, field)
+          for field, kind in native._fields_
+        }
+        entries.append({"day_index": day_index, "target": target, "custom": custom, "error": error, "fields": fields})
+  return {
+    "schema": "celestial-calendar/rise-set-parity@1",
+    "provenance": {
+      "source_commit": receipt["source"]["commit"],
+      "source_snapshot_sha256": receipt["source"]["snapshot_sha256"],
+      "generated_on": f"{platform.system()} {platform.machine()}, {date.today().isoformat()}",
+      "reference": "Native C++ wrappers compared exactly with C in rise_set_cabi_test.cpp",
+    },
+    "days": days,
+    "entries": entries,
+  }
+
+
+def main() -> None:
+  """Write the selected native dataset to its default or explicit destination."""
   parser = argparse.ArgumentParser(description="Regenerate the native binding golden dataset.")
-  parser.add_argument("--out-path", type=Path, default=OUT_PATH, help=f"output path (default {OUT_PATH})")
+  parser.add_argument(
+    "--out-path",
+    type=Path,
+    help="output path (default: bindings_golden.json, or rise_set_golden.json with --rise-set)",
+  )
+  parser.add_argument("--rise-set", action="store_true", help="generate the separate daily-query parity dataset")
   args = parser.parse_args()
 
-  doc = generate()
-  total = sum(len(section["entries"]) for section in doc["sections"].values())
-  args.out_path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-  print(f"[ make_bindings_golden ] {total} points -> {args.out_path}")
+  doc = generate_rise_set() if args.rise_set else generate()
+  total = len(doc["entries"]) if args.rise_set else sum(len(section["entries"]) for section in doc["sections"].values())
+  destination = args.out_path or (OUT_PATH.with_name("rise_set_golden.json") if args.rise_set else OUT_PATH)
+  destination.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+  print(f"[ make_bindings_golden ] {total} points -> {destination}")
+
+
+if __name__ == "__main__":
+  main()

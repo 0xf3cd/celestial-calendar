@@ -38,6 +38,10 @@ For interval altitude events, upper transits and intersections such as
 “Mars above 20° while the Sun is below −18°”, see [altitude events and observing windows](../../docs/ALTITUDE_EVENTS.md).
 The queries take explicit JDE(TT) intervals. Sampled searches can miss events without reporting an error.
 
+For daily Sun, Moon and planet summaries, use `solar_rise_set`, `lunar_rise_set`
+and `planet_rise_set`. The [rise/set guide](../../docs/RISE_SET.md) explains their
+UT1-date selection, missing events, and conversion from TT to clock times.
+
 For full scalar disk sizes in arcseconds, use `apparent_diameter` with an optional
 WGS84 observer. See [apparent diameters](../../docs/APPARENT_DIAMETERS.md) for radius
 conventions, supported targets and a minimal call.

@@ -193,9 +193,9 @@ export interface Observer {
 
 export interface RefractionOptions {
   model: "bennett" | "saemundsson";
-  /** Supported [-90, 60] C; default 15. */
+  /** Default 15 C. Position/altitude support [-90,60]; lunar rise/set requires > -273. */
   temperatureC?: number | undefined;
-  /** Supported [300, 1100] hPa; default 1013.25. */
+  /** Default 1013.25 hPa. Position/altitude support [300,1100]; lunar rise/set requires positive pressure. */
   pressureHpa?: number | undefined;
 }
 
@@ -317,6 +317,64 @@ export interface UpperTransit {
   readonly sourceCode: number;
   readonly deltaTModel: "algo5";
 }
+
+export type PolarTopology = "none" | "day" | "night";
+export type PlanetTarget = Exclude<PhysicalTarget, "sun" | "moon">;
+
+/** TT instants around the UT1 date's local solar transit; rise/set can lie outside that date. */
+export interface SolarRiseSet {
+  readonly target: "sun";
+  readonly sourceCode: number;
+  readonly deltaTModel: "algo5";
+  readonly nutationModel: "iau1980";
+  readonly polar: PolarTopology;
+  readonly riseJdeTt: number | null;
+  readonly transitJdeTt: number;
+  readonly setJdeTt: number | null;
+  readonly h0Deg: number;
+}
+
+/** Representative TT instants in [0h,24h) UT1; a missing transit does not mean polar day or night. */
+export interface LunarRiseSet {
+  readonly target: "moon";
+  readonly sourceCode: number;
+  readonly deltaTModel: "algo5";
+  readonly nutationModel: "iau1980";
+  readonly polar: PolarTopology;
+  readonly riseJdeTt: number | null;
+  readonly transitJdeTt: number | null;
+  readonly setJdeTt: number | null;
+  readonly refraction: Readonly<{ model: RefractionOptions["model"]; temperatureC: number; pressureHpa: number }>;
+}
+
+/** Representative TT instants in a UT1 day, using an airless topocentric centre altitude. */
+export interface PlanetRiseSet {
+  readonly target: PlanetTarget;
+  readonly sourceCode: number;
+  readonly deltaTModel: "algo5";
+  readonly nutationModel: "iau1980";
+  readonly polar: PolarTopology;
+  readonly riseJdeTt: number | null;
+  readonly transitJdeTt: number | null;
+  readonly setJdeTt: number | null;
+  readonly h0Deg: number;
+}
+
+/** Results are owned/frozen. Wrong argument types throw TypeError; invalid values
+ * throw RangeError; computation/resource failures and inconsistent native results throw CelestialError. */
+export const riseSet: Readonly<{
+  /** Standard h0 is -50/60 deg; -6/-12/-18 give twilight. Takes h0Deg, not weather parameters.
+   * Longitude ±180 can select transits a day apart. */
+  solar(dateUt1: GregorianDate, location: GeoLocation & { elevationM?: never }, options?: { h0Deg?: number | undefined }): SolarRiseSet;
+  /** Geocentric threshold uses midday parallax and horizon atmosphere (default Bennett).
+   * Of two rises or sets, returns the later; of two transits, the earlier.
+   * A rise or set exactly at 0h UT1 is returned for neither neighbouring day. */
+  lunar(dateUt1: GregorianDate, location: GeoLocation & { elevationM?: never }, options?: { refraction?: RefractionOptions | undefined }): LunarRiseSet;
+  /** Topocentric coordinates already include parallax; standard h0 is -34/60 deg.
+   * Every provider sample must fit its TT domain, including estimates outside the day.
+   * The daily-query guide describes provider limits; JavaScript has no capability-query API. */
+  planet(target: PlanetTarget, dateUt1: GregorianDate, site: Observer, options?: { h0Deg?: number | undefined }): PlanetRiseSet;
+}>;
 
 export const observer: Readonly<{
   /** UTC from 1972, or explicit UT1. Provider/Delta T guards apply without a chart/rate window. */

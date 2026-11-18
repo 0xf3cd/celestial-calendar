@@ -334,6 +334,54 @@ class CelestialApparentDiameter(ctypes.Structure):
   ]
 
 
+class CelestialSolarRiseSet(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("source_code", ctypes.c_uint32),
+    ("delta_t_identity_code", ctypes.c_uint32),
+    ("nutation_identity_code", ctypes.c_uint32),
+    ("present_fields", ctypes.c_uint32),
+    ("polar_code", ctypes.c_uint32),
+    ("rise_jde_tt", ctypes.c_double),
+    ("transit_jde_tt", ctypes.c_double),
+    ("set_jde_tt", ctypes.c_double),
+    ("h0_deg", ctypes.c_double),
+  ]
+
+
+class CelestialLunarRiseSet(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("source_code", ctypes.c_uint32),
+    ("delta_t_identity_code", ctypes.c_uint32),
+    ("nutation_identity_code", ctypes.c_uint32),
+    ("refraction_code", ctypes.c_uint32),
+    ("present_fields", ctypes.c_uint32),
+    ("polar_code", ctypes.c_uint32),
+    ("rise_jde_tt", ctypes.c_double),
+    ("transit_jde_tt", ctypes.c_double),
+    ("set_jde_tt", ctypes.c_double),
+    ("temperature_c", ctypes.c_double),
+    ("pressure_hpa", ctypes.c_double),
+  ]
+
+
+class CelestialPlanetRiseSet(ctypes.Structure):
+  _fields_ = [
+    ("valid", ctypes.c_bool),
+    ("target_code", ctypes.c_uint32),
+    ("source_code", ctypes.c_uint32),
+    ("delta_t_identity_code", ctypes.c_uint32),
+    ("nutation_identity_code", ctypes.c_uint32),
+    ("present_fields", ctypes.c_uint32),
+    ("polar_code", ctypes.c_uint32),
+    ("rise_jde_tt", ctypes.c_double),
+    ("transit_jde_tt", ctypes.c_double),
+    ("set_jde_tt", ctypes.c_double),
+    ("h0_deg", ctypes.c_double),
+  ]
+
+
 class CelestialAltitudeCondition(ctypes.Structure):
   _fields_ = [
     ("target_code", ctypes.c_uint32),
@@ -557,6 +605,43 @@ BINDING_SPECS = {
     ),
     CelestialApparentDiameter,
   ),
+  "celestial_solar_rise_set": (
+    (
+      ctypes.c_int32,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+    ),
+    CelestialSolarRiseSet,
+  ),
+  "celestial_lunar_rise_set": (
+    (
+      ctypes.c_int32,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+    ),
+    CelestialLunarRiseSet,
+  ),
+  "celestial_planet_rise_set": (
+    (
+      ctypes.c_uint32,
+      ctypes.c_int32,
+      ctypes.c_uint32,
+      ctypes.c_uint32,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+      ctypes.c_double,
+    ),
+    CelestialPlanetRiseSet,
+  ),
   "celestial_altitude_events": (
     (
       ctypes.POINTER(CelestialAltitudeCondition),
@@ -634,6 +719,9 @@ STRUCT_TYPES = {
   "CelestialCivilHouseCapability": CelestialCivilHouseCapability,
   "CelestialTopocentricPosition": CelestialTopocentricPosition,
   "CelestialApparentDiameter": CelestialApparentDiameter,
+  "CelestialSolarRiseSet": CelestialSolarRiseSet,
+  "CelestialLunarRiseSet": CelestialLunarRiseSet,
+  "CelestialPlanetRiseSet": CelestialPlanetRiseSet,
   "CelestialAltitudeCondition": CelestialAltitudeCondition,
   "CelestialAltitudeRecord": CelestialAltitudeRecord,
 }
@@ -678,6 +766,9 @@ RECORDING_EXPORTS = frozenset(
     "celestial_house_capability",
     "celestial_topocentric_position",
     "celestial_apparent_diameter",
+    "celestial_solar_rise_set",
+    "celestial_lunar_rise_set",
+    "celestial_planet_rise_set",
     "celestial_altitude_events",
     "celestial_upper_transits",
     "celestial_observing_windows",
@@ -1023,6 +1114,43 @@ C_SIGNATURES = {
       "double",
     ),
   ),
+  "celestial_solar_rise_set": (
+    "CelestialSolarRiseSet",
+    (
+      "int32_t",
+      "uint32_t",
+      "uint32_t",
+      "double",
+      "double",
+      "double",
+    ),
+  ),
+  "celestial_lunar_rise_set": (
+    "CelestialLunarRiseSet",
+    (
+      "int32_t",
+      "uint32_t",
+      "uint32_t",
+      "double",
+      "double",
+      "uint32_t",
+      "double",
+      "double",
+    ),
+  ),
+  "celestial_planet_rise_set": (
+    "CelestialPlanetRiseSet",
+    (
+      "uint32_t",
+      "int32_t",
+      "uint32_t",
+      "uint32_t",
+      "double",
+      "double",
+      "double",
+      "double",
+    ),
+  ),
   "celestial_altitude_events": (
     "uint32_t",
     (
@@ -1125,6 +1253,7 @@ C_CODES = {
   "CELESTIAL_OPERATION_DELTA_T": 6,
   "CELESTIAL_OPERATION_TOPOCENTRIC": 7,
   "CELESTIAL_OPERATION_APPARENT_DIAMETER": 8,
+  "CELESTIAL_OPERATION_RISE_SET": 9,
   "CELESTIAL_STATUS_SOURCE_WINDOW": 0,
   "CELESTIAL_STATUS_IMPLEMENTATION_WINDOW": 1,
   "CELESTIAL_STATUS_FINITE_INPUT_EVALUATION": 2,
@@ -1145,6 +1274,12 @@ C_CODES = {
   "CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL": 1,
   "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN": 2,
   "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3,
+  "CELESTIAL_PRESENT_RISE": 32,
+  "CELESTIAL_PRESENT_TRANSIT": 64,
+  "CELESTIAL_PRESENT_SET": 128,
+  "CELESTIAL_RISE_SET_POLAR_NONE": 0,
+  "CELESTIAL_RISE_SET_POLAR_DAY": 1,
+  "CELESTIAL_RISE_SET_POLAR_NIGHT": 2,
   "CELESTIAL_ALTITUDE_SENSE_BELOW": 0,
   "CELESTIAL_ALTITUDE_SENSE_ABOVE": 1,
   "CELESTIAL_ALTITUDE_RECORD_CONDITION": 0,
@@ -1388,6 +1523,34 @@ C_PARAMETERS = {
     "latitude_deg",
     "longitude_deg",
     "elevation_m",
+  ],
+  "celestial_solar_rise_set": [
+    "year",
+    "month",
+    "day",
+    "latitude_deg",
+    "longitude_deg",
+    "h0_deg",
+  ],
+  "celestial_lunar_rise_set": [
+    "year",
+    "month",
+    "day",
+    "latitude_deg",
+    "longitude_deg",
+    "refraction_code",
+    "temperature_c",
+    "pressure_hpa",
+  ],
+  "celestial_planet_rise_set": [
+    "target_code",
+    "year",
+    "month",
+    "day",
+    "latitude_deg",
+    "longitude_deg",
+    "elevation_m",
+    "h0_deg",
   ],
   "celestial_altitude_events": [
     "condition",
@@ -1656,6 +1819,7 @@ PROTOCOLS = {
       "CELESTIAL_OPERATION_DELTA_T",
       "CELESTIAL_OPERATION_TOPOCENTRIC",
       "CELESTIAL_OPERATION_APPARENT_DIAMETER",
+      "CELESTIAL_OPERATION_RISE_SET",
     ],
     "error_channel": "kind",
   },
@@ -1700,6 +1864,24 @@ PROTOCOLS = {
   "celestial_apparent_diameter": {
     "kind": "struct",
     "identity": "resolved-explicit-model-key-position-source-and-radius-definition",
+    "error_channel": "kind",
+  },
+  "celestial_solar_rise_set": {
+    "kind": "struct",
+    "identity": "solar-transit-centred",
+    "ownership": "owned; absent event slots are zero",
+    "error_channel": "kind",
+  },
+  "celestial_lunar_rise_set": {
+    "kind": "struct",
+    "identity": "lunar-ut1-day",
+    "ownership": "owned; absent event slots are zero",
+    "error_channel": "kind",
+  },
+  "celestial_planet_rise_set": {
+    "kind": "struct",
+    "identity": "planetary-ut1-day",
+    "ownership": "owned; absent event slots are zero",
     "error_channel": "kind",
   },
   "celestial_altitude_events": {

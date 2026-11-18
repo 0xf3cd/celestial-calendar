@@ -13,7 +13,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ._codes import enum_code, family_values
+from ._codes import constant, enum_code, family_values
 
 
 class Target(StrEnum):
@@ -106,3 +106,28 @@ def selector_code(model: DeltaTModel | NutationModel | ModelKey, kind: ModelKind
 
 def is_node(target: Target) -> bool:
   return target in (Target.MEAN_ASCENDING, Target.MEAN_DESCENDING, Target.TRUE_ASCENDING, Target.TRUE_DESCENDING)
+
+
+def is_planet(target: Target) -> bool:
+  return target in (
+    Target.MERCURY,
+    Target.VENUS,
+    Target.MARS,
+    Target.JUPITER,
+    Target.SATURN,
+    Target.URANUS,
+    Target.NEPTUNE,
+    Target.PLUTO,
+  )
+
+
+def position_source_code(target: Target) -> int:
+  """Expected position provider for a physical target."""
+  if is_node(target):
+    raise ValueError("a physical target is required")
+  source = {
+    Target.SUN: "SUN_VSOP87D",
+    Target.MOON: "MOON_ELP2000_82B_TRUNC",
+    Target.PLUTO: "PLUTO_PLUTO95_APPARENT",
+  }.get(target, "PLANET_VSOP87D")
+  return constant("POSITION_SOURCE_" + source)

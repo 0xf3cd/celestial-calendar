@@ -46,6 +46,7 @@ GUIDES = (
   "docs/MAINTAINING.md",
   "docs/MIGRATING_1_0.md",
   "docs/OBSERVER.md",
+  "docs/RISE_SET.md",
   "docs/RELEASE_NOTES.md",
   "docs/RELEASING.md",
   "docs/UTC_CONVERSIONS.md",

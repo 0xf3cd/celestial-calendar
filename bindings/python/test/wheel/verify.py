@@ -80,6 +80,7 @@ def verify_metadata(
     "celestial_calendar/events.py",
     "celestial_calendar/observer.py",
     "celestial_calendar/query.py",
+    "celestial_calendar/rise_set.py",
     "celestial_calendar/py.typed",
     native_member,
     f"{dist_info}/METADATA",
@@ -121,6 +122,7 @@ def verify_metadata(
     "events.py",
     "observer.py",
     "query.py",
+    "rise_set.py",
     "py.typed",
   ):
     assert (
@@ -255,7 +257,7 @@ def main() -> None:
   platform_tags = filename_match.group(1).split(".")
   export_names = [entry["name"] for entry in json.loads(MANIFEST.read_text(encoding="utf-8"))["exports"]]
   exports = set(export_names)
-  assert len(export_names) == len(exports) == 43, "C ABI export inventory"
+  assert len(export_names) == len(exports) == 46, "C ABI export inventory"
 
   with zipfile.ZipFile(wheel) as archive, tempfile.TemporaryDirectory() as temporary:
     expected_commit = run("git", "-C", str(REPO), "rev-parse", "HEAD").strip()

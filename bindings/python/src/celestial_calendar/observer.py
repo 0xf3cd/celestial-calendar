@@ -38,7 +38,11 @@ class Observer:
 
 @dataclass(frozen=True)
 class RefractionParams:
-  """Explicit refraction model; supported weather is [-90, 60]°C and [300, 1100] hPa."""
+  """Explicit refraction model and atmosphere.
+
+  Position/altitude queries support [-90,60]°C and [300,1100] hPa. Lunar rise/set
+  uses horizon refraction, admitting finite temperature > -273°C and positive pressure.
+  """
 
   model: RefractionModel
   temperature_c: float = 15.0

@@ -58,6 +58,8 @@ await cp(new URL("../support/chart_replay.mjs", import.meta.url), resolve(WORK, 
 await cp(new URL("../support/observer_api.mjs", import.meta.url), resolve(WORK, "src/observer_api.mjs"));
 await cp(new URL("../support/diameter_api.mjs", import.meta.url), resolve(WORK, "src/diameter_api.mjs"));
 await cp(new URL("../support/altitude_api.mjs", import.meta.url), resolve(WORK, "src/altitude_api.mjs"));
+await cp(new URL("../support/rise_set_api.mjs", import.meta.url), resolve(WORK, "src/rise_set_api.mjs"));
+await cp(new URL("../../../../toolbox/rise_set_golden.json", import.meta.url), resolve(WORK, "src/rise_set_golden.json"));
 await cp(new URL("../../../../docs/examples/apparent_diameter/render.mjs", import.meta.url), resolve(WORK, "src/diameter_example.mjs"));
 await cp(new URL("../../../../docs/examples/chart_snapshot/data.json", import.meta.url), resolve(WORK, "src/chart_example.json"));
 await writeFile(
@@ -173,6 +175,9 @@ try {
     assert.equal(typeof result.chart.jdUt1, "number", "missing chart replay residual");
     assert.deepEqual(result.observer, { targets: 10, exactPoles: 2, refractionStates: 2 });
     assert.deepEqual(result.diameter, { targets: 10, exactPoles: 2 });
+    assert.equal(result.riseSet.cases, 360);
+    assert.equal(result.riseSet.targets, 10);
+    assert(result.riseSet.maximumMomentDifferenceDays <= 1e-8);
     assert.deepEqual(result.altitude, { targets: 10, refractionModels: 2, unresolved: 2 });
     assert.deepEqual(result.diameterExample, { arcsecondsPerPixel: 10, targets: ["sun", "moon", "jupiter"] });
     const renderedDisks = await page.evaluate(() => [...document.querySelectorAll(".apparent-disk")].map((node) => ({

@@ -29,12 +29,14 @@ from . import capability as _capability, chart as _chart, events as _events, que
 from . import observer as _observer
 from . import diameter as _diameter
 from . import altitude as _altitude
+from . import rise_set as _rise_set
 from ._codes import constant as _constant, enum_code as _enum_code
 from ._models import DeltaTModel as DeltaTModel
 from ._models import ModelKey as ModelKey
 from ._models import ModelKind as ModelKind
 from ._models import NutationModel as NutationModel
 from ._models import Target as Target
+from ._models import is_planet as _is_planet
 from ._models import selector_code as _selector_code
 from ._protocol import CelestialError as CelestialError
 from ._version import VERSION as __version__
@@ -76,6 +78,12 @@ from .observer import TopocentricPosition as TopocentricPosition
 from .diameter import ApparentDiameter as ApparentDiameter
 from .diameter import DiameterCentre as DiameterCentre
 from .diameter import RadiusDefinition as RadiusDefinition
+from .rise_set import SolarRiseSet as SolarRiseSet
+from .rise_set import LunarRiseSet as LunarRiseSet
+from .rise_set import PlanetRiseSet as PlanetRiseSet
+from .rise_set import PolarTopology as PolarTopology
+
+_LUNAR_STANDARD_ATMOSPHERE = RefractionParams(RefractionModel.BENNETT)
 
 
 class MoonPhase(_StrEnum):
@@ -299,6 +307,16 @@ def _location(value: object) -> tuple[float, float]:
   if not isinstance(value, GeoLocation):
     raise TypeError("location must be a GeoLocation")
   return _finite(value.latitude_deg, "location.latitude_deg"), _finite(value.longitude_deg, "location.longitude_deg")
+
+
+def _observer_site(value: object) -> tuple[float, float, float]:
+  if not isinstance(value, Observer):
+    raise TypeError("observer must be an Observer")
+  return (
+    _finite(value.latitude_deg, "observer.latitude_deg"),
+    _finite(value.longitude_deg, "observer.longitude_deg"),
+    _finite(value.elevation_m, "observer.elevation_m"),
+  )
 
 
 def _result(export: str, operation: str, *args: object) -> object:
@@ -818,8 +836,8 @@ def observing_windows(
 def capabilities(operation: CapabilityOperation, subject: Target | None = None) -> tuple[CapabilityRecord, ...]:
   """Return native TT capability records for POSITION, LONGITUDE_RATE, EVENTS or EQUATORIAL.
 
-  subject selects a Target; None selects every target. HOUSES, CHART, DELTA_T, TOPOCENTRIC
-  and APPARENT_DIAMETER raise ValueError. Use house_capability(delta_t_model=...) for civil-house policy
+  subject selects a Target; None selects every target. HOUSES, CHART, DELTA_T, TOPOCENTRIC,
+  APPARENT_DIAMETER and RISE_SET raise ValueError. Use house_capability(delta_t_model=...) for civil-house policy
   and capability_text() for operation-wide descriptions.
   """
   checked = _enum(operation, CapabilityOperation, "operation")
@@ -870,8 +888,8 @@ def model_identity_text(key: ModelKey) -> str:
 def capability_text(operation: CapabilityOperation, subject: Target | None = None) -> str:
   """Describe an operation's sources, corrections, defaults and domains.
 
-  Target operations require a concrete Target subject. HOUSES, CHART, DELTA_T, TOPOCENTRIC
-  and APPARENT_DIAMETER require subject=None for operation-wide text; a Target there raises ValueError.
+  Target operations require a concrete Target subject. HOUSES, CHART, DELTA_T, TOPOCENTRIC,
+  APPARENT_DIAMETER and RISE_SET require subject=None for operation-wide text; a Target there raises ValueError.
   Use model_identity_text() for a model key, not a registry ordinal.
   """
   checked = _enum(operation, CapabilityOperation, "operation")
@@ -1081,7 +1099,84 @@ def apparent_diameter(
   return decoded
 
 
+def solar_rise_set(date_ut1: GregorianDate, location: GeoLocation, *, h0_deg: float = -50.0 / 60.0) -> SolarRiseSet:
+  """Return TT events around local solar transit selected by a UT1 date.
+
+  Rise/set can fall outside the input date; ±180° can select transits a day apart.
+  Pass -6, -12 or -18 for twilight; weather parameters are not accepted.
+  """
+  date = _civil_date(date_ut1, "date_ut1")
+  site = _location(location)
+  h0 = _finite(h0_deg, "h0_deg")
+  native = _result("celestial_solar_rise_set", "solar_rise_set", *date, *site, h0)
+  return _protocol.decode("solar_rise_set", _rise_set.decode_solar, native, h0)
+
+
+def lunar_rise_set(
+  date_ut1: GregorianDate,
+  location: GeoLocation,
+  *,
+  refraction: RefractionParams = _LUNAR_STANDARD_ATMOSPHERE,
+) -> LunarRiseSet:
+  """Return representative TT events in [0h,24h) UT1, with None for missing events.
+
+  Uses geocentric coordinates. The threshold is 0.7275 times the Moon's
+  horizontal parallax at midday, minus horizon refraction.
+  Weather accepts finite temperature > -273°C and positive pressure.
+  Of two rises or two sets, the later is returned; of two transits, the earlier.
+  A rise or set exactly at 0h UT1 is returned for neither neighbouring day.
+  """
+  date = _civil_date(date_ut1, "date_ut1")
+  site = _location(location)
+  if not isinstance(refraction, RefractionParams):
+    raise TypeError("refraction must be RefractionParams")
+  model = _enum(refraction.model, RefractionModel, "refraction.model")
+  temperature = _finite(refraction.temperature_c, "temperature_c")
+  pressure = _finite(refraction.pressure_hpa, "pressure_hpa")
+  native = _result(
+    "celestial_lunar_rise_set",
+    "lunar_rise_set",
+    *date,
+    *site,
+    _enum_code("REFRACTION", model),
+    temperature,
+    pressure,
+  )
+  return _protocol.decode(
+    "lunar_rise_set", _rise_set.decode_lunar, native, RefractionParams(model, temperature, pressure)
+  )
+
+
+def planet_rise_set(
+  target: Target, date_ut1: GregorianDate, observer: Observer, *, h0_deg: float = -34.0 / 60.0
+) -> PlanetRiseSet:
+  """Return representative planetary TT events in [0h,24h) UT1 from a WGS84 site.
+
+  The airless topocentric centre includes parallax; standard refraction is in h0.
+  All internal samples must fit the provider's TT domain, including samples
+  outside the day. Query capability_text(CapabilityOperation.EQUATORIAL, target)
+  for that domain. Missing transit is independent of polar topology.
+  """
+  checked_target = _enum(target, Target, "target")
+  if not _is_planet(checked_target):
+    raise ValueError("planet_rise_set requires Mercury through Pluto")
+  date = _civil_date(date_ut1, "date_ut1")
+  site = _observer_site(observer)
+  h0 = _finite(h0_deg, "h0_deg")
+  native = _result(
+    "celestial_planet_rise_set", "planet_rise_set", _enum_code("TARGET", checked_target), *date, *site, h0
+  )
+  return _protocol.decode("planet_rise_set", _rise_set.decode_planet, native, checked_target, h0)
+
+
 __all__ = [
+  "SolarRiseSet",
+  "LunarRiseSet",
+  "PlanetRiseSet",
+  "PolarTopology",
+  "solar_rise_set",
+  "lunar_rise_set",
+  "planet_rise_set",
   "AltitudeCondition",
   "AltitudeConditionState",
   "AltitudeEvent",

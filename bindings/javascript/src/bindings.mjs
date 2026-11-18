@@ -41,7 +41,10 @@ export const CHART_CODES = deepFreeze({
     "distance": 2,
     "rightAscension": 4,
     "azimuth": 8,
-    "apparentAltitude": 16
+    "apparentAltitude": 16,
+    "rise": 32,
+    "transit": 64,
+    "set": 128
   },
   "targets": {
     "sun": 0,
@@ -1068,6 +1071,189 @@ export const LAYOUTS = deepFreeze({
       }
     ]
   },
+  "CelestialSolarRiseSet": {
+    "size": 56,
+    "alignment": 8,
+    "fields": [
+      {
+        "name": "valid",
+        "type": "bool",
+        "offset": 0
+      },
+      {
+        "name": "source_code",
+        "type": "uint32_t",
+        "offset": 4
+      },
+      {
+        "name": "delta_t_identity_code",
+        "type": "uint32_t",
+        "offset": 8
+      },
+      {
+        "name": "nutation_identity_code",
+        "type": "uint32_t",
+        "offset": 12
+      },
+      {
+        "name": "present_fields",
+        "type": "uint32_t",
+        "offset": 16
+      },
+      {
+        "name": "polar_code",
+        "type": "uint32_t",
+        "offset": 20
+      },
+      {
+        "name": "rise_jde_tt",
+        "type": "double",
+        "offset": 24
+      },
+      {
+        "name": "transit_jde_tt",
+        "type": "double",
+        "offset": 32
+      },
+      {
+        "name": "set_jde_tt",
+        "type": "double",
+        "offset": 40
+      },
+      {
+        "name": "h0_deg",
+        "type": "double",
+        "offset": 48
+      }
+    ]
+  },
+  "CelestialLunarRiseSet": {
+    "size": 72,
+    "alignment": 8,
+    "fields": [
+      {
+        "name": "valid",
+        "type": "bool",
+        "offset": 0
+      },
+      {
+        "name": "source_code",
+        "type": "uint32_t",
+        "offset": 4
+      },
+      {
+        "name": "delta_t_identity_code",
+        "type": "uint32_t",
+        "offset": 8
+      },
+      {
+        "name": "nutation_identity_code",
+        "type": "uint32_t",
+        "offset": 12
+      },
+      {
+        "name": "refraction_code",
+        "type": "uint32_t",
+        "offset": 16
+      },
+      {
+        "name": "present_fields",
+        "type": "uint32_t",
+        "offset": 20
+      },
+      {
+        "name": "polar_code",
+        "type": "uint32_t",
+        "offset": 24
+      },
+      {
+        "name": "rise_jde_tt",
+        "type": "double",
+        "offset": 32
+      },
+      {
+        "name": "transit_jde_tt",
+        "type": "double",
+        "offset": 40
+      },
+      {
+        "name": "set_jde_tt",
+        "type": "double",
+        "offset": 48
+      },
+      {
+        "name": "temperature_c",
+        "type": "double",
+        "offset": 56
+      },
+      {
+        "name": "pressure_hpa",
+        "type": "double",
+        "offset": 64
+      }
+    ]
+  },
+  "CelestialPlanetRiseSet": {
+    "size": 64,
+    "alignment": 8,
+    "fields": [
+      {
+        "name": "valid",
+        "type": "bool",
+        "offset": 0
+      },
+      {
+        "name": "target_code",
+        "type": "uint32_t",
+        "offset": 4
+      },
+      {
+        "name": "source_code",
+        "type": "uint32_t",
+        "offset": 8
+      },
+      {
+        "name": "delta_t_identity_code",
+        "type": "uint32_t",
+        "offset": 12
+      },
+      {
+        "name": "nutation_identity_code",
+        "type": "uint32_t",
+        "offset": 16
+      },
+      {
+        "name": "present_fields",
+        "type": "uint32_t",
+        "offset": 20
+      },
+      {
+        "name": "polar_code",
+        "type": "uint32_t",
+        "offset": 24
+      },
+      {
+        "name": "rise_jde_tt",
+        "type": "double",
+        "offset": 32
+      },
+      {
+        "name": "transit_jde_tt",
+        "type": "double",
+        "offset": 40
+      },
+      {
+        "name": "set_jde_tt",
+        "type": "double",
+        "offset": 48
+      },
+      {
+        "name": "h0_deg",
+        "type": "double",
+        "offset": 56
+      }
+    ]
+  },
   "CelestialAltitudeCondition": {
     "size": 40,
     "alignment": 8,
@@ -1439,6 +1625,24 @@ export const BINDINGS = deepFreeze([
     "readsLastError": true
   },
   {
+    "cName": "celestial_solar_rise_set",
+    "wasmName": "_celestial_solar_rise_set",
+    "result": "sret:CelestialSolarRiseSet",
+    "readsLastError": true
+  },
+  {
+    "cName": "celestial_lunar_rise_set",
+    "wasmName": "_celestial_lunar_rise_set",
+    "result": "sret:CelestialLunarRiseSet",
+    "readsLastError": true
+  },
+  {
+    "cName": "celestial_planet_rise_set",
+    "wasmName": "_celestial_planet_rise_set",
+    "result": "sret:CelestialPlanetRiseSet",
+    "readsLastError": true
+  },
+  {
     "cName": "celestial_altitude_events",
     "wasmName": "_celestial_altitude_events",
     "result": "count-fill",
@@ -1459,7 +1663,7 @@ export const BINDINGS = deepFreeze([
 ]);
 
 export const C_DECLARATIONS = deepFreeze({
-  "source_sha256": "f6f362b12623544e5c42dd367cfd19f1c7e828e70424955258916b0898c4686a",
+  "source_sha256": "44abe8bbb3b110cb5bd287ea5e4c58dce61b9b8022bf507c10e564d362dc3f18",
   "functions": {
     "celestial_last_error": {
       "signature": "const char *celestial_last_error(void)",
@@ -2327,6 +2531,112 @@ export const C_DECLARATIONS = deepFreeze({
         }
       ]
     },
+    "celestial_solar_rise_set": {
+      "signature": "CelestialSolarRiseSet celestial_solar_rise_set(int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, double h0_deg)",
+      "result": "CelestialSolarRiseSet",
+      "parameters": [
+        {
+          "name": "year",
+          "type": "int32_t"
+        },
+        {
+          "name": "month",
+          "type": "uint32_t"
+        },
+        {
+          "name": "day",
+          "type": "uint32_t"
+        },
+        {
+          "name": "latitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "longitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "h0_deg",
+          "type": "double"
+        }
+      ]
+    },
+    "celestial_lunar_rise_set": {
+      "signature": "CelestialLunarRiseSet celestial_lunar_rise_set(int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, uint32_t refraction_code, double temperature_c, double pressure_hpa)",
+      "result": "CelestialLunarRiseSet",
+      "parameters": [
+        {
+          "name": "year",
+          "type": "int32_t"
+        },
+        {
+          "name": "month",
+          "type": "uint32_t"
+        },
+        {
+          "name": "day",
+          "type": "uint32_t"
+        },
+        {
+          "name": "latitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "longitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "refraction_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "temperature_c",
+          "type": "double"
+        },
+        {
+          "name": "pressure_hpa",
+          "type": "double"
+        }
+      ]
+    },
+    "celestial_planet_rise_set": {
+      "signature": "CelestialPlanetRiseSet celestial_planet_rise_set(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, double elevation_m, double h0_deg)",
+      "result": "CelestialPlanetRiseSet",
+      "parameters": [
+        {
+          "name": "target_code",
+          "type": "uint32_t"
+        },
+        {
+          "name": "year",
+          "type": "int32_t"
+        },
+        {
+          "name": "month",
+          "type": "uint32_t"
+        },
+        {
+          "name": "day",
+          "type": "uint32_t"
+        },
+        {
+          "name": "latitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "longitude_deg",
+          "type": "double"
+        },
+        {
+          "name": "elevation_m",
+          "type": "double"
+        },
+        {
+          "name": "h0_deg",
+          "type": "double"
+        }
+      ]
+    },
     "celestial_altitude_events": {
       "signature": "uint32_t celestial_altitude_events(const CelestialAltitudeCondition *condition, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count)",
       "result": "uint32_t",
@@ -2515,6 +2825,7 @@ export const C_DECLARATIONS = deepFreeze({
     "CELESTIAL_OPERATION_DELTA_T": 6,
     "CELESTIAL_OPERATION_TOPOCENTRIC": 7,
     "CELESTIAL_OPERATION_APPARENT_DIAMETER": 8,
+    "CELESTIAL_OPERATION_RISE_SET": 9,
     "CELESTIAL_STATUS_SOURCE_WINDOW": 0,
     "CELESTIAL_STATUS_IMPLEMENTATION_WINDOW": 1,
     "CELESTIAL_STATUS_FINITE_INPUT_EVALUATION": 2,
@@ -2535,6 +2846,12 @@ export const C_DECLARATIONS = deepFreeze({
     "CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL": 1,
     "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN": 2,
     "CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL": 3,
+    "CELESTIAL_PRESENT_RISE": 32,
+    "CELESTIAL_PRESENT_TRANSIT": 64,
+    "CELESTIAL_PRESENT_SET": 128,
+    "CELESTIAL_RISE_SET_POLAR_NONE": 0,
+    "CELESTIAL_RISE_SET_POLAR_DAY": 1,
+    "CELESTIAL_RISE_SET_POLAR_NIGHT": 2,
     "CELESTIAL_ALTITUDE_SENSE_BELOW": 0,
     "CELESTIAL_ALTITUDE_SENSE_ABOVE": 1,
     "CELESTIAL_ALTITUDE_RECORD_CONDITION": 0,
@@ -2925,6 +3242,46 @@ export const WASM_SIGNATURES = deepFreeze({
       "f64"
     ]
   },
+  "celestial_solar_rise_set": {
+    "result": "void",
+    "parameters": [
+      "i32",
+      "i32",
+      "i32",
+      "i32",
+      "f64",
+      "f64",
+      "f64"
+    ]
+  },
+  "celestial_lunar_rise_set": {
+    "result": "void",
+    "parameters": [
+      "i32",
+      "i32",
+      "i32",
+      "i32",
+      "f64",
+      "f64",
+      "i32",
+      "f64",
+      "f64"
+    ]
+  },
+  "celestial_planet_rise_set": {
+    "result": "void",
+    "parameters": [
+      "i32",
+      "i32",
+      "i32",
+      "i32",
+      "i32",
+      "f64",
+      "f64",
+      "f64",
+      "f64"
+    ]
+  },
   "celestial_altitude_events": {
     "result": "i32",
     "parameters": [
@@ -3199,7 +3556,8 @@ export const PROTOCOLS = deepFreeze({
       "CELESTIAL_OPERATION_CHART",
       "CELESTIAL_OPERATION_DELTA_T",
       "CELESTIAL_OPERATION_TOPOCENTRIC",
-      "CELESTIAL_OPERATION_APPARENT_DIAMETER"
+      "CELESTIAL_OPERATION_APPARENT_DIAMETER",
+      "CELESTIAL_OPERATION_RISE_SET"
     ],
     "error_channel": "kind"
   },
@@ -3244,6 +3602,21 @@ export const PROTOCOLS = deepFreeze({
   "celestial_apparent_diameter": {
     "kind": "sret",
     "identity": "resolved-explicit-model-key-position-source-and-radius-definition",
+    "error_channel": "kind"
+  },
+  "celestial_solar_rise_set": {
+    "kind": "sret",
+    "identity": "solar-transit-centred",
+    "error_channel": "kind"
+  },
+  "celestial_lunar_rise_set": {
+    "kind": "sret",
+    "identity": "lunar-ut1-day",
+    "error_channel": "kind"
+  },
+  "celestial_planet_rise_set": {
+    "kind": "sret",
+    "identity": "planetary-ut1-day",
     "error_channel": "kind"
   },
   "celestial_altitude_events": {

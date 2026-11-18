@@ -24,6 +24,7 @@ import { testFakeNative } from "../support/fake_native.mjs";
 import { runObserverAcceptance } from "../support/observer_api.mjs";
 import { runDiameterAcceptance } from "../support/diameter_api.mjs";
 import { runAltitudeAcceptance } from "../support/altitude_api.mjs";
+import { runRiseSetAcceptance } from "../support/rise_set_api.mjs";
 
 if (process.argv.length !== 3) throw new Error("usage: node public_api_test.mjs <staged index.mjs>");
 
@@ -33,7 +34,7 @@ const heldWasmPath = `${wasmPath}.init-failure-probe`;
 const celestial = await import(entryUrl);
 const declarationPath = fileURLToPath(new URL("./index.d.ts", entryUrl));
 const declarationText = await readFile(declarationPath, "utf8");
-const namespaces = ["time", "sun", "moon", "jieqi", "lunar", "chart", "observer", "diameter"];
+const namespaces = ["time", "sun", "moon", "jieqi", "lunar", "chart", "observer", "diameter", "riseSet"];
 const { C_DECLARATIONS, CHART_CODES } = await import(new URL("./bindings.mjs", entryUrl));
 const manifest = JSON.parse(await readFile(new URL("../abi/manifest.json", import.meta.url), "utf8"));
 assert.equal(manifest.schema, "celestial-calendar/javascript-wasm-abi@2");
@@ -129,7 +130,7 @@ assert(Object.isFrozen(celestial.Jieqi), "Jieqi is frozen");
 
 assert.deepEqual(
   Object.keys(celestial).sort(),
-  ["CelestialError", "Jieqi", "chart", "diameter", "init", "jieqi", "lunar", "moon", "observer", "sun", "time"],
+  ["CelestialError", "Jieqi", "chart", "diameter", "init", "jieqi", "lunar", "moon", "observer", "riseSet", "sun", "time"],
   "public module exports",
 );
 assert.equal("config" in celestial, false);
@@ -170,6 +171,9 @@ const uninitializedCalls = [
   ["observer.upperTransits", [{ latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 }, "sun", 2451545, 2451546]],
   ["observer.observingWindows", [{ latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 }, [], 2451545, 2451546]],
   ["diameter.query", ["moon", { year: 2026, month: 11, day: 7, fraction: 0 }, { scale: "utc" }]],
+  ["riseSet.solar", [{ year: 2025, month: 1, day: 1 }, { latitudeDeg: 40, longitudeDeg: 0 }]],
+  ["riseSet.lunar", [{ year: 2025, month: 1, day: 1 }, { latitudeDeg: 40, longitudeDeg: 0 }]],
+  ["riseSet.planet", ["mars", { year: 2025, month: 1, day: 1 }, { latitudeDeg: 40, longitudeDeg: 0, elevationM: 0 }]],
   ["time.ut1ToJd", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.ut1ToJde", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.jdeToUt1", [2451545.0]],
@@ -640,6 +644,9 @@ happy += await testChartApi(celestial, entryUrl);
 assert.deepEqual(runObserverAcceptance(celestial), { targets: 10, exactPoles: 2, refractionStates: 2 });
 assert.deepEqual(runDiameterAcceptance(celestial), { targets: 10, exactPoles: 2 });
 assert.deepEqual(runAltitudeAcceptance(celestial), { targets: 10, refractionModels: 2, unresolved: 2 });
+const daily = runRiseSetAcceptance(celestial, JSON.parse(await readFile(new URL("../../../../toolbox/rise_set_golden.json", import.meta.url), "utf8")));
+assert.equal(daily.cases, 360);
+console.log("PASS rise/set native parity", daily);
 console.log("PASS observer public queries, poles, refraction and civil/provider guards");
 assert.equal(happy, 24, "public method denominator");
 assert.equal(edges, 31, "public edge denominator");
