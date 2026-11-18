@@ -259,7 +259,7 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
   [黄经事件指南](docs/EPHEMERIS_EVENTS.md)；同一查询在 C ABI 为
   `celestial_longitude_events`／`celestial_longitude_stations`／`celestial_longitude_difference_events`，在 Python 为
   [`longitude_events` 等](bindings/python/README_ZH.md#interval-longitude-events)。
-  JavaScript 提供 [`events` 三入口](docs/EPHEMERIS_EVENTS.md#javascript)，保留相同区间合同。
+  JavaScript 提供 [`events` 三入口](docs/EPHEMERIS_EVENTS.md#javascript)，保留相同区间契约。
 - 操作能力与模型身份（每个公开操作接受什么输入、结果背后站着哪些模型）：C ABI 为
   `celestial_capabilities`／`celestial_house_capability`／`celestial_model_identities` 及操作／模型说明文本，Python 为
   [`capabilities` 等](bindings/python/README_ZH.md#capabilities)，C++ 为

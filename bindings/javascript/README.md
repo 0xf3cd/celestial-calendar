@@ -107,8 +107,7 @@ Later queries and WASM memory growth do not change an earlier result.
 
 Each selected target uses its own position-provider domain. No chart-wide joint
 window, house calculation, civil conversion or rate sampling is required.
-Pluto positions accept `[2409543.5,2488069.5)` JDE(TT); longitude-event searches
-reserve an additional `±3/8` day for their rate stencil. Position projection uses
+Pluto positions accept `[2409543.5,2488069.5)` JDE(TT). Position projection uses
 fixed IAU 1980 nutation and true obliquity.
 
 `sourceCode` is the existing C position-source identity: 1 for Sun/VSOP87D,
@@ -293,7 +292,7 @@ and have the static server send it with `Content-Type: application/wasm`.
 
 The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, `chart`, `position`, `events`, `observer`, `diameter`, and `riseSet` namespaces, and the
 package ships TypeScript declarations. Model and Moon phase options are string-literal unions such as `"full"` and
-`"algo3"`. Independent positions and interval longitude events are also public.
+`"algo3"`.
 Independent house, capability and model-text query families remain C/Python-only.
 `Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to
 `Jieqi.DAHAN = 23`, spelled as in the Python package. The TypeScript type `Jieqi` is the matching

@@ -67,7 +67,7 @@ export async function testFakeNative(entryUrl) {
   const called = (name, args, pass = "sret") => {
     control.calls.push([name, ...args]);
     if (control.grow) {
-      views(M.HEAPU8.buffer.transfer(M.HEAPU8.byteLength * 2));
+      views(M.HEAPU8.buffer.transfer(M.HEAPU8.byteLength + 65_536));
       control.grow = false;
     }
     if (control.failPass === pass) {
@@ -578,6 +578,7 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
     }
     testAltitudeFakeNative(fixture, M, control, reset, called, LAYOUTS);
     testPositionEventsFakeNative(fixture, M, control, reset, called, LAYOUTS);
+    assert(M.HEAPU8.byteLength <= 4_194_304, "fake-native heap growth must stay within 4 MiB");
     console.log("PASS fake native: loader retry; error kinds/empty messages; count/fill errors/totals; 10 allocation-failure paths; sized UTF-8; malformed successes; FFI widths/resource caps; UTC decoders");
   } finally {
     delete globalThis.__celestialFakeFactory;

@@ -180,6 +180,7 @@ try {
     assert.equal(result.riseSet.cases, 360);
     assert.equal(result.riseSet.targets, 10);
     assert.equal(result.positionEvents.cases, 66);
+    assert.equal(result.positionEvents.nodeEventChecks, 8);
     assert.equal(result.positionEvents.endpointChecks, 2);
     assert.equal(result.positionEvents.tangent, true);
     assert(result.positionEvents.maximumDifference <= 1e-9);

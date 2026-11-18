@@ -78,6 +78,23 @@ export function runPositionEventsAcceptance(celestial, golden) {
   position.ecliptic(TARGETS, 2451546);
   position.equatorial(["moon"], 2451545);
   check(JSON.stringify(owned) === saved && owned[1].distanceAu === null, "selected input and result ownership");
+  // Fixed J2000 inputs replayed through the native C ABI, 2026-11-18 (814bd1d).
+  // The reporting lattice contains the queried start exactly.
+  let nodeEventChecks = 0;
+  for (const target of TARGETS.slice(10)) {
+    const time = 2451545;
+    const longitude = position.ecliptic([target], time)[0].longitudeDeg;
+    const nodeCrossings = events.longitudeCrossings(target, longitude, time, time + 10);
+    check(nodeCrossings.length === 1 && nodeCrossings[0].jdeTt === time
+      && nodeCrossings[0].direction === "decreasing", `${target} longitude crossing at start`);
+    const nodeStations = events.longitudeStations(target, time, time + 10);
+    check(nodeStations.length === (target.startsWith("mean") ? 0 : 1), `${target} station count`);
+    if (nodeStations.length) {
+      check(nodeStations[0].motionBefore === "retrograde" && nodeStations[0].motionAfter === "direct",
+        `${target} station motion`);
+    }
+    nodeEventChecks += 2;
+  }
   const indexed = ["sun"];
   indexed[Symbol.iterator] = () => { throw new Error("selection must not invoke an unbounded custom iterator"); };
   check(position.ecliptic(indexed, 2451545)[0].target === "sun", "bounded indexed selection");
@@ -125,5 +142,5 @@ export function runPositionEventsAcceptance(celestial, golden) {
   reject(() => position.equatorial(["sun"], "2451545"), TypeError);
   reject(() => events.longitudeStations("unknown", start, end), RangeError);
   reject(() => events.longitudeDifferences("sun", "moon", "0", start, end), TypeError);
-  return { cases: golden.cases.length, compared, maximumDifference, endpointChecks: 2, tangent };
+  return { cases: golden.cases.length, compared, maximumDifference, endpointChecks: 2, tangent, nodeEventChecks };
 }

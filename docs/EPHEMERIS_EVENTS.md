@@ -138,8 +138,7 @@ Component longitudes remain exactly as returned by native code, without wrapping
 Crossing/difference `direction` is `"increasing"`, `"decreasing"` or `"tangent"`;
 station `motionBefore` and `motionAfter` are `"direct"` or `"retrograde"`.
 
-The wrapper performs count/fill internally and checks both error channels and
-totals; it never returns a truncated or partially failed search. Wrong types
+The wrapper never returns a truncated or partially failed search. Wrong types
 throw `TypeError`; unknown targets, invalid intervals, nonfinite inputs and native
 input rejection throw `RangeError`. Resource/evaluation failures, malformed
 native successes and calls before `init()` throw `CelestialError`. Native domains,

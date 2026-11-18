@@ -763,7 +763,7 @@ const ALTITUDE_TARGETS = Object.freeze(Object.fromEntries(
 const ALTITUDE_SENSES = Object.freeze({
   below: CODES.CELESTIAL_ALTITUDE_SENSE_BELOW, above: CODES.CELESTIAL_ALTITUDE_SENSE_ABOVE,
 });
-const ALTITUDE_DIRECTIONS = Object.freeze({
+const EVENT_DIRECTIONS = Object.freeze({
   [CODES.CELESTIAL_EVENT_DIRECTION_INCREASING]: "increasing",
   [CODES.CELESTIAL_EVENT_DIRECTION_DECREASING]: "decreasing",
 });
@@ -896,10 +896,10 @@ const decodeAltitude = (records, requested, target, start, end, kind, operation)
       const time = nativeFinite(record.jde_tt, operation, "jde_tt");
       const index = record.condition_index;
       if (index >= conditions.length || time < start || time >= end || time < previous[0]
-        || (time === previous[0] && index <= previous[1]) || !Object.hasOwn(ALTITUDE_DIRECTIONS, record.direction_code)) {
+        || (time === previous[0] && index <= previous[1]) || !Object.hasOwn(EVENT_DIRECTIONS, record.direction_code)) {
         malformed(operation, "event association/interval/order/direction");
       }
-      events.push(Object.freeze({ jdeTt: time, conditionIndex: index, direction: ALTITUDE_DIRECTIONS[record.direction_code] }));
+      events.push(Object.freeze({ jdeTt: time, conditionIndex: index, direction: EVENT_DIRECTIONS[record.direction_code] }));
       previous = [time, index];
     } else if (record.tag === CODES.CELESTIAL_ALTITUDE_RECORD_WINDOW && kind === "windows") {
       altitudeUnused(record, ["jde_tt", "end_jde_tt"], operation);
@@ -1030,7 +1030,7 @@ const equatorialPositions = (targets, jdeTt) => selectedPositions(
 );
 
 const LONGITUDE_DIRECTIONS = Object.freeze({
-  ...ALTITUDE_DIRECTIONS,
+  ...EVENT_DIRECTIONS,
   [CODES.CELESTIAL_EVENT_DIRECTION_TANGENT]: "tangent",
 });
 const STATION_MOTIONS = Object.freeze({

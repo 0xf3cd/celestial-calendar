@@ -653,6 +653,7 @@ assert.deepEqual(runAltitudeAcceptance(celestial), { targets: 10, refractionMode
 const positionEvents = runPositionEventsAcceptance(celestial,
   JSON.parse(await readFile(new URL("../../../../toolbox/position_events_golden.json", import.meta.url), "utf8")));
 assert.equal(positionEvents.cases, 66);
+assert.equal(positionEvents.nodeEventChecks, 8);
 console.log(`PASS independent positions and longitude events ${JSON.stringify(positionEvents)}`);
 const daily = runRiseSetAcceptance(celestial, JSON.parse(await readFile(new URL("../../../../toolbox/rise_set_golden.json", import.meta.url), "utf8")));
 assert.equal(daily.cases, 360);
