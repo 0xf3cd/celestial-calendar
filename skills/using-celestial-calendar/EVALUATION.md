@@ -63,7 +63,26 @@ is larger. An artifact-derived expectation establishes consistency with that
 artifact, not independent astronomical accuracy. Existing numerical goldens and
 tolerances are unchanged.
 
-## Results
+## Observer and query comparisons
+
+The observer-coordinate, daily rise/set, observing-window and selected-position/
+station cases exercise documentation discovery and multi-step use of the newer
+interfaces. Each declares two runs per arm. Freeze their prompts before revising
+the skill, and retain those tasks when evaluating a revision instead of tuning
+every task to the revised wording. Rerun existing positive workflows to check
+whether a change helps one task at the expense of another.
+
+The `unsupported-js-events` case is an old-interface control: use a frozen
+package verified to lack the interval-station interface, separately from the
+current-source positive station case. Run `missing-interface` against the
+older Python and JavaScript packages independently. Record each case's artifact
+and guide versions; never infer an unavailable operation from a package version
+alone or score a current package against an old negative expectation.
+
+These case definitions are not execution results. Report first-output
+correctness, subsequent repair, ties and regressions from the actual traces.
+
+## Historical results
 
 On 2026-11-02, Claude Code 2.1.316 ran every case with Claude Sonnet 5.5 as agent
 and judge, one run per arm. The positive cases used a development wheel built by

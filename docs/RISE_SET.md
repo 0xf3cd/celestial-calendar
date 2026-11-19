@@ -135,6 +135,50 @@ The last three calls use the same altitude, weather and elevation choices as
 the Python example. TypeScript distinguishes the three result types; a solar
 transit is required, while a lunar or planetary transit can be `null`.
 
+## C++
+
+Include `rise_set.hpp` for the Sun and Moon. Both calls return `rise_set::Result`;
+check each optional TT instant before converting it to a civil time:
+
+```cpp
+#include <iostream>
+#include <optional>
+#include "rise_set.hpp"
+#include "ymd.hpp"
+
+int main() {
+  const auto date = util::to_ymd(2025, 6, 21);
+  const astro::GeoLocation site {
+    .latitude = astro::toolbox::AngleDeg { 69.65 },
+    .longitude = astro::toolbox::AngleDeg { 18.96 },
+  };
+  const auto sun = astro::rise_set::sun::calculate(date, site);
+  const auto moon = astro::rise_set::moon::calculate(date, site);
+  const auto display = [](const char* label, const std::optional<double>& jde_tt) -> void {
+    std::cout << label << ": ";
+    if (not jde_tt.has_value()) {
+      std::cout << "absent\n";
+      return;
+    }
+    const auto ut1 = astro::julian_day::jde_to_ut1(*jde_tt);
+    std::cout << ut1.year() << '-' << ut1.month() << '-' << ut1.day()
+              << ", day fraction " << ut1.fraction() << " UT1\n";
+  };
+  display("sunrise", sun.rise_jde_tt);
+  display("lunar transit", moon.transit_jde_tt);
+}
+```
+
+The solar result is centred on the selected local transit; the lunar result belongs to
+the UT1 date's `[0h,24h)` window. The example displays UT1, not UTC or local time.
+Use `julian_day::jde_to_utc` for UTC display within its conversion domain. Missing
+events are `std::nullopt`; inspect `result.polar` separately for polar topology.
+Invalid input throws `std::invalid_argument`; numerical failure throws `std::runtime_error`.
+Pass a solar twilight constant as the third solar argument, or
+`earth::refraction::Params` as the third lunar argument to change horizon weather.
+For a WGS84 site with elevation, follow the
+[planetary C++ example](OBSERVER.md#planetary-rise-set-cpp), which uses `planet_rise_set.hpp`.
+
 ## C
 
 The standalone [C11 example](examples/rise_set/main.c) calls all three exports,
@@ -172,9 +216,10 @@ text (`CELESTIAL_OPERATION_RISE_SET`) and Python
 `capability_text(CapabilityOperation.RISE_SET)` describe this policy.
 `capability_text(CapabilityOperation.EQUATORIAL, target)` reports a body's TT domain;
 in C, query `CELESTIAL_OPERATION_EQUATORIAL` with the target code.
-JavaScript has no capability-query API. Pluto has the
-hard interval [2409543.875,2488069.125) TT, from 1885-01-02 09:00 to
-2099-12-31 15:00 TT with the end excluded. A daily query near either endpoint
+JavaScript has no capability-query API. Pluto's position domain is
+[2409543.5,2488069.5) JDE(TT), with the end excluded. Every actual daily-query
+provider sample must fit, including both day endpoints, transit estimates and Newton
+derivative samples outside their root brackets. A daily query near either endpoint
 can fail even if the TT equivalent of the input date's 0h UT1 is inside that interval.
 A date whose samples leave a provider's domain raises Python `ValueError` or
 JavaScript `RangeError`.

@@ -42,8 +42,8 @@
  * The two error readers preserve both values. Check the error kind to distinguish a
  * legal empty result from failure, even when allocating the error message failed.
  * Among calls with a total-count output parameter, only celestial_longitude_events,
- * celestial_longitude_stations and celestial_longitude_difference_events permit a
- * successful zero total. Other such calls have a positive total on success.
+ * celestial_longitude_stations, celestial_longitude_difference_events and celestial_upper_transits
+ * permit a successful zero total. Other such calls have a positive total on success.
  * celestial_solar_lon_roots may return zero roots, and celestial_new_moons_after_jde
  * permits a zero request; check the error kind after these calls too.
  *
@@ -725,8 +725,8 @@ typedef struct CelestialLongitudeDifferenceEventRecord {
 CELESTIAL_API uint32_t celestial_longitude_events(uint32_t target_code, double target_longitude_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, CelestialLongitudeEventRecord *slots, uint32_t slot_count);
 
 /**
- * @brief Find the JDE(TT)s where `target`'s seven-point ephemeris::longitude_rate is
- *        stationary in the half-open interval [start, end), written to `slots`.
+ * @brief Find longitude stations (zeros of `target`'s seven-point ephemeris::longitude_rate)
+ *        in the half-open interval [start, end), written to `slots`.
  * @param target_code A CELESTIAL_TARGET_* code.
  * @param start_jde_tt Inclusive start, finite, within the target's longitude-rate domain.
  * @param end_jde_tt Exclusive end; the nonempty span must not exceed 3660 TT days.

@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: observing-windows
+runs: 2
+expected_outcome: |
+  A Node program actually uses the public observing-window interface for the
+  conjunction of two geometric centre-altitude conditions. It accepts explicit
+  TT interval arguments, reports returned windows with TT and converted UTC
+  endpoints, and permits a legal empty result. It states that the sampled search
+  can miss events and does not promise complete observing opportunities.

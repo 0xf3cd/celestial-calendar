@@ -55,8 +55,30 @@ const double diameter_arcsec = disk.diameter.deg() * astro::toolbox::SEC_PER_DEG
 For direct geometry use `diameter(DistanceKm, DistanceAu)`. For an existing
 JDE(TT), `geocentric(jde_tt, target)` returns `Size` with distance and angle.
 `topocentric(times, observer, target)` accepts an explicit same-instant UT1/TT pair.
-The C export is `celestial_apparent_diameter`; it reads latitude, longitude and
-elevation only when `centre_code` selects `TOPOCENTRIC`.
+For C, this complete program queries the Moon from a site 50 m above the WGS84 ellipsoid:
+
+```c
+#include <stdio.h>
+#include "celestial.h"
+
+int main(void) {
+  const CelestialApparentDiameter disk = celestial_apparent_diameter(
+    CELESTIAL_TARGET_MOON, 2026, 11, 7, 0.0,
+    CELESTIAL_CIVIL_SCALE_UTC, CELESTIAL_DELTA_T_MODEL_DEFAULT,
+    CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC, -33.85, 151.2, 50.0
+  );
+  if (celestial_last_error_kind() != CELESTIAL_ERROR_NONE || !disk.valid) {
+    fprintf(stderr, "%s\n", celestial_last_error());
+    return 1;
+  }
+  printf("Moon diameter: %.3f arcsec\n", disk.diameter_arcsec);
+  return 0;
+}
+```
+
+Compile and link as in the [C/FFI quickstart](../README.md#c-abi).
+Select `CELESTIAL_DIAMETER_CENTRE_GEOCENTRIC` to use geocentric distance; latitude,
+longitude and elevation are then ignored. The returned structure owns its values.
 
 ## What the scalar means
 
