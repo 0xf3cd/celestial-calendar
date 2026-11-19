@@ -20,8 +20,9 @@ Project-authored material uses MIT. The generated directory includes `LICENSE` a
 
 The README's [C++ quickstart](https://github.com/0xf3cd/celestial-calendar#cpp) shows how to compile against the
 headers. This section covers the headers beyond the Jieqi API. The chart snapshot is also available from C
-(described below), Python and JavaScript; the interval longitude events, the capabilities and model identities,
-and the independent ecliptic/equatorial position and house queries are also available from C and Python.
+(described below), Python and JavaScript. Interval longitude events and independent ecliptic/equatorial
+positions are also exposed by all three; capabilities, model identities and independent house queries
+remain C/Python-only.
 For changes from 0.x, see
 [Migrating to 1.0](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/MIGRATING_1_0.md).
 
@@ -111,7 +112,7 @@ Other rate inputs are `[-1200954.625, 6104044.625)`.
 The optional [`ephemeris_events.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/ephemeris_events.hpp)
 adds `longitude_events`, `stations` and `longitude_difference_events` for explicit half-open TT intervals inside
 those domains. The [event guide](EPHEMERIS_EVENTS.md) covers signed target orientation, exact numerical contacts,
-bounded work and the conditional floating-point contract. C and Python expose the same searches below.
+bounded work and the conditional floating-point contract. C, Python and JavaScript expose the same searches.
 
 The [`chart.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/chart.hpp) composes
 geocentric positions, longitude rates and house geometry at one explicitly scaled civil instant:
@@ -284,6 +285,7 @@ The C++ `capability::domain_record` / `domain_records` facade composes typed ope
 values with optional intervals/span limits. Raw NaN/code encoding and runtime model/text registries belong to
 `shared_lib`, not the core facade. All these domains describe admission rules, not accuracy guarantees.
 
+<a id="c-independent-position-and-house-queries"></a>
 ## C Independent Position and House Queries
 
 `celestial_positions` evaluates the caller's selected targets at one finite JDE(TT) under the
@@ -300,6 +302,9 @@ the AU distance the nodes never carry.
 `CelestialEquatorialPositionRecord` values: right ascension/declination in degrees, optional AU distance and
 resolved source. It projects all fourteen targets with fixed IAU 1980 longitude nutation and true obliquity;
 mathematical nodes have no distance. Neither query evaluates rates, houses or civil conversion.
+JavaScript exposes these operations as
+[`position.ecliptic` and `position.equatorial`](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README.md#independent-positions),
+with frozen records, nullable AU distances and the same numeric source identities.
 
 `celestial_house_query` returns `CelestialHouseQueryResult` by value using the public
 `astro::chart::resolve_civil_times` composer and numeric `astro::house::calculate`. It follows the shared civil

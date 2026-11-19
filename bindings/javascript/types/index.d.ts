@@ -158,6 +158,97 @@ export interface BodyState {
   longitudeRateDegPerTtDay: number;
 }
 
+/** Apparent geocentric position in the true ecliptic of date; angles in degrees. */
+export interface Position {
+  readonly target: ChartTarget;
+  readonly longitudeDeg: number;
+  readonly latitudeDeg: number;
+  /** AU for physical bodies; null for mathematical nodes. */
+  readonly distanceAu: number | null;
+  /** Existing C position-source code identifying the provider, not an accuracy bound. */
+  readonly sourceCode: number;
+}
+
+/** Apparent geocentric equatorial position of date; angles in degrees. */
+export interface EquatorialPosition {
+  readonly target: ChartTarget;
+  readonly rightAscensionDeg: number;
+  readonly declinationDeg: number;
+  readonly distanceAu: number | null;
+  /** Existing C position-source code identifying the provider, not an accuracy bound. */
+  readonly sourceCode: number;
+}
+
+export const position: Readonly<{
+  /**
+   * Owned frozen records in caller order at one JDE(TT); longitude in [0,360).
+   * Each selected provider's position domain applies, without the chart's joint window.
+   * These queries do not calculate houses, convert civil time or sample longitude rates.
+   * @throws {TypeError} For non-array selections, non-string targets or nonnumeric times.
+   * @throws {RangeError} For empty/duplicate/unknown selections, nonfinite times or native input rejection.
+   * @throws {CelestialError} Before init, for allocation/evaluation failures or malformed native success.
+   */
+  ecliptic(targets: readonly ChartTarget[], jdeTt: number): readonly Position[];
+  /** Same selection, time, ownership and errors as ecliptic; right ascension in [0,360). */
+  equatorial(targets: readonly ChartTarget[], jdeTt: number): readonly EquatorialPosition[];
+}>;
+
+export type StationMotion = "direct" | "retrograde";
+
+/**
+ * longitudeDeg is the native longitude in degrees, not wrapped into [0,360).
+ * longitudeRateDegPerTtDay is the native rate in degrees per TT day.
+ */
+export interface LongitudeEvent {
+  readonly jdeTt: number;
+  readonly longitudeDeg: number;
+  readonly longitudeRateDegPerTtDay: number;
+  readonly direction: EventDirection;
+}
+
+/**
+ * longitudeRateDegPerTtDay is the rate used by the search and is not guaranteed to be zero at a station.
+ * See the [longitude-event guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/EPHEMERIS_EVENTS.md).
+ */
+export interface StationEvent {
+  readonly jdeTt: number;
+  readonly longitudeDeg: number;
+  readonly longitudeRateDegPerTtDay: number;
+  readonly motionBefore: StationMotion;
+  readonly motionAfter: StationMotion;
+}
+
+/** Directed first-minus-second difference in (-180,180]; both component longitudes stay raw. */
+export interface LongitudeDifferenceEvent {
+  readonly jdeTt: number;
+  readonly longitudeADeg: number;
+  readonly longitudeBDeg: number;
+  readonly longitudeRateADegPerTtDay: number;
+  readonly longitudeRateBDegPerTtDay: number;
+  readonly signedDifferenceDeg: number;
+  readonly direction: EventDirection;
+}
+
+/**
+ * Geocentric longitude searches on [startJdeTt,endJdeTt), returning owned frozen records in time order.
+ * Native target domains, span and work limits apply; valid empty results are frozen empty arrays.
+ * These are distinct from observer.altitudeEvents local centre-altitude crossings and apparent-disk contacts.
+ * @throws {TypeError} For non-string targets or nonnumeric arguments.
+ * @throws {RangeError} For unknown targets, nonfinite inputs, invalid intervals or native domain/selection rejection.
+ * @throws {CelestialError} Before init, for resource/evaluation failures or malformed native success.
+ */
+export const events: Readonly<{
+  /** Includes exact numerical tangent contacts; any finite longitude is accepted modulo whole turns by native code. */
+  longitudeCrossings(target: ChartTarget, longitudeDeg: number, startJdeTt: number, endJdeTt: number): readonly LongitudeEvent[];
+  longitudeStations(target: ChartTarget, startJdeTt: number, endJdeTt: number): readonly StationEvent[];
+  /**
+   * A target paired with itself is rejected.
+   * A difference satisfied throughout the interval is rejected.
+   * A difference this pair can never reach returns an empty array.
+   */
+  longitudeDifferences(first: ChartTarget, second: ChartTarget, differenceDeg: number, startJdeTt: number, endJdeTt: number): readonly LongitudeDifferenceEvent[];
+}>;
+
 export interface ChartHouses {
   ascendantDeg: number;
   midheavenDeg: number;

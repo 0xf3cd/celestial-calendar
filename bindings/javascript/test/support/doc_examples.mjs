@@ -110,6 +110,10 @@ export async function runDocExamples(consumer, packageName) {
   const riseSetCount = await runPrograms(riseSetGuide, consumer, packageName);
   if (riseSetCount !== 1) throw new Error("Expected one executable daily rise/set JavaScript program");
   console.log(`PASS displayed rise/set JavaScript programs ${riseSetCount}/${riseSetCount} via ${packageName}`);
+  const longitudeGuide = await readFile(new URL("../../../../docs/EPHEMERIS_EVENTS.md", import.meta.url), "utf8");
+  const longitudeCount = await runPrograms(longitudeGuide, consumer, packageName);
+  assert.equal(longitudeCount, 1);
+  console.log(`PASS displayed longitude JavaScript programs ${longitudeCount}/${longitudeCount} via ${packageName}`);
   for (const name of packageName === "celestial-calendar" ? ["@0xf3cd/celestial", "celestial-calendar"] : [packageName]) {
     const directory = name === "celestial-calendar" ? "javascript-alias" : "javascript";
     const source = await readFile(new URL(`../../../${directory}/README.md`, import.meta.url), "utf8");

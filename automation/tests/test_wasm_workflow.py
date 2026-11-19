@@ -184,6 +184,8 @@ def test_javascript_test_entries_match_their_execution_owners():
     "support/rise_set_api.mjs",
     "support/altitude_api.mjs",
     "support/altitude_fake.mjs",
+    "support/position_events_api.mjs",
+    "support/position_events_fake.mjs",
     "support/chart_replay.mjs",
     "support/doc_examples.mjs",
     "support/package_consumer.mjs",
@@ -265,6 +267,20 @@ def test_javascript_test_entries_match_their_execution_owners():
   assert "runAltitudeAcceptance(alias)" in (test_root / "browser/fixture/src/pages/index.astro").read_text(
     encoding="utf-8"
   )
+  assert 'import { testPositionEventsFakeNative } from "./position_events_fake.mjs";' in (
+    test_root / "support/fake_native.mjs"
+  ).read_text(encoding="utf-8")
+  for file, call in [
+    ("support/fake_native.mjs", "testPositionEventsFakeNative(fixture, M, control, reset, called, LAYOUTS);"),
+    ("node/public_api_test.mjs", "const positionEvents = runPositionEventsAcceptance(celestial,"),
+    ("support/package_consumer.mjs", "runPositionEventsAcceptance(celestial,"),
+    (
+      "browser/fixture/src/pages/index.astro",
+      "positionEvents: runPositionEventsAcceptance(alias, positionEventsGolden),",
+    ),
+    ("browser/browser_test.mjs", "assert.equal(result.positionEvents.cases, 66);"),
+  ]:
+    assert call in (test_root / file).read_text(encoding="utf-8"), file
   assert "node toolbox/wasm_check.mjs" in workflow_commands
   assert "npm run test:types --prefix bindings/javascript" in workflow_commands
 
@@ -283,6 +299,35 @@ def test_javascript_test_inventory_rejects_unowned_modules(tmp_path, monkeypatch
     test_javascript_test_entries_match_their_execution_owners()
 
   extra.unlink()
+  test_javascript_test_entries_match_their_execution_owners()
+
+
+@pytest.mark.parametrize(
+  ("file", "call"),
+  [
+    ("support/fake_native.mjs", "testPositionEventsFakeNative(fixture, M, control, reset, called, LAYOUTS);"),
+    ("node/public_api_test.mjs", "const positionEvents = runPositionEventsAcceptance(celestial,"),
+    ("support/package_consumer.mjs", "runPositionEventsAcceptance(celestial,"),
+    (
+      "browser/fixture/src/pages/index.astro",
+      "positionEvents: runPositionEventsAcceptance(alias, positionEventsGolden),",
+    ),
+    ("browser/browser_test.mjs", "assert.equal(result.positionEvents.cases, 66);"),
+  ],
+)
+def test_position_event_checks_require_execution(tmp_path, monkeypatch, file, call):
+  isolated = tmp_path / "javascript"
+  shutil.copytree(JAVASCRIPT / "test", isolated / "test")
+  shutil.copyfile(JAVASCRIPT / "package.json", isolated / "package.json")
+  monkeypatch.setattr(sys.modules[__name__], "JAVASCRIPT", isolated)
+  test_javascript_test_entries_match_their_execution_owners()
+  target = isolated / "test" / file
+  original = target.read_text(encoding="utf-8")
+  assert call in original
+  target.write_text(original.replace(call, ""), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_javascript_test_entries_match_their_execution_owners()
+  target.write_text(original, encoding="utf-8")
   test_javascript_test_entries_match_their_execution_owners()
 
 

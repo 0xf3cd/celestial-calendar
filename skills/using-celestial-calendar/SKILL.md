@@ -51,9 +51,7 @@ or implement a replacement astronomical calculation to hide a missing interface.
 | Time-scale conventions and failure categories | [Design](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/DESIGN.md) |
 
 Use the public capability query only for the operations that its language guide
-documents. It is not a universal method-discovery API. JavaScript does not expose
-the interval-event API; explain that boundary and offer a supported language
-instead of borrowing method names from Python or C++.
+documents. It is not a universal method-discovery API.
 
 Before choosing inputs or interpreting results, check the relevant contract:
 

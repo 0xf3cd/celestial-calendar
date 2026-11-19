@@ -217,7 +217,7 @@ const isCountFillProtocol = (protocol, binding, parameters, argumentCount) => {
       && protocol[role] === parameters.at(index - roles.length)?.name);
 };
 
-const countThenFill = (cName, operation, args, layoutName = null) => {
+const countThenFill = (cName, operation, args, layoutName = null, readRecord = readLayout) => {
   const M = requireModule(operation);
   const binding = bindingOf(cName);
   const protocol = PROTOCOLS?.[cName];
@@ -228,7 +228,8 @@ const countThenFill = (cName, operation, args, layoutName = null) => {
   const countPtr = allocate(M, 4, operation);
 
   try {
-    M.HEAPU32[countPtr >> 2] = 0;
+    // Both passes must write their total, including an empty success.
+    M.HEAPU32[countPtr >> 2] = 0xFFFFFFFF;
     const queried = M[binding.wasmName](...args, countPtr, 0, 0);
     checkError(M, operation);
     const count = M.HEAPU32[countPtr >> 2];
@@ -242,7 +243,15 @@ const countThenFill = (cName, operation, args, layoutName = null) => {
     const slots = allocate(M, count * stride, operation);
     try {
       if (layoutName === null) M.HEAPF64.fill(NaN, slots >> 3, (slots >> 3) + count);
-      else M.HEAPU8.fill(0xA5, slots, slots + count * stride);
+      else {
+        M.HEAPU8.fill(0xA5, slots, slots + count * stride);
+        for (let index = 0; index < count; ++index) {
+          for (const field of LAYOUTS[layoutName].fields) {
+            if (field.type === "double") M.HEAPF64[(slots + index * stride + field.offset) >> 3] = NaN;
+          }
+        }
+      }
+      M.HEAPU32[countPtr >> 2] = 0xFFFFFFFF;
       const written = M[binding.wasmName](...args, countPtr, slots, count);
       checkError(M, operation);
       if (written !== count || M.HEAPU32[countPtr >> 2] !== count) {
@@ -250,7 +259,7 @@ const countThenFill = (cName, operation, args, layoutName = null) => {
       }
       return layoutName === null
         ? readDoubles(M, slots, count).map((value) => nativeFinite(value, operation, "moment"))
-        : Array.from({ length: count }, (_, index) => readLayout(M, slots + index * stride, layoutName));
+        : Array.from({ length: count }, (_, index) => readRecord(M, slots + index * stride, layoutName));
     } finally {
       M._free(slots);
     }
@@ -754,7 +763,7 @@ const ALTITUDE_TARGETS = Object.freeze(Object.fromEntries(
 const ALTITUDE_SENSES = Object.freeze({
   below: CODES.CELESTIAL_ALTITUDE_SENSE_BELOW, above: CODES.CELESTIAL_ALTITUDE_SENSE_ABOVE,
 });
-const ALTITUDE_DIRECTIONS = Object.freeze({
+const EVENT_DIRECTIONS = Object.freeze({
   [CODES.CELESTIAL_EVENT_DIRECTION_INCREASING]: "increasing",
   [CODES.CELESTIAL_EVENT_DIRECTION_DECREASING]: "decreasing",
 });
@@ -806,6 +815,14 @@ const altitudeCondition = (input) => {
 const physicalSource = (code) => code === 0 ? CODES.CELESTIAL_POSITION_SOURCE_SUN_VSOP87D
     : code === 1 ? CODES.CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC
       : code === 9 ? CODES.CELESTIAL_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT : CODES.CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D;
+
+const positionSource = (code) => {
+  if (isPhysicalTarget(code)) return physicalSource(code);
+  if (code === CHART_CODES.targets.meanAscending || code === CHART_CODES.targets.meanDescending) {
+    return CODES.CELESTIAL_POSITION_SOURCE_NODE_MEAN;
+  }
+  return CODES.CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM;
+};
 
 const altitudeIdentities = (record, target, operation) => {
   const code = ALTITUDE_TARGETS[target];
@@ -887,10 +904,10 @@ const decodeAltitude = (records, requested, target, start, end, kind, operation)
       const time = nativeFinite(record.jde_tt, operation, "jde_tt");
       const index = record.condition_index;
       if (index >= conditions.length || time < start || time >= end || time < previous[0]
-        || (time === previous[0] && index <= previous[1]) || !Object.hasOwn(ALTITUDE_DIRECTIONS, record.direction_code)) {
+        || (time === previous[0] && index <= previous[1]) || !Object.hasOwn(EVENT_DIRECTIONS, record.direction_code)) {
         malformed(operation, "event association/interval/order/direction");
       }
-      events.push(Object.freeze({ jdeTt: time, conditionIndex: index, direction: ALTITUDE_DIRECTIONS[record.direction_code] }));
+      events.push(Object.freeze({ jdeTt: time, conditionIndex: index, direction: EVENT_DIRECTIONS[record.direction_code] }));
       previous = [time, index];
     } else if (record.tag === CODES.CELESTIAL_ALTITUDE_RECORD_WINDOW && kind === "windows") {
       altitudeUnused(record, ["jde_tt", "end_jde_tt"], operation);
@@ -947,6 +964,151 @@ const altitudeQuery = (kind, site, selection, startJdeTt, endJdeTt) => {
   } finally {
     if (inputs) M._free(inputs);
   }
+};
+
+const readPositionRecord = (M, ptr, layoutName) => {
+  const fields = LAYOUTS[layoutName].fields;
+  const present = readField(M, ptr, fields.find((field) => field.name === "present_fields"));
+  return Object.fromEntries(fields.map((field) => [
+    field.name,
+    field.name === "distance_au" && !(present & CODES.CELESTIAL_PRESENT_DISTANCE) ? null : readField(M, ptr, field),
+  ]));
+};
+
+const selectedPositions = (cName, operation, targets, jdeTt, layoutName, coordinates) => {
+  const M = requireModule(operation);
+  if (!Array.isArray(targets)) throw new TypeError("targets must be an array.");
+  const count = targets.length;
+  if (count === 0) throw new RangeError("targets must not be empty.");
+  if (count > Object.keys(CHART_CODES.targets).length) throw new RangeError("Too many selected targets.");
+  const selection = Array.from({ length: count }, (_, index) => {
+    const target = targets[index];
+    return { target, code: enumValue(target, "target", CHART_CODES.targets) };
+  });
+  if (new Set(selection.map(({ code }) => code)).size !== selection.length) throw new RangeError("Duplicate target.");
+  const time = finiteNumber(jdeTt, "jdeTt");
+  const inputs = allocate(M, selection.length * 4, operation);
+  try {
+    M.HEAPU32.set(selection.map(({ code }) => code), inputs >> 2);
+    const records = countThenFill(cName, operation, [inputs, selection.length, time], layoutName, readPositionRecord);
+    if (records.length !== selection.length) malformed(operation, "position count");
+    return Object.freeze(records.map((record, index) => {
+      const { target, code } = selection[index];
+      const node = !isPhysicalTarget(code);
+      const present = CODES.CELESTIAL_PRESENT_LATITUDE | (node ? 0 : CODES.CELESTIAL_PRESENT_DISTANCE);
+      const sourceCode = positionSource(code);
+      if (record.target_code !== code || record.present_fields !== present || record.source_code !== sourceCode) {
+        malformed(operation, "target/presence/source");
+      }
+      const distanceAu = node ? null : nativeFinite(record.distance_au, operation, "distance_au");
+      if (!node && distanceAu <= 0) malformed(operation, "distance_au");
+      return Object.freeze({ target, ...coordinates(record, node, operation), distanceAu, sourceCode });
+    }));
+  } finally {
+    M._free(inputs);
+  }
+};
+
+const eclipticPositions = (targets, jdeTt) => selectedPositions(
+  "celestial_positions", "position.ecliptic", targets, jdeTt, "CelestialPositionRecord",
+  (record, node, operation) => {
+    const longitudeDeg = nativeFinite(record.longitude_deg, operation, "longitude_deg");
+    const latitudeDeg = nativeFinite(record.latitude_deg, operation, "latitude_deg");
+    if (longitudeDeg < 0 || longitudeDeg >= 360 || latitudeDeg < -90 || latitudeDeg > 90 || (node && latitudeDeg !== 0)) {
+      malformed(operation, "ecliptic coordinates");
+    }
+    return { longitudeDeg, latitudeDeg };
+  },
+);
+
+const equatorialPositions = (targets, jdeTt) => selectedPositions(
+  "celestial_equatorial_positions", "position.equatorial", targets, jdeTt, "CelestialEquatorialPositionRecord",
+  (record, _node, operation) => {
+    const rightAscensionDeg = nativeFinite(record.right_ascension_deg, operation, "right_ascension_deg");
+    const declinationDeg = nativeFinite(record.declination_deg, operation, "declination_deg");
+    if (rightAscensionDeg < 0 || rightAscensionDeg >= 360 || declinationDeg < -90 || declinationDeg > 90) {
+      malformed(operation, "equatorial coordinates");
+    }
+    return { rightAscensionDeg, declinationDeg };
+  },
+);
+
+const LONGITUDE_DIRECTIONS = Object.freeze({
+  ...EVENT_DIRECTIONS,
+  [CODES.CELESTIAL_EVENT_DIRECTION_TANGENT]: "tangent",
+});
+const STATION_MOTIONS = Object.freeze({
+  [CODES.CELESTIAL_EVENT_MOTION_DIRECT]: "direct",
+  [CODES.CELESTIAL_EVENT_MOTION_RETROGRADE]: "retrograde",
+});
+const eventCode = (code, choices, operation, field) => {
+  if (!Object.hasOwn(choices, code)) malformed(operation, field);
+  return choices[code];
+};
+
+const longitudeRecords = (cName, operation, args, startJdeTt, endJdeTt, layoutName) => {
+  const start = finiteNumber(startJdeTt, "startJdeTt");
+  const end = finiteNumber(endJdeTt, "endJdeTt");
+  const records = countThenFill(cName, operation, [...args, start, end], layoutName);
+  let previous = -Infinity;
+  for (const record of records) {
+    for (const field of LAYOUTS[layoutName].fields) {
+      if (field.type === "double") nativeFinite(record[field.name], operation, field.name);
+    }
+    if (record.jde_tt < start || record.jde_tt >= end || record.jde_tt <= previous) {
+      malformed(operation, "event interval/order");
+    }
+    previous = record.jde_tt;
+  }
+  return records;
+};
+
+const intervalLongitudeCrossings = (target, longitudeDeg, startJdeTt, endJdeTt) => {
+  const operation = "events.longitudeCrossings";
+  requireModule(operation);
+  const code = enumValue(target, "target", CHART_CODES.targets);
+  const longitude = finiteNumber(longitudeDeg, "longitudeDeg");
+  const records = longitudeRecords("celestial_longitude_events", operation, [code, longitude],
+    startJdeTt, endJdeTt, "CelestialLongitudeEventRecord");
+  return Object.freeze(records.map((record) => Object.freeze({
+    jdeTt: record.jde_tt, longitudeDeg: record.longitude_deg,
+    longitudeRateDegPerTtDay: record.longitude_rate_deg_per_tt_day,
+    direction: eventCode(record.direction_code, LONGITUDE_DIRECTIONS, operation, "direction"),
+  })));
+};
+
+const longitudeStations = (target, startJdeTt, endJdeTt) => {
+  const operation = "events.longitudeStations";
+  requireModule(operation);
+  const code = enumValue(target, "target", CHART_CODES.targets);
+  const records = longitudeRecords("celestial_longitude_stations", operation, [code],
+    startJdeTt, endJdeTt, "CelestialStationEventRecord");
+  return Object.freeze(records.map((record) => Object.freeze({
+    jdeTt: record.jde_tt, longitudeDeg: record.longitude_deg,
+    longitudeRateDegPerTtDay: record.longitude_rate_deg_per_tt_day,
+    motionBefore: eventCode(record.motion_before_code, STATION_MOTIONS, operation, "motion_before"),
+    motionAfter: eventCode(record.motion_after_code, STATION_MOTIONS, operation, "motion_after"),
+  })));
+};
+
+const longitudeDifferences = (first, second, differenceDeg, startJdeTt, endJdeTt) => {
+  const operation = "events.longitudeDifferences";
+  requireModule(operation);
+  const firstCode = enumValue(first, "first", CHART_CODES.targets);
+  const secondCode = enumValue(second, "second", CHART_CODES.targets);
+  const difference = finiteNumber(differenceDeg, "differenceDeg");
+  const records = longitudeRecords("celestial_longitude_difference_events", operation, [firstCode, secondCode, difference],
+    startJdeTt, endJdeTt, "CelestialLongitudeDifferenceEventRecord");
+  return Object.freeze(records.map((record) => {
+    if (record.signed_difference_deg <= -180 || record.signed_difference_deg > 180) malformed(operation, "signed difference");
+    return Object.freeze({
+      jdeTt: record.jde_tt, longitudeADeg: record.longitude_a_deg, longitudeBDeg: record.longitude_b_deg,
+      longitudeRateADegPerTtDay: record.longitude_rate_a_deg_per_tt_day,
+      longitudeRateBDegPerTtDay: record.longitude_rate_b_deg_per_tt_day,
+      signedDifferenceDeg: record.signed_difference_deg,
+      direction: eventCode(record.direction_code, LONGITUDE_DIRECTIONS, operation, "direction"),
+    });
+  }));
 };
 
 // NIST SP 330 (2019), Table 8; ERFA v2.0.1 erfam.h, ERFA_DAU, converted to km.
@@ -1123,6 +1285,12 @@ export const moon = Object.freeze({
 export const jieqi = Object.freeze({ moment: jieqiMoment, name: jieqiName });
 export const lunar = Object.freeze({ supportedYearRange, yearInfo, fromGregorian, toGregorian });
 export const chart = Object.freeze({ snapshot });
+export const position = Object.freeze({ ecliptic: eclipticPositions, equatorial: equatorialPositions });
+export const events = Object.freeze({
+  longitudeCrossings: intervalLongitudeCrossings,
+  longitudeStations,
+  longitudeDifferences,
+});
 export const riseSet = Object.freeze({
   solar: solarRiseSet,
   lunar: lunarRiseSet,

@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { testAltitudeFakeNative } from "./altitude_fake.mjs";
+import { testPositionEventsFakeNative } from "./position_events_fake.mjs";
 
 export async function testFakeNative(entryUrl) {
   const { BINDINGS, C_DECLARATIONS, LAYOUTS, PROTOCOLS } = await import(new URL("./bindings.mjs", entryUrl));
@@ -66,7 +67,7 @@ export async function testFakeNative(entryUrl) {
   const called = (name, args, pass = "sret") => {
     control.calls.push([name, ...args]);
     if (control.grow) {
-      views(M.HEAPU8.buffer.transfer(M.HEAPU8.byteLength * 2));
+      views(M.HEAPU8.buffer.transfer(M.HEAPU8.byteLength + 65_536));
       control.grow = false;
     }
     if (control.failPass === pass) {
@@ -150,7 +151,10 @@ export async function testFakeNative(entryUrl) {
     assert.deepEqual(control.calls, [], "import does not query native domains");
     for (const action of [() => fixture.riseSet.solar(null, null), () => fixture.riseSet.lunar(null, null),
       () => fixture.riseSet.planet(null, null, null), () => fixture.observer.altitudeEvents(null, null, NaN, NaN),
-      () => fixture.observer.upperTransits(null, null, NaN, NaN), () => fixture.observer.observingWindows(null, [], NaN, NaN)]) {
+       () => fixture.observer.upperTransits(null, null, NaN, NaN), () => fixture.observer.observingWindows(null, [], NaN, NaN),
+       () => fixture.position.ecliptic(null, NaN), () => fixture.position.equatorial(null, NaN),
+       () => fixture.events.longitudeCrossings(null, NaN, NaN, NaN), () => fixture.events.longitudeStations(null, NaN, NaN),
+       () => fixture.events.longitudeDifferences(null, null, NaN, NaN, NaN)]) {
       assert.throws(action, { name: "CelestialError", recorded: false });
     }
     let previous;
@@ -177,7 +181,7 @@ export async function testFakeNative(entryUrl) {
       decodedJieqi.momentUt1.day, decodedJieqi.momentUt1.fraction], [7, 2024, 3, 7, 0.123456789],
     "Jieqi public decoder preserves distinct native fields");
     reset();
-    assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "diameter", "init", "jieqi", "lunar", "moon", "observer", "riseSet", "sun", "time"]);
+    assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "diameter", "events", "init", "jieqi", "lunar", "moon", "observer", "position", "riseSet", "sun", "time"]);
     assert.deepEqual(fixture.sun.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceAu: 2 });
     assert.deepEqual(fixture.moon.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceKm: 2 });
 
@@ -573,6 +577,8 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
       assert.equal(owned.transitJdeTt, 2460000.5, "daily values survive freed/reused storage and growth");
     }
     testAltitudeFakeNative(fixture, M, control, reset, called, LAYOUTS);
+    testPositionEventsFakeNative(fixture, M, control, reset, called, LAYOUTS);
+    assert(M.HEAPU8.byteLength <= 4_194_304, "fake-native heap growth must stay within 4 MiB");
     console.log("PASS fake native: loader retry; error kinds/empty messages; count/fill errors/totals; 10 allocation-failure paths; sized UTF-8; malformed successes; FFI widths/resource caps; UTC decoders");
   } finally {
     delete globalThis.__celestialFakeFactory;

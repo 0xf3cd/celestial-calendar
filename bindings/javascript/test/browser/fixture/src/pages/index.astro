@@ -38,6 +38,8 @@
       import { runAltitudeAcceptance } from "../altitude_api.mjs";
       import { runRiseSetAcceptance } from "../rise_set_api.mjs";
       import riseSetGolden from "../rise_set_golden.json";
+      import { runPositionEventsAcceptance } from "../position_events_api.mjs";
+      import positionEventsGolden from "../position_events_golden.json";
       import { renderDiameters } from "../diameter_example.mjs";
       import chartExample from "../chart_example.json";
 
@@ -85,6 +87,7 @@
             diameter: runDiameterAcceptance(alias),
             altitude: runAltitudeAcceptance(alias),
             riseSet: runRiseSetAcceptance(alias, riseSetGolden),
+            positionEvents: runPositionEventsAcceptance(alias, positionEventsGolden),
             diameterExample: renderDiameters(alias, document.querySelector("#diameters")),
           };
         } catch (error) {

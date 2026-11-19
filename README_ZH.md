@@ -133,7 +133,8 @@ clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
 `JieqiGenerator`。其他功能也按领域组织在 `src/astro/`、`src/calendar/`、`src/util/` 的自包含头文件中。
 月交点、黄经速率、星盘、行星照明与行星事件头文件的说明见
 [API 参考的 C++ 指南（英文）](docs/API.md#cpp-guide)。星盘快照也能从 C、Python 和 JavaScript 调用；
-独立黄道／赤道位置、民用时刻宫位、区间事件和能力查询另有 C 与 Python 接口，JavaScript 不暴露这些查询。
+独立黄道／赤道位置和区间黄经事件也有 C、Python 与 JavaScript 接口；
+独立民用时刻宫位和能力查询仍只提供 C 与 Python 接口。
 [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) 提供定黄经、留站和带方向两体黄经差的区间搜索；
 半开区间的端点归属、精确切触和浮点前提见[黄经事件指南（英文）](docs/EPHEMERIS_EVENTS.md)。
 独立位置按所选目标各自的模型窗口查询；民用宫位遵循共用民用策略，不套快照的联合目标／速率窗口。
@@ -252,12 +253,13 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
   JavaScript 为 [`chart.snapshot`](bindings/javascript/README_ZH.md#chart-snapshot)。
   C ABI 和两个语言包仍只通过这份快照提供单时刻黄经速率查询；行星、月交点也有
   [独立位置与宫位查询](bindings/python/README_ZH.md#independent-queries)，
-  JavaScript 则不暴露这两个独立查询。
+  JavaScript 提供[独立位置](bindings/javascript/README.md#independent-positions)，不提供独立宫位查询。
 - 区间黄经事件（供定黄经过宫、留站、带方向的两体黄经差）：C++ 见
   [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) 与
   [黄经事件指南](docs/EPHEMERIS_EVENTS.md)；同一查询在 C ABI 为
   `celestial_longitude_events`／`celestial_longitude_stations`／`celestial_longitude_difference_events`，在 Python 为
-  [`longitude_events` 等](bindings/python/README_ZH.md#interval-longitude-events)。JavaScript 不暴露这组黄经事件 API。
+  [`longitude_events` 等](bindings/python/README_ZH.md#interval-longitude-events)。
+  JavaScript 提供 [`events` 三入口](docs/EPHEMERIS_EVENTS.md#javascript)，保留相同区间契约。
 - 操作能力与模型身份（每个公开操作接受什么输入、结果背后站着哪些模型）：C ABI 为
   `celestial_capabilities`／`celestial_house_capability`／`celestial_model_identities` 及操作／模型说明文本，Python 为
   [`capabilities` 等](bindings/python/README_ZH.md#capabilities)，C++ 为
@@ -268,7 +270,8 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
   [`positions`／`equatorial_positions`／`house_query`](bindings/python/README_ZH.md#independent-queries)，C++ 为
   [`ephemeris.hpp`](src/astro/ephemeris.hpp) 的 `position`／`equatorial_position` 与
   [`house.hpp`](src/astro/house.hpp) 的数值宫位操作。C 与 Python 结果带解析后的模型／来源身份；民用宫位查询
-  遵循共用民用策略，但不受快照的联合目标／速率窗口限制。JavaScript 不暴露这些独立查询。
+  遵循共用民用策略，但不受快照的联合目标／速率窗口限制。
+  JavaScript 的 `position.ecliptic/equatorial` 提供独立位置，不提供独立宫位查询。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 不保证计算总能成功，
   不表示各模型在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。
