@@ -40,6 +40,11 @@ npm install @0xf3cd/celestial
 <a id="examples"></a>
 ## 示例
 
+只查询所选天体的地心位置、不计算全盘时，用
+[`position.ecliptic` 和 `position.equatorial`](#independent-positions)。
+搜索黄经穿越、留站和两天体的有向黄经差时，用
+[`events`](../../docs/EPHEMERIS_EVENTS.md#javascript)。
+
 用区间高度查询查找高度事件、上中天，或“火星高于 20° 且太阳低于 −18°”的交集时段。
 接口接受显式 JDE(TT) 区间；采样搜索可能漏检事件，成功返回不保证已找到全部事件。
 用法和限制见[高度事件与观测窗口指南（英文）](../../docs/ALTITUDE_EVENTS.md)。
@@ -81,8 +86,17 @@ console.log(equatorial[0].rightAscensionDeg, equatorial[0].declinationDeg);
 传入 JDE(TT) 后，结果按目标顺序返回，数组和记录均冻结。经纬度、赤经和赤纬以度为单位；
 距离为 AU（月球也一样），交点距离为 `null`。空选和重复目标会失败；
 只检查所选目标各自的位置模型域，不计算速率、宫位或民用时间转换。
-`sourceCode` 是既有 C 位置来源编号：1 太阳／VSOP87D，2 月球／截断 ELP2000-82B，
-3 行星／VSOP87D，4 冥王星／Pluto95，5 平均交点，6 Meeus 五项真交点。
+后续查询和 WASM 内存增长不会改变已经取得的结果。
+
+`sourceCode` 是既有 C 位置来源编号：
+
+- 1：太阳／VSOP87D
+- 2：月球／截断 ELP2000-82B
+- 3：行星／VSOP87D
+- 4：冥王星／Pluto95
+- 5：平均交点
+- 6：Meeus 五项真交点
+
 编号只标明提供者，不是精度界。冥王星位置接受 `[2409543.5, 2488069.5)` JDE(TT)。
 投影使用固定的 IAU 1980 章动和真黄赤交角。
 
@@ -253,9 +267,8 @@ console.log(celestial.lunar.toGregorian("algo3", result));
 `position.ecliptic(targets, jdeTt)` 和 `position.equatorial(targets, jdeTt)` 提供独立地心位置，
 按所选目标顺序返回冻结记录；时间为 JDE(TT)，距离为 AU（月球也一样），交点距离为 `null`。
 空选、重复目标和任一目标超出自身模型域会失败，不套全盘联合窗口，也不计算速率。
-`sourceCode` 是既有 C 位置来源编号：1 太阳／VSOP87D，2 月球／截断 ELP2000-82B，
-3 行星／VSOP87D，4 冥王星／Pluto95，5 平均交点，6 Meeus 五项真交点。
-编号只标明提供者，不是精度界。冥王星位置接受 `[2409543.5, 2488069.5)` JDE(TT)。
+来源编号见[按需查询地心位置](#independent-positions)。
+冥王星位置接受 `[2409543.5, 2488069.5)` JDE(TT)。
 投影使用固定的 IAU 1980 章动和真黄赤交角。
 `events.longitudeCrossings`、`longitudeStations`、`longitudeDifferences` 搜索半开 TT 区间，
 保留原生切触／方向语义；见[黄经事件指南（英文）](../../docs/EPHEMERIS_EVENTS.md#javascript)。

@@ -816,9 +816,13 @@ const physicalSource = (code) => code === 0 ? CODES.CELESTIAL_POSITION_SOURCE_SU
     : code === 1 ? CODES.CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC
       : code === 9 ? CODES.CELESTIAL_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT : CODES.CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D;
 
-const positionSource = (code) => isPhysicalTarget(code) ? physicalSource(code)
-    : code < CHART_CODES.targets.trueAscending ? CODES.CELESTIAL_POSITION_SOURCE_NODE_MEAN
-      : CODES.CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM;
+const positionSource = (code) => {
+  if (isPhysicalTarget(code)) return physicalSource(code);
+  if (code === CHART_CODES.targets.meanAscending || code === CHART_CODES.targets.meanDescending) {
+    return CODES.CELESTIAL_POSITION_SOURCE_NODE_MEAN;
+  }
+  return CODES.CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM;
+};
 
 const altitudeIdentities = (record, target, operation) => {
   const code = ALTITUDE_TARGETS[target];

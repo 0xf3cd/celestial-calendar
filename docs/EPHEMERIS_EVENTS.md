@@ -130,13 +130,10 @@ The older `sun.longitudeCrossings(year, longitudeDeg)` remains an annual query
 with its own domain and endpoint rules.
 
 All three methods return frozen arrays of frozen records, with a legal no-event
-result of `[]`. Times are `jdeTt`; rates are degrees per TT day. Crossing and station
-records contain `longitudeDeg` and `longitudeRateDegPerTtDay`. Difference records
-contain `longitudeADeg`, `longitudeBDeg`, both `longitudeRateADegPerTtDay` and
-`longitudeRateBDegPerTtDay`, and `signedDifferenceDeg` (first minus second).
+result of `[]`. Times are JDE(TT); rates are degrees per TT day.
 Component longitudes remain exactly as returned by native code, without wrapping.
-Crossing/difference `direction` is `"increasing"`, `"decreasing"` or `"tangent"`;
-station `motionBefore` and `motionAfter` are `"direct"` or `"retrograde"`.
+Crossings and differences report `"increasing"`, `"decreasing"` or `"tangent"` direction;
+stations report `"direct"` or `"retrograde"` motion before and after.
 
 The wrapper never returns a truncated or partially failed search. Wrong types
 throw `TypeError`; unknown targets, invalid intervals, nonfinite inputs and native

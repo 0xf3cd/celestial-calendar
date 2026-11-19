@@ -110,10 +110,16 @@ window, house calculation, civil conversion or rate sampling is required.
 Pluto positions accept `[2409543.5,2488069.5)` JDE(TT). Position projection uses
 fixed IAU 1980 nutation and true obliquity.
 
-`sourceCode` is the existing C position-source identity: 1 for Sun/VSOP87D,
-2 for Moon/truncated ELP2000-82B, 3 for planets/VSOP87D, 4 for Pluto/Pluto95,
-5 for mean nodes, and 6 for Meeus five-term true nodes. These codes identify
-providers, not an accuracy bound. See the
+`sourceCode` is the existing C position-source identity:
+
+- 1: Sun / VSOP87D
+- 2: Moon / truncated ELP2000-82B
+- 3: planets / VSOP87D
+- 4: Pluto / Pluto95
+- 5: mean nodes
+- 6: Meeus five-term true nodes
+
+These codes identify providers, not an accuracy bound. See the
 [C query contracts](../../docs/API.md#c-independent-position-and-house-queries)
 and [model descriptions](../python/README.md#capabilities).
 
