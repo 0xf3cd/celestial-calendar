@@ -28,7 +28,7 @@ from automation.markdown_source import ANCHOR, COMMENTS, link_targets, links, se
 
 REPO = Path(__file__).resolve().parents[2]
 
-# Each English guide and its Chinese translation show the same examples, character for character.
+# Each English guide and its Chinese translation show the same code; JavaScript // comments may be translated.
 GUIDE_PAIRS = (
   ("README.md", "README_ZH.md"),
   ("bindings/python/README.md", "bindings/python/README_ZH.md"),
@@ -37,6 +37,11 @@ GUIDE_PAIRS = (
 # The Chinese root guide links to the English native-runtime matrix, references and license instead of copying them.
 ANCHORS_ONLY_IN = {"README.md": {"native-runtime", "references", "license"}, "README_ZH.md": {"references-and-license"}}
 GUIDES = (REPO / "README.md", REPO / "README_ZH.md", *sorted(REPO.glob("bindings/*/README*.md")))
+JS_COMMENT_PARTS = re.compile(
+  r"""(?P<string>"(?:\\[^\r\n]|[^"\\\r\n])*"|'(?:\\[^\r\n]|[^'\\\r\n])*')"""
+  r"|(?P<comment>//[^\r\n\u2028\u2029]*)"
+  r"""|(?P<unsupported>[`/'"\\])"""
+)
 PYTHON_READER = REPO / "bindings/python/test/consumer/doc_examples.py"
 NODE_READER = REPO / "bindings/javascript/test/support/doc_examples.mjs"
 # A link to this repository takes one of these spellings, so that a dead one cannot hide behind another: any other
@@ -80,6 +85,19 @@ def anchors(path: Path) -> set[str]:
 
 def code_blocks(parsed: list[Token]) -> list[tuple[str, str]]:
   return [(token.info, token.content) for token in parsed if token.type in ("fence", "code_block")]
+
+
+def comparable_code_blocks(parsed: list[Token]) -> list[tuple[str, str]]:
+  """Ignore JavaScript // comment text, preserving delimiters, line breaks and all other code."""
+  blocks = []
+  for info, code in code_blocks(parsed):
+    if info == "js":
+      # Templates, block comments and unquoted slashes require a parser; keep those blocks byte-for-byte.
+      parts = list(JS_COMMENT_PARTS.finditer(code))
+      if not any(part.lastgroup == "unsupported" for part in parts):
+        code = JS_COMMENT_PARTS.sub(lambda part: "//" if part.lastgroup == "comment" else part[0], code)
+    blocks.append((info, code))
+  return blocks
 
 
 def names_this_repository(text: str) -> bool:
@@ -154,10 +172,64 @@ def tracked() -> set[Path]:
 
 @pytest.mark.parametrize(("english", "chinese"), GUIDE_PAIRS)
 def test_translated_guides_share_code_blocks(english, chinese):
-  english_blocks, chinese_blocks = code_blocks(document(REPO / english)), code_blocks(document(REPO / chinese))
+  english_blocks = comparable_code_blocks(document(REPO / english))
+  chinese_blocks = comparable_code_blocks(document(REPO / chinese))
 
   assert english_blocks
   assert chinese_blocks == english_blocks
+
+
+@pytest.mark.parametrize(
+  "code",
+  [
+    "console.log(bodies[1].distanceAu); // {comment}\n",
+    "// {comment}\nconsole.log(1);\n",
+    "console.log(\"https://example.com\", '// literal'); // {comment}\n",
+    r"""console.log("escaped \" // literal", 'escaped \' // literal'); // {comment}""" + "\n",
+  ],
+)
+def test_translated_javascript_comments_preserve_code(code):
+  english = tokens("```js\n" + code.format(comment="no distance") + "```\n")
+  chinese = tokens("```js\n" + code.format(comment="没有距离") + "```\n")
+  assert code_blocks(english) != code_blocks(chinese)
+  assert comparable_code_blocks(english) == comparable_code_blocks(chinese)
+
+
+@pytest.mark.parametrize(
+  ("english", "chinese"),
+  [
+    ("console.log(1); // value\n", "console.log(2); // 值\n"),
+    ("console.log(1); // value\n", "console.warn(1); // 值\n"),
+    ('console.log("// value");\n', 'console.log("// 值");\n'),
+    ("console.log('// value');\n", "console.log('// 值');\n"),
+    ('console.log("https://example.com/en");\n', 'console.log("https://example.com/zh");\n'),
+    ("console.log(`// value`);\n", "console.log(`// 值`);\n"),
+    ("const x = /[//]value/;\n", "const x = /[//]值/;\n"),
+    ("const x = 1 /* // value */;\n", "const x = 1 /* // 值 */;\n"),
+    ("console.log(1); // value\n", "console.log(1); // 值\nconsole.log(2);\n"),
+    ("console.log(1); // value\n", "console.log(1); // 值\u2028console.log(2);\n"),
+    ("console.log(1); // value\n", "console.log(1); // 值\u2029console.log(2);\n"),
+    ("console.log(1); // value\n", "console.log(1);\n"),
+    ("console.log(1); // value\n", "console.log(1); // 值\n\n"),
+  ],
+)
+def test_translated_javascript_examples_reject_other_changes(english, chinese):
+  assert comparable_code_blocks(tokens("```js\n" + english + "```\n")) != comparable_code_blocks(
+    tokens("```js\n" + chinese + "```\n")
+  )
+
+
+@pytest.mark.parametrize("language", ["python", "sh", "text", ""])
+def test_other_translated_fences_remain_exact(language):
+  english = tokens(f"```{language}\n// value\n```\n")
+  chinese = tokens(f"```{language}\n// 值\n```\n")
+  assert comparable_code_blocks(english) != comparable_code_blocks(chinese)
+
+
+def test_translated_fences_preserve_language_and_count():
+  example = "```js\nconsole.log(1); // value\n```\n"
+  assert comparable_code_blocks(tokens(example)) != comparable_code_blocks(tokens(example.replace("```js", "```text")))
+  assert comparable_code_blocks(tokens(example)) != comparable_code_blocks(tokens(example + example))
 
 
 def test_api_header_include_spellings_resolve():

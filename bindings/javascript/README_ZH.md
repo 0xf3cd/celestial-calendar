@@ -73,7 +73,7 @@ import { init, position } from "@0xf3cd/celestial";
 await init();
 const bodies = position.ecliptic(["moon", "trueAscending"], 2451545.0);
 console.log(bodies[0].longitudeDeg, bodies[0].distanceAu);
-console.log(bodies[1].distanceAu); // null: a mathematical node has no distance
+console.log(bodies[1].distanceAu); // null：交点没有距离
 const equatorial = position.equatorial(["mars"], 2451545.0);
 console.log(equatorial[0].rightAscensionDeg, equatorial[0].declinationDeg);
 ```
@@ -81,7 +81,10 @@ console.log(equatorial[0].rightAscensionDeg, equatorial[0].declinationDeg);
 传入 JDE(TT) 后，结果按目标顺序返回，数组和记录均冻结。经纬度、赤经和赤纬以度为单位；
 距离为 AU（月球也一样），交点距离为 `null`。空选和重复目标会失败；
 只检查所选目标各自的位置模型域，不计算速率、宫位或民用时间转换。
-字段、来源码与模型窗口见[英文说明](README.md#independent-positions)。
+`sourceCode` 是既有 C 位置来源编号：1 太阳／VSOP87D，2 月球／截断 ELP2000-82B，
+3 行星／VSOP87D，4 冥王星／Pluto95，5 平均交点，6 Meeus 五项真交点。
+编号只标明提供者，不是精度界。冥王星位置接受 `[2409543.5, 2488069.5)` JDE(TT)。
+投影使用固定的 IAU 1980 章动和真黄赤交角。
 
 <a id="chart-snapshot"></a>
 ### 固定时刻的星盘快照
@@ -250,7 +253,10 @@ console.log(celestial.lunar.toGregorian("algo3", result));
 `position.ecliptic(targets, jdeTt)` 和 `position.equatorial(targets, jdeTt)` 提供独立地心位置，
 按所选目标顺序返回冻结记录；时间为 JDE(TT)，距离为 AU（月球也一样），交点距离为 `null`。
 空选、重复目标和任一目标超出自身模型域会失败，不套全盘联合窗口，也不计算速率。
-字段、来源码与示例见[独立位置用法（英文）](README.md#independent-positions)。
+`sourceCode` 是既有 C 位置来源编号：1 太阳／VSOP87D，2 月球／截断 ELP2000-82B，
+3 行星／VSOP87D，4 冥王星／Pluto95，5 平均交点，6 Meeus 五项真交点。
+编号只标明提供者，不是精度界。冥王星位置接受 `[2409543.5, 2488069.5)` JDE(TT)。
+投影使用固定的 IAU 1980 章动和真黄赤交角。
 `events.longitudeCrossings`、`longitudeStations`、`longitudeDifferences` 搜索半开 TT 区间，
 保留原生切触／方向语义；见[黄经事件指南（英文）](../../docs/EPHEMERIS_EVENTS.md#javascript)。
 独立宫位、能力与模型文本查询仍只提供 C／Python 接口。

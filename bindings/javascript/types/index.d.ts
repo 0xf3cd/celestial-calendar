@@ -165,6 +165,7 @@ export interface Position {
   readonly latitudeDeg: number;
   /** AU for physical bodies; null for mathematical nodes. */
   readonly distanceAu: number | null;
+  /** Existing C position-source code identifying the provider, not an accuracy bound. */
   readonly sourceCode: number;
 }
 
@@ -174,13 +175,15 @@ export interface EquatorialPosition {
   readonly rightAscensionDeg: number;
   readonly declinationDeg: number;
   readonly distanceAu: number | null;
+  /** Existing C position-source code identifying the provider, not an accuracy bound. */
   readonly sourceCode: number;
 }
 
 export const position: Readonly<{
   /**
    * Owned frozen records in caller order at one JDE(TT); longitude in [0,360).
-   * Each selected provider's position domain applies, without chart or rate-stencil constraints.
+   * Each selected provider's position domain applies, without the chart's joint window.
+   * These queries do not calculate houses, convert civil time or sample longitude rates.
    * @throws {TypeError} For non-array selections, non-string targets or nonnumeric times.
    * @throws {RangeError} For empty/duplicate/unknown selections, nonfinite times or native input rejection.
    * @throws {CelestialError} Before init, for allocation/evaluation failures or malformed native success.
@@ -192,7 +195,10 @@ export const position: Readonly<{
 
 export type StationMotion = "direct" | "retrograde";
 
-/** Longitude and rate are native values, in degrees and degrees per TT day; longitude stays raw. */
+/**
+ * longitudeDeg is the native longitude in degrees, not wrapped into [0,360).
+ * longitudeRateDegPerTtDay is the native rate in degrees per TT day.
+ */
 export interface LongitudeEvent {
   readonly jdeTt: number;
   readonly longitudeDeg: number;
@@ -200,7 +206,10 @@ export interface LongitudeEvent {
   readonly direction: EventDirection;
 }
 
-/** The published seven-point longitude rate need not be bitwise zero at the reported station. */
+/**
+ * longitudeRateDegPerTtDay is the rate used by the search and is not guaranteed to be zero at a station.
+ * See the [longitude-event guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/EPHEMERIS_EVENTS.md).
+ */
 export interface StationEvent {
   readonly jdeTt: number;
   readonly longitudeDeg: number;
@@ -232,7 +241,11 @@ export const events: Readonly<{
   /** Includes exact numerical tangent contacts; any finite longitude is accepted modulo whole turns by native code. */
   longitudeCrossings(target: ChartTarget, longitudeDeg: number, startJdeTt: number, endJdeTt: number): readonly LongitudeEvent[];
   longitudeStations(target: ChartTarget, startJdeTt: number, endJdeTt: number): readonly StationEvent[];
-  /** Self-pairs and continuously satisfied differences fail; constant mismatches can return no events. */
+  /**
+   * A target paired with itself is rejected.
+   * A difference satisfied throughout the interval is rejected.
+   * A difference this pair can never reach returns an empty array.
+   */
   longitudeDifferences(first: ChartTarget, second: ChartTarget, differenceDeg: number, startJdeTt: number, endJdeTt: number): readonly LongitudeDifferenceEvent[];
 }>;
 

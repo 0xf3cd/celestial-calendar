@@ -816,6 +816,10 @@ const physicalSource = (code) => code === 0 ? CODES.CELESTIAL_POSITION_SOURCE_SU
     : code === 1 ? CODES.CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC
       : code === 9 ? CODES.CELESTIAL_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT : CODES.CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D;
 
+const positionSource = (code) => isPhysicalTarget(code) ? physicalSource(code)
+    : code < CHART_CODES.targets.trueAscending ? CODES.CELESTIAL_POSITION_SOURCE_NODE_MEAN
+      : CODES.CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM;
+
 const altitudeIdentities = (record, target, operation) => {
   const code = ALTITUDE_TARGETS[target];
   const source = physicalSource(code);
@@ -971,9 +975,8 @@ const selectedPositions = (cName, operation, targets, jdeTt, layoutName, coordin
   const M = requireModule(operation);
   if (!Array.isArray(targets)) throw new TypeError("targets must be an array.");
   const count = targets.length;
-  if (count === 0 || count > Object.keys(CHART_CODES.targets).length) {
-    throw new RangeError("targets must be a nonempty selection without duplicates.");
-  }
+  if (count === 0) throw new RangeError("targets must not be empty.");
+  if (count > Object.keys(CHART_CODES.targets).length) throw new RangeError("Too many selected targets.");
   const selection = Array.from({ length: count }, (_, index) => {
     const target = targets[index];
     return { target, code: enumValue(target, "target", CHART_CODES.targets) };
@@ -989,10 +992,7 @@ const selectedPositions = (cName, operation, targets, jdeTt, layoutName, coordin
       const { target, code } = selection[index];
       const node = !isPhysicalTarget(code);
       const present = CODES.CELESTIAL_PRESENT_LATITUDE | (node ? 0 : CODES.CELESTIAL_PRESENT_DISTANCE);
-      const sourceCode = node
-        ? (code < CHART_CODES.targets.trueAscending ? CODES.CELESTIAL_POSITION_SOURCE_NODE_MEAN
-          : CODES.CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM)
-        : physicalSource(code);
+      const sourceCode = positionSource(code);
       if (record.target_code !== code || record.present_fields !== present || record.source_code !== sourceCode) {
         malformed(operation, "target/presence/source");
       }
