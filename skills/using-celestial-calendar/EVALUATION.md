@@ -55,13 +55,12 @@ as the model's original success.
 Deterministic replay/result checks decide execution correctness. The case's LLM
 grader adds a separate trace judgment; its score alone is not an execution oracle.
 Use a second input to reject hardcoded answers. For a UTC/Jieqi case, require
-fractional-second output and prove wrong-scale controls differ in the checked
-result. With the evaluated artifact, UT1 and UTC differ by about 2 ms at the Jieqi
-selected by the utc-jieqi prompt, so a program that shows the UT1 moment as UTC
-passes a millisecond comparison there; use held-out cutoffs where the difference
-is larger. An artifact-derived expectation establishes consistency with that
-artifact, not independent astronomical accuracy. Existing numerical goldens and
-tolerances are unchanged.
+fractional-second output and measure the wrong-scale controls with the exact
+evaluated artifact. Use held-out cutoffs where the discrepancy exceeds the
+comparison allowance; a gap measured with an older artifact does not establish
+the current check's discriminating power. An artifact-derived expectation
+establishes consistency with that artifact, not independent astronomical
+accuracy. Existing numerical goldens and tolerances are unchanged.
 
 ## Observer and query comparisons
 
@@ -81,6 +80,86 @@ alone or score a current package against an old negative expectation.
 
 These case definitions are not execution results. Report first-output
 correctness, subsequent repair, ties and regressions from the actual traces.
+
+## 2026-11-20 candidate comparison
+
+Claude Code 2.1.325 ran Claude Sonnet 5.5 as both agent and judge, with concurrency
+two and two runs per arm. Seven positive cases and three old-interface controls
+produced 40 sessions after a separate one-pair preflight. Both arms received the
+same frozen public guides from `28e44a01be4ddc063571a75dcfc0d82c6c8e228c`.
+SKILL.md remained unchanged, with SHA-256
+`245cb92fc6f87c9928901207d9d05aaf2ff608bc08a1938cd5251efef8767db1`.
+
+The positive artifacts were the exact 1.2.0 candidate wheel from producer run
+`44471202192` (SHA-256
+`7c44ed8f98e039ac56c7cb980c1bfe150005309bcd975482694b6c19241398e4`)
+and npm tarball from run `44471200855` (SHA-256
+`f14211b8d7077b0c75adc54de5b74d3eb077cb0f90b97abff48b23b495c45923`).
+The controls used the frozen registry 1.0.0 packages, whose exact source commits
+were not established.
+
+### Context validity
+
+The original formal audit failed and remains recorded as failed. Inspection of
+the saved traces identified five false positives: two sessions printed an
+`AGENTS.md` link from supplied public guides, one searched documentation for the
+literal `npm install`, and two queried installed metadata with `pip list` or
+`pip --version`. None read contributor instructions or installed a package.
+The other context checks passed for these sessions.
+
+One baseline `unsupported-js-events` session did encounter a sandbox-denied
+`cd /tmp`. That arm and its pair are excluded. Post-hoc context inspection
+therefore supports all fourteen positive pairs and five of the six
+old-interface control pairs. It does not turn the original audit into a pass.
+
+### First output and repair
+
+Direct tool results and artifact-consistency checks give the following
+first-program results. Each entry is the number of passing runs out of two.
+
+| Positive case | With skill | Without skill |
+|---|---:|---:|
+| Gregorian/lunar conversion | 2 | 2 |
+| UTC-input next Jieqi | 2 | 2 |
+| Chart snapshot | 0 | 2 |
+| Observer coordinates | 2 | 2 |
+| Daily rise/set | 2 | 1 |
+| Observing windows | 2 | 2 |
+| Selected positions and stations | 2 | 2 |
+
+Eleven positive pairs tie, one favours the skill, and two favour the baseline.
+One with-skill chart program failed on the Moon's enum name; the other printed
+an empty node-distance object. Both agents subsequently repaired those programs.
+One baseline daily program incorrectly assumed the lunar result had `h0_deg`;
+that agent also repaired its program.
+
+Unchanged first-program bytes were replayed on held-out inputs: three additional
+dates each for lunar conversion and UTC/Jieqi, and one additional input each for
+the observer, daily, window and selected-position tasks. Chart has no held-out
+input. All first programs that passed the original input also passed these
+checks. The three repaired programs passed separate replay checks using only
+their agents' recorded edits. One repaired chart's native output was truncated
+by its display pipeline; its complete output was checked by replay. Parent
+replay is separate from the original model execution.
+
+These checks compare each platform's output with that platform's exact
+artifact, not with an independent astronomical reference. Agent durations from
+the native traces totalled 271.720 s with the skill and 246.012 s without it
+across the positive sessions.
+The LLM grader passed both initially incorrect chart outputs and rejected three
+window runs whose programs returned the requested values and disclosed sampled
+search limits. Its grades are retained separately from execution results.
+
+In the five eligible old-interface control pairs, both arms established that
+the requested interface was absent without installing packages or implementing
+a replacement. This checks that boundary, not every explanatory claim: for
+example, one with-skill Python response consulted only legacy guides and did
+not establish the current documented conversion route.
+
+The mixed first-output results do not establish a benefit over the guides alone.
+The skill remains unchanged; no revised-skill comparison, new trigger test,
+C/C++ model task or competing-skill test was run. The earlier results below
+remain a separate sample.
 
 ## Historical results
 

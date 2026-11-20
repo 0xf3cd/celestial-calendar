@@ -36,3 +36,5 @@ guides. It does not add calculation APIs or a separate API reference.
 The cases in [evals](evals) compare fresh sessions with and without the skill.
 [The protocol](EVALUATION.md) specifies artifact identity, frozen public inputs,
 first-execution evidence and failure controls.
+The recorded comparisons do not establish an improvement over supplying the same
+guides alone; they include ties and first-output regressions.
