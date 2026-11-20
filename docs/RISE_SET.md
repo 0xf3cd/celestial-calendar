@@ -174,8 +174,9 @@ the UT1 date's `[0h,24h)` window. The example displays UT1, not UTC or local tim
 Use `julian_day::jde_to_utc` for UTC display within its conversion domain. Missing
 events are `std::nullopt`; inspect `result.polar` separately for polar topology.
 Invalid input throws `std::invalid_argument`; numerical failure throws `std::runtime_error`.
-Pass a solar twilight constant as the third solar argument, or
-`earth::refraction::Params` as the third lunar argument to change horizon weather.
+Pass a twilight constant such as `astro::rise_set::sun::CIVIL_TWILIGHT` (−6°)
+as the third solar argument. Pass `astro::earth::refraction::Params` as the
+third lunar argument to change horizon weather.
 For a WGS84 site with elevation, follow the
 [planetary C++ example](OBSERVER.md#planetary-rise-set-cpp), which uses `planet_rise_set.hpp`.
 

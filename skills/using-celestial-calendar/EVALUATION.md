@@ -83,10 +83,12 @@ correctness, subsequent repair, ties and regressions from the actual traces.
 
 ## 2026-11-20 candidate comparison
 
-Claude Code 2.1.325 ran Claude Sonnet 5.5 as both agent and judge, with concurrency
+Claude Code 2.1.329 ran Claude Sonnet 5.5 as both agent and judge, with concurrency
 two and two runs per arm. Seven positive cases and three old-interface controls
-produced 40 sessions after a separate one-pair preflight. Both arms received the
-same frozen public guides from `28e44a01be4ddc063571a75dcfc0d82c6c8e228c`.
+produced 40 sessions after a separate one-pair preflight. The controls were
+`missing-interface` in Python and JavaScript, and `unsupported-js-events` in
+JavaScript. Both arms received the same frozen public guides from
+`28e44a01be4ddc063571a75dcfc0d82c6c8e228c`.
 SKILL.md remained unchanged, with SHA-256
 `245cb92fc6f87c9928901207d9d05aaf2ff608bc08a1938cd5251efef8767db1`.
 
