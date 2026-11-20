@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: observer-coordinates
+runs: 2
+expected_outcome: |
+  A Python program actually queries the installed observer interface for the given
+  UTC instant and WGS84 site. Its JSON reports geometric altitude, azimuth, distance
+  in AU and the optional refracted altitude, with absent values as null.
+  It distinguishes geometric centre coordinates from refraction and accepts a
+  second UTC input without replacing the library's calculation.

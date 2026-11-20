@@ -21,7 +21,14 @@ from automation.markdown_source import link_targets, tokens
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILL = ROOT / "skills/using-celestial-calendar"
-CASES = {"gregorian-lunar", "utc-jieqi", "chart-snapshot", "missing-interface", "unsupported-js-events"}
+OBSERVER_CASES = {"observer-coordinates", "daily-rise-set", "observing-windows", "selected-positions-events"}
+CASES = {
+  "gregorian-lunar",
+  "utc-jieqi",
+  "chart-snapshot",
+  "missing-interface",
+  "unsupported-js-events",
+} | OBSERVER_CASES
 TOOLS = {"Read", "Glob", "Grep", "Skill", "Write", "Edit", "Bash"}
 
 
@@ -96,6 +103,9 @@ def test_public_cases_follow_the_native_case_schema():
   assert cases == CASES
   for name in sorted(cases):
     validate_case(SKILL / "evals" / name)
+    if name in OBSERVER_CASES:
+      record = yaml.safe_load((SKILL / "evals" / name / "case.yaml").read_text(encoding="utf-8"))
+      assert record["runs"] == 2
 
 
 @pytest.mark.parametrize("fault", ["missing-grader", "grader-focus", "unknown-setting", "numeric-schema", "extra-tool"])

@@ -48,7 +48,7 @@ roots, including the subdirectory for nested headers. Include the headers your c
 | Interval longitude events | `"ephemeris_events.hpp"` |
 | Houses and complete chart | `"house.hpp"`, `"chart.hpp"` |
 | Rise/set, coordinates and Earth corrections | `"rise_set.hpp"`, `"planet_rise_set.hpp"`, `"coord_transform.hpp"`, `"earth.hpp"`, `"earth/precession.hpp"`, `"earth/refraction.hpp"` |
-| C/Python/JavaScript daily rise/set | [Daily query guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/RISE_SET.md); solar transit-centred, lunar/planetary UT1-day summaries |
+| Daily rise/transit/set (C++, C, Python, JavaScript) | [Daily query guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/RISE_SET.md); solar transit-centred, lunar/planetary UT1-day summaries |
 | Low-level ephemeris series | `"elp2000_82b.hpp"`, `"vsop87d/vsop87d.hpp"`, `"vsop87d/defines.hpp"` |
 | Common astronomy umbrella | `"astro.hpp"`; add `"capability.hpp"` and `"ephemeris_events.hpp"` separately when needed |
 
@@ -242,6 +242,10 @@ int main(void) {
   );
   if (celestial_last_error_kind() != CELESTIAL_ERROR_NONE) {
     fprintf(stderr, "%s\n", celestial_last_error());
+    return 1;
+  }
+  if (written != total) {
+    fprintf(stderr, "Longitude event output truncated: %u of %u records\n", written, total);
     return 1;
   }
   for (uint32_t i = 0; i < written; ++i) {

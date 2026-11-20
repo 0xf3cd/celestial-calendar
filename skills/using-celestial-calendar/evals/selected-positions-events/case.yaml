@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: selected-positions-events
+runs: 2
+expected_outcome: |
+  A Node program actually queries independent Moon/true-ascending-node positions
+  and Mercury longitude stations through the installed JavaScript interface.
+  It reports AU distances with a null node distance and preserves the native
+  station time, longitude, search rate and before/after motion. It accepts a
+  second position instant and search interval and does not calculate a chart,
+  invoke the annual solar query or implement a replacement station search.

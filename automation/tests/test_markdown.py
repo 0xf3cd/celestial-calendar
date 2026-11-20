@@ -360,6 +360,7 @@ def test_links_name_existing_paths_and_explicit_anchors():
     ("docs/OBSERVER.md", 0, 2, None, ""),
     ("docs/OBSERVER.md", 1, 2, None, ""),
     ("docs/ALTITUDE_EVENTS.md", 0, 1, None, ""),
+    ("docs/RISE_SET.md", 0, 1, None, "sunrise: absent\nlunar transit: "),
   ],
 )
 def test_cpp_quickstart_compiles_and_runs(tmp_path, guide, block_index, block_count, example, expected):
@@ -467,6 +468,76 @@ def test_altitude_c_program_compiles_as_c11_and_runs_against_the_real_exports(tm
     text=True,
   )
   assert subprocess.check_output([str(binary)], text=True) == ""
+
+
+@pytest.mark.parametrize(
+  ("guide", "block_index", "block_count", "export_source", "truncated"),
+  [
+    ("docs/APPARENT_DIAMETERS.md", 0, 1, "lib_diameter.cpp", False),
+    ("docs/API.md", 1, 2, "lib_events.cpp", False),
+    ("docs/API.md", 1, 2, "lib_events.cpp", True),
+  ],
+)
+def test_c_query_examples_compile_and_run(tmp_path, guide, block_index, block_count, export_source, truncated):
+  blocks = [code for info, code in code_blocks(document(REPO / guide)) if info == "c"]
+  assert len(blocks) == block_count, "unexpected number of complete C programs"
+  block = blocks[block_index]
+  if truncated:
+    assert block.count("slots, 8") == 1
+    block = block.replace("slots, 8", "slots, 0", 1)
+  source = tmp_path / "query.c"
+  source.write_text(block, encoding="utf-8")
+  obj = tmp_path / "query.o"
+  binary = tmp_path / "query"
+  c_compiler = shlex.split(os.environ.get("CC", "clang"))
+  cpp_compiler = shlex.split(os.environ.get("CXX", "clang++"))
+  subprocess.run(
+    [
+      *c_compiler,
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic",
+      "-Isrc/shared_lib",
+      "-c",
+      str(source),
+      "-o",
+      str(obj),
+    ],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  subprocess.run(
+    [
+      *cpp_compiler,
+      "-std=c++23",
+      "-Isrc/astro",
+      "-Isrc/calendar",
+      "-Isrc/util",
+      str(obj),
+      f"src/shared_lib/{export_source}",
+      "src/shared_lib/lib.cpp",
+      "-o",
+      str(binary),
+    ],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  result = subprocess.run([str(binary)], capture_output=True, text=True)
+  if truncated:
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr.startswith("Longitude event output truncated: 0 of ")
+  else:
+    result.check_returncode()
+    assert result.stdout and result.stderr == ""
+    if guide == "docs/APPARENT_DIAMETERS.md":
+      assert re.fullmatch(r"Moon diameter: [0-9.]+ arcsec\n", result.stdout)
 
 
 @pytest.fixture

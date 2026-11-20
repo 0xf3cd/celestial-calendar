@@ -45,6 +45,10 @@ npm install @0xf3cd/celestial
 搜索黄经穿越、留站和两天体的有向黄经差时，用
 [`events`](../../docs/EPHEMERIS_EVENTS.md#javascript)。
 
+按 UT1 日期查询升起、上中天和落下，用 `riseSet.solar/lunar/planet`。
+太阳查询围绕所选当地中天，月球和行星查询取该 UT1 日内的事件；返回时刻均为 TT。
+缺失事件的处理和钟表时间显示见[每日升落指南（英文）](../../docs/RISE_SET.md)。
+
 用区间高度查询查找高度事件、上中天，或“火星高于 20° 且太阳低于 −18°”的交集时段。
 接口接受显式 JDE(TT) 区间；采样搜索可能漏检事件，成功返回不保证已找到全部事件。
 用法和限制见[高度事件与观测窗口指南（英文）](../../docs/ALTITUDE_EVENTS.md)。
