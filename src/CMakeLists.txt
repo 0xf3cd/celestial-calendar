@@ -1,7 +1,15 @@
 # SPDX-License-Identifier: MIT
 
 cmake_minimum_required(VERSION 3.22)
+
+if(CMAKE_HOST_WIN32 AND CMAKE_GENERATOR STREQUAL "Unix Makefiles")
+  # Strawberry Perl's gmake can fail during recursive output sync; prefer the installed make.
+  # https://github.com/StrawberryPerl/Perl-Dist-Strawberry/issues/148
+  find_program(CMAKE_MAKE_PROGRAM NAMES make gmake smake)
+endif()
+
 project(celestial-calendar)
+message(STATUS "build program: ${CMAKE_MAKE_PROGRAM}")
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
