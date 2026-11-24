@@ -2,10 +2,13 @@
 
 cmake_minimum_required(VERSION 3.22)
 
-if(CMAKE_HOST_WIN32 AND CMAKE_GENERATOR STREQUAL "Unix Makefiles")
+if(CMAKE_HOST_WIN32 AND CMAKE_GENERATOR STREQUAL "Unix Makefiles"
+    AND NOT CMAKE_TOOLCHAIN_FILE
+    AND NOT CMAKE_PROJECT_INCLUDE_BEFORE
+    AND NOT CMAKE_PROJECT_celestial-calendar_INCLUDE_BEFORE)
   # Strawberry Perl's gmake can fail during recursive output sync; prefer the installed make.
   # https://github.com/StrawberryPerl/Perl-Dist-Strawberry/issues/148
-  find_program(CMAKE_MAKE_PROGRAM NAMES make gmake smake)
+  find_program(CMAKE_MAKE_PROGRAM NAMES make)
 endif()
 
 project(celestial-calendar)

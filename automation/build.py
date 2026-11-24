@@ -38,7 +38,7 @@ def run_cmake(build_version: str, build_type: str = "Release", export_compile_co
 
   # Pass `-G` only when the caller has not chosen: CMake reads `CMAKE_GENERATOR` from the
   # environment, and a `-G` on the command line silently wins over it. The default is load-bearing,
-  # not a leftover -- the Windows legs build with clang plus choco's `make` (`build_and_test.yml`,
+  # not a leftover -- the Windows legs build with clang plus Make (`build_and_test.yml`,
   # `random_soak.yml`), and a generator that lays binaries out per configuration would put them
   # somewhere the `build/test/*` acceptance run does not look (#72).
   if "CMAKE_GENERATOR" not in os.environ:
