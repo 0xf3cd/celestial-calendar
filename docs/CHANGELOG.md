@@ -1,12 +1,27 @@
 # Changelog
 
-## Unreleased
+## [v1.2.0]
+
+Unreleased.
 
 ### Added
 
-- C, Python and JavaScript/TypeScript rise/transit/set queries for the Sun, Moon and planets.
+- Topocentric Sun, Moon and planet coordinates from a WGS84 observer in C++, C, Python and JavaScript.
+  Results include altitude, azimuth, distance and optional refraction; see the [observer guide](OBSERVER.md).
+- Planetary daily rise/transit/set calculations and C, Python and JavaScript/TypeScript daily bindings
+  for the Sun, Moon and planets.
   Distinct result types retain solar transit-centred versus lunar/planetary UT1-day semantics,
-  TT event times with explicit absence, polar topology and source/model identities. See the [daily query guide](RISE_SET.md).
+  TT event times with explicit absence, polar topology and source/model identities; see the [daily query guide](RISE_SET.md).
+- Interval altitude crossings, upper transits and combined observing windows in C++, C, Python and JavaScript.
+  These are sampled searches and can miss events on success; see [altitude events and observing windows](ALTITUDE_EVENTS.md).
+- Full spherical apparent angular diameters for the Sun, Moon and planets, with geocentric or topocentric
+  distance, radius/source identities and arcsecond output in C, Python and JavaScript.
+  C++ returns `AngleDeg`; see [apparent angular diameters](APPARENT_DIAMETERS.md).
+- JavaScript/TypeScript selected-target ecliptic/equatorial positions and interval longitude crossings,
+  stations and directed two-body differences, over the existing C ABI.
+  Selected positions do not evaluate a chart or inherit its joint provider window;
+  the [package guide](../bindings/javascript/README.md#independent-positions) and
+  [longitude-event guide](EPHEMERIS_EVENTS.md#javascript) describe the new calls.
 
 ### Changed
 

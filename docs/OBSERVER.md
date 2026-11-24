@@ -154,6 +154,7 @@ existing rise/set event implementation.
 Numerical references and exact-input replay are in
 [`statistics/observer_reference.md`](../statistics/observer_reference.md).
 
+<a id="planetary-rise-set-cpp"></a>
 ## Planetary rise, transit and set (C++)
 
 Include `planet_rise_set.hpp` to query Mercury through Pluto for a **UT1 calendar day**.
@@ -198,8 +199,8 @@ centre altitude in [-90, 90] degrees; it does not configure weather.
 This day query fixes IAU1980 axes and `delta_t::DEFAULT_MODEL` (currently ALGO5).
 Source and position-domain identities remain available through `ephemeris::source_of(target)`
 and `ephemeris::position_domain(target)`. It has no per-call Delta T selector.
-The planetary daily entry is C++ only; the C/Python/JavaScript position queries above
-remain instant-position operations.
+The same planetary day query is available in C, Python and JavaScript; see the
+[daily query guide](RISE_SET.md). The position queries above remain instant-position operations.
 
 Every actual provider sample must be admitted, including both day endpoints, transit
 estimates and Newton derivative samples outside their root brackets. Pluto's half-open
