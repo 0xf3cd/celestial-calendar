@@ -30,6 +30,10 @@ def main() -> None:
     "consumer/chart_snapshot.py",
     "consumer/capabilities.py",
     "consumer/queries.py",
+    "consumer/observer_queries.py",
+    "consumer/diameter_queries.py",
+    "consumer/rise_set_queries.py",
+    "consumer/altitude_queries.py",
     "consumer/protocol_seams.py",
   )
   non_acceptance = {

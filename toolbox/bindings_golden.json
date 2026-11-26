@@ -1,8 +1,8 @@
 {
   "schema": "celestial-calendar/bindings-golden@2",
   "provenance": {
-    "source_commit": "9472a09d472d53997e7b211d60265744b573954a",
-    "generated_on": "Linux x86_64, 2026-10-19",
+    "source_commit": "748d177ca400f85b084178c316d065a016689fc6",
+    "generated_on": "Linux x86_64, 2026-11-06",
     "seed": 42
   },
   "sections": {
@@ -590,7 +590,7 @@
           "y": 2026,
           "m": 2,
           "d": 3,
-          "frac_bits": "0x3feab6b0f2d5c4fa"
+          "frac_bits": "0x3feab6b0f1d8dfb2"
         },
         {
           "year": 2026,
@@ -598,7 +598,7 @@
           "y": 2026,
           "m": 2,
           "d": 18,
-          "frac_bits": "0x3fe5274a36340733"
+          "frac_bits": "0x3fe5274a37722324"
         },
         {
           "year": 2026,
@@ -606,7 +606,7 @@
           "y": 2026,
           "m": 3,
           "d": 5,
-          "frac_bits": "0x3fe2a4caa4bdc24d"
+          "frac_bits": "0x3fe2a4caa85a28f7"
         },
         {
           "year": 2026,
@@ -614,7 +614,7 @@
           "y": 2026,
           "m": 3,
           "d": 20,
-          "frac_bits": "0x3fe3b0024a298438"
+          "frac_bits": "0x3fe3b0025049b8d4"
         },
         {
           "year": 2026,
@@ -622,7 +622,7 @@
           "y": 2026,
           "m": 4,
           "d": 4,
-          "frac_bits": "0x3fe8e360672bd818"
+          "frac_bits": "0x3fe8e3606ff7f129"
         },
         {
           "year": 2026,
@@ -630,7 +630,7 @@
           "y": 2026,
           "m": 4,
           "d": 20,
-          "frac_bits": "0x3fb19da9fe022582"
+          "frac_bits": "0x3fb19daa5b117217"
         },
         {
           "year": 2026,
@@ -638,7 +638,7 @@
           "y": 2026,
           "m": 5,
           "d": 5,
-          "frac_bits": "0x3fdf7f87ebc115d0"
+          "frac_bits": "0x3fdf7f880908b82a"
         },
         {
           "year": 2026,
@@ -646,7 +646,7 @@
           "y": 2026,
           "m": 5,
           "d": 21,
-          "frac_bits": "0x3f9a1c792a34741e"
+          "frac_bits": "0x3f9a1c7b648ab08e"
         },
         {
           "year": 2026,
@@ -654,7 +654,7 @@
           "y": 2026,
           "m": 6,
           "d": 5,
-          "frac_bits": "0x3fe51305f07d8ebc"
+          "frac_bits": "0x3fe513060204e5e5"
         },
         {
           "year": 2026,
@@ -662,7 +662,7 @@
           "y": 2026,
           "m": 6,
           "d": 21,
-          "frac_bits": "0x3fd66be7d6f433c6"
+          "frac_bits": "0x3fd66be7e76c76a6"
         },
         {
           "year": 2026,
@@ -670,7 +670,7 @@
           "y": 2026,
           "m": 7,
           "d": 7,
-          "frac_bits": "0x3fb4c9b99d001965"
+          "frac_bits": "0x3fb4c9b98e11a114"
         },
         {
           "year": 2026,
@@ -678,7 +678,7 @@
           "y": 2026,
           "m": 7,
           "d": 22,
-          "frac_bits": "0x3fe99fa4e63ba679"
+          "frac_bits": "0x3fe99fa4d9816143"
         },
         {
           "year": 2026,
@@ -686,7 +686,7 @@
           "y": 2026,
           "m": 8,
           "d": 7,
-          "frac_bits": "0x3fdf3b5a9b247740"
+          "frac_bits": "0x3fdf3b5a6a8476c3"
         },
         {
           "year": 2026,
@@ -694,7 +694,7 @@
           "y": 2026,
           "m": 8,
           "d": 23,
-          "frac_bits": "0x3fb8ac126b7b62ce"
+          "frac_bits": "0x3fb8ac1147020436"
         },
         {
           "year": 2026,
@@ -702,7 +702,7 @@
           "y": 2026,
           "m": 9,
           "d": 7,
-          "frac_bits": "0x3fe395668a56e14e"
+          "frac_bits": "0x3fe3956658ea2249"
         },
         {
           "year": 2026,
@@ -710,7 +710,7 @@
           "y": 2026,
           "m": 9,
           "d": 23,
-          "frac_bits": "0x3f6d8bcf10a4c306"
+          "frac_bits": "0x3f6d8b9037a80604"
         },
         {
           "year": 2026,
@@ -718,7 +718,7 @@
           "y": 2026,
           "m": 10,
           "d": 8,
-          "frac_bits": "0x3fd14cfe9bba7acd"
+          "frac_bits": "0x3fd14cfe0f954a8c"
         },
         {
           "year": 2026,
@@ -726,7 +726,7 @@
           "y": 2026,
           "m": 10,
           "d": 23,
-          "frac_bits": "0x3fd9af60d57f643e"
+          "frac_bits": "0x3fd9af60495a34ce"
         },
         {
           "year": 2026,
@@ -734,7 +734,7 @@
           "y": 2026,
           "m": 11,
           "d": 7,
-          "frac_bits": "0x3fda503421e95315"
+          "frac_bits": "0x3fda503395c422d4"
         },
         {
           "year": 2026,
@@ -742,7 +742,7 @@
           "y": 2026,
           "m": 11,
           "d": 22,
-          "frac_bits": "0x3fd3b401baf4bf70"
+          "frac_bits": "0x3fd3b4012ecf8fff"
         },
         {
           "year": 2026,
@@ -750,7 +750,7 @@
           "y": 2026,
           "m": 12,
           "d": 7,
-          "frac_bits": "0x3fbeaac5be4f328a"
+          "frac_bits": "0x3fbeaac38dba7187"
         },
         {
           "year": 2026,
@@ -758,7 +758,7 @@
           "y": 2026,
           "m": 12,
           "d": 21,
-          "frac_bits": "0x3febc856791e0205"
+          "frac_bits": "0x3febc856330b6a4d"
         },
         {
           "year": 2026,
@@ -766,7 +766,7 @@
           "y": 2026,
           "m": 1,
           "d": 5,
-          "frac_bits": "0x3fd65c97ca19e8e4"
+          "frac_bits": "0x3fd65c97bff414cd"
         },
         {
           "year": 2026,
@@ -774,7 +774,7 @@
           "y": 2026,
           "m": 1,
           "d": 20,
-          "frac_bits": "0x3fb2a6d21b81104f"
+          "frac_bits": "0x3fb2a6d202c77725"
         },
         {
           "year": 2050,
@@ -782,7 +782,7 @@
           "y": 2050,
           "m": 2,
           "d": 3,
-          "frac_bits": "0x3fe4f9608ae536a3"
+          "frac_bits": "0x3fe4f96044d29eeb"
         },
         {
           "year": 2050,
@@ -790,7 +790,7 @@
           "y": 2050,
           "m": 2,
           "d": 18,
-          "frac_bits": "0x3fdee55399998733"
+          "frac_bits": "0x3fdee5530d7457c2"
         },
         {
           "year": 2050,
@@ -798,7 +798,7 @@
           "y": 2050,
           "m": 3,
           "d": 5,
-          "frac_bits": "0x3fd974a64fcde0aa"
+          "frac_bits": "0x3fd974a5c3a8b13a"
         },
         {
           "year": 2050,
@@ -806,7 +806,7 @@
           "y": 2050,
           "m": 3,
           "d": 20,
-          "frac_bits": "0x3fdb8a596dbb292f"
+          "frac_bits": "0x3fdb8a58e195f8ee"
         },
         {
           "year": 2050,
@@ -814,7 +814,7 @@
           "y": 2050,
           "m": 4,
           "d": 4,
-          "frac_bits": "0x3fe2bd4d4bec98fa"
+          "frac_bits": "0x3fe2bd4d05da0142"
         },
         {
           "year": 2050,
@@ -822,7 +822,7 @@
           "y": 2050,
           "m": 4,
           "d": 19,
-          "frac_bits": "0x3fec0ce0138a202e"
+          "frac_bits": "0x3fec0cdfcd778876"
         },
         {
           "year": 2050,
@@ -830,7 +830,7 @@
           "y": 2050,
           "m": 5,
           "d": 5,
-          "frac_bits": "0x3fd2c1c50d7a80c5"
+          "frac_bits": "0x3fd2c1c481555154"
         },
         {
           "year": 2050,
@@ -838,7 +838,7 @@
           "y": 2050,
           "m": 5,
           "d": 20,
-          "frac_bits": "0x3fea76fe180b9638"
+          "frac_bits": "0x3fea76fdd1f8fe80"
         },
         {
           "year": 2050,
@@ -846,7 +846,7 @@
           "y": 2050,
           "m": 6,
           "d": 5,
-          "frac_bits": "0x3fdd1b59170c7968"
+          "frac_bits": "0x3fdd1b588ae749f7"
         },
         {
           "year": 2050,
@@ -854,7 +854,7 @@
           "y": 2050,
           "m": 6,
           "d": 21,
-          "frac_bits": "0x3fc2f1408107ac8d"
+          "frac_bits": "0x3fc2f13f68bd4dac"
         },
         {
           "year": 2050,
@@ -862,7 +862,7 @@
           "y": 2050,
           "m": 7,
           "d": 6,
-          "frac_bits": "0x3fec0b332a94d032"
+          "frac_bits": "0x3fec0b32e4823811"
         },
         {
           "year": 2050,
@@ -870,7 +870,7 @@
           "y": 2050,
           "m": 7,
           "d": 22,
-          "frac_bits": "0x3fe324de8e5db21a"
+          "frac_bits": "0x3fe324de484b1a62"
         },
         {
           "year": 2050,
@@ -878,7 +878,7 @@
           "y": 2050,
           "m": 8,
           "d": 7,
-          "frac_bits": "0x3fd2562886e16921"
+          "frac_bits": "0x3fd25627fabc39b0"
         },
         {
           "year": 2050,
@@ -886,7 +886,7 @@
           "y": 2050,
           "m": 8,
           "d": 22,
-          "frac_bits": "0x3fecba5f01ee28b4"
+          "frac_bits": "0x3fecba5ebbdb90fc"
         },
         {
           "year": 2050,
@@ -894,7 +894,7 @@
           "y": 2050,
           "m": 9,
           "d": 7,
-          "frac_bits": "0x3fdab2f25ac28d63"
+          "frac_bits": "0x3fdab2f1ce9d5d22"
         },
         {
           "year": 2050,
@@ -902,7 +902,7 @@
           "y": 2050,
           "m": 9,
           "d": 22,
-          "frac_bits": "0x3fe9f80b5ea30f2a"
+          "frac_bits": "0x3fe9f80b18907771"
         },
         {
           "year": 2050,
@@ -910,7 +910,7 @@
           "y": 2050,
           "m": 10,
           "d": 8,
-          "frac_bits": "0x3fb55fe5f58eea1a"
+          "frac_bits": "0x3fb55fe3c4fa2916"
         },
         {
           "year": 2050,
@@ -918,7 +918,7 @@
           "y": 2050,
           "m": 10,
           "d": 23,
-          "frac_bits": "0x3fcbba18e069328a"
+          "frac_bits": "0x3fcbba17c81ed208"
         },
         {
           "year": 2050,
@@ -926,7 +926,7 @@
           "y": 2050,
           "m": 11,
           "d": 7,
-          "frac_bits": "0x3fcdaae31e348b40"
+          "frac_bits": "0x3fcdaae205ea2abe"
         },
         {
           "year": 2050,
@@ -934,7 +934,7 @@
           "y": 2050,
           "m": 11,
           "d": 22,
-          "frac_bits": "0x3fc091ffab29562e"
+          "frac_bits": "0x3fc091fe92def74d"
         },
         {
           "year": 2050,
@@ -942,7 +942,7 @@
           "y": 2050,
           "m": 12,
           "d": 6,
-          "frac_bits": "0x3fee4393e2372af7"
+          "frac_bits": "0x3fee43939c24933e"
         },
         {
           "year": 2050,
@@ -950,7 +950,7 @@
           "y": 2050,
           "m": 12,
           "d": 21,
-          "frac_bits": "0x3fe63209bbca23c1"
+          "frac_bits": "0x3fe6320975b78c09"
         },
         {
           "year": 2050,
@@ -958,7 +958,7 @@
           "y": 2050,
           "m": 1,
           "d": 5,
-          "frac_bits": "0x3fc60a3b91c7152e"
+          "frac_bits": "0x3fc60a3a797cb4ac"
         },
         {
           "year": 2050,
@@ -966,7 +966,7 @@
           "y": 2050,
           "m": 1,
           "d": 19,
-          "frac_bits": "0x3fecc0be6f3d2486"
+          "frac_bits": "0x3fecc0be292a8cce"
         },
         {
           "year": 32766,
@@ -974,7 +974,7 @@
           "y": 32766,
           "m": 2,
           "d": 6,
-          "frac_bits": "0x3fe34f65d0a4af01"
+          "frac_bits": "0x3fe34f658a9216e0"
         },
         {
           "year": 32766,
@@ -982,7 +982,7 @@
           "y": 32766,
           "m": 2,
           "d": 21,
-          "frac_bits": "0x3fe16305d1ee856c"
+          "frac_bits": "0x3fe163058bdbed4c"
         },
         {
           "year": 32766,
@@ -990,7 +990,7 @@
           "y": 32766,
           "m": 3,
           "d": 8,
-          "frac_bits": "0x3fd275bc72a03a63"
+          "frac_bits": "0x3fd275bbe67b0af2"
         },
         {
           "year": 32766,
@@ -998,7 +998,7 @@
           "y": 32766,
           "m": 3,
           "d": 22,
-          "frac_bits": "0x3feebc2f76212bf4"
+          "frac_bits": "0x3feebc2f300e93d4"
         },
         {
           "year": 32766,
@@ -1006,7 +1006,7 @@
           "y": 32766,
           "m": 4,
           "d": 6,
-          "frac_bits": "0x3fe2fb91db41a408"
+          "frac_bits": "0x3fe2fb91952f0be7"
         },
         {
           "year": 32766,
@@ -1014,7 +1014,7 @@
           "y": 32766,
           "m": 4,
           "d": 21,
-          "frac_bits": "0x3fd4d596e527f716"
+          "frac_bits": "0x3fd4d5965902c6d5"
         },
         {
           "year": 32766,
@@ -1022,7 +1022,7 @@
           "y": 32766,
           "m": 5,
           "d": 6,
-          "frac_bits": "0x3fc522d46f6074d4"
+          "frac_bits": "0x3fc522d3571615f3"
         },
         {
           "year": 32766,
@@ -1030,7 +1030,7 @@
           "y": 32766,
           "m": 5,
           "d": 21,
-          "frac_bits": "0x3fc872ca47d36655"
+          "frac_bits": "0x3fc872c92f890774"
         },
         {
           "year": 32766,
@@ -1038,7 +1038,7 @@
           "y": 32766,
           "m": 6,
           "d": 5,
-          "frac_bits": "0x3fd534eb328c1a65"
+          "frac_bits": "0x3fd534eaa666eaf5"
         },
         {
           "year": 32766,
@@ -1046,7 +1046,7 @@
           "y": 32766,
           "m": 6,
           "d": 20,
-          "frac_bits": "0x3fe314167ccfee76"
+          "frac_bits": "0x3fe3141636bd56bd"
         },
         {
           "year": 32766,
@@ -1054,7 +1054,7 @@
           "y": 32766,
           "m": 7,
           "d": 5,
-          "frac_bits": "0x3fec458d86756da3"
+          "frac_bits": "0x3fec458d4062d582"
         },
         {
           "year": 32766,
@@ -1062,7 +1062,7 @@
           "y": 32766,
           "m": 7,
           "d": 21,
-          "frac_bits": "0x3fcbac1132769c07"
+          "frac_bits": "0x3fcbac101a2c3b85"
         },
         {
           "year": 32766,
@@ -1070,7 +1070,7 @@
           "y": 32766,
           "m": 8,
           "d": 5,
-          "frac_bits": "0x3fe143ecc57f3a50"
+          "frac_bits": "0x3fe143ec7f6ca297"
         },
         {
           "year": 32766,
@@ -1078,7 +1078,7 @@
           "y": 32766,
           "m": 8,
           "d": 20,
-          "frac_bits": "0x3fed45ef038dd2d4"
+          "frac_bits": "0x3fed45eebd7b3ab4"
         },
         {
           "year": 32766,
@@ -1086,7 +1086,7 @@
           "y": 32766,
           "m": 9,
           "d": 5,
-          "frac_bits": "0x3fd413b0b3590b30"
+          "frac_bits": "0x3fd413b02733daef"
         },
         {
           "year": 32766,
@@ -1094,7 +1094,7 @@
           "y": 32766,
           "m": 9,
           "d": 20,
-          "frac_bits": "0x3fe8fa75cb18774a"
+          "frac_bits": "0x3fe8fa758505df92"
         },
         {
           "year": 32766,
@@ -1102,7 +1102,7 @@
           "y": 32766,
           "m": 10,
           "d": 6,
-          "frac_bits": "0x3fd1deaf8dd52f90"
+          "frac_bits": "0x3fd1deaf01b00020"
         },
         {
           "year": 32766,
@@ -1110,7 +1110,7 @@
           "y": 32766,
           "m": 10,
           "d": 21,
-          "frac_bits": "0x3fea3c4ada77ee31"
+          "frac_bits": "0x3fea3c4a94655679"
         },
         {
           "year": 32766,
@@ -1118,7 +1118,7 @@
           "y": 32766,
           "m": 11,
           "d": 6,
-          "frac_bits": "0x3fd858168327c913"
+          "frac_bits": "0x3fd85815f70299a2"
         },
         {
           "year": 32766,
@@ -1126,7 +1126,7 @@
           "y": 32766,
           "m": 11,
           "d": 21,
-          "frac_bits": "0x3fee8b0d7af3f714"
+          "frac_bits": "0x3fee8b0d34e15ef3"
         },
         {
           "year": 32766,
@@ -1134,7 +1134,7 @@
           "y": 32765,
           "m": 12,
           "d": 7,
-          "frac_bits": "0x3fc527010f630dc2"
+          "frac_bits": "0x3fc526fff718aee1"
         },
         {
           "year": 32766,
@@ -1142,7 +1142,7 @@
           "y": 32765,
           "m": 12,
           "d": 22,
-          "frac_bits": "0x3fe6f8b3bdb1e2de"
+          "frac_bits": "0x3fe6f8b3779f4abd"
         },
         {
           "year": 32766,
@@ -1150,7 +1150,7 @@
           "y": 32766,
           "m": 1,
           "d": 7,
-          "frac_bits": "0x3fc4adae27e4f71b"
+          "frac_bits": "0x3fc4adad0f9a9699"
         },
         {
           "year": 32766,
@@ -1158,7 +1158,7 @@
           "y": 32766,
           "m": 1,
           "d": 22,
-          "frac_bits": "0x3fdf61088f0d48b5"
+          "frac_bits": "0x3fdf610802e81945"
         },
         {
           "year": 2031,
@@ -1166,7 +1166,7 @@
           "y": 2031,
           "m": 3,
           "d": 20,
-          "frac_bits": "0x3fea3e468f48b4a1"
+          "frac_bits": "0x3fea3e4649361c81"
         },
         {
           "year": 1953,
@@ -1198,7 +1198,7 @@
           "y": 2044,
           "m": 3,
           "d": 19,
-          "frac_bits": "0x3fef1f9f144c613f"
+          "frac_bits": "0x3fef1f9ece39c987"
         },
         {
           "year": 2036,
@@ -1206,7 +1206,7 @@
           "y": 2036,
           "m": 1,
           "d": 20,
-          "frac_bits": "0x3fe03ea158e73862"
+          "frac_bits": "0x3fe03ea112d4a0aa"
         },
         {
           "year": 2019,
@@ -1214,7 +1214,7 @@
           "y": 2019,
           "m": 3,
           "d": 5,
-          "frac_bits": "0x3fec3754dc85cd4d"
+          "frac_bits": "0x3fec3754df314cc4"
         },
         {
           "year": 2025,
@@ -1222,7 +1222,7 @@
           "y": 2025,
           "m": 8,
           "d": 22,
-          "frac_bits": "0x3feb6b2605dddc15"
+          "frac_bits": "0x3feb6b25f3556d60"
         },
         {
           "year": 1954,
@@ -1254,7 +1254,7 @@
           "y": 2027,
           "m": 2,
           "d": 4,
-          "frac_bits": "0x3fb2e50854fb4b89"
+          "frac_bits": "0x3fb2e50624668dc7"
         },
         {
           "year": 2021,
@@ -1262,7 +1262,7 @@
           "y": 2021,
           "m": 5,
           "d": 5,
-          "frac_bits": "0x3fd21880d174baac"
+          "frac_bits": "0x3fd21880e944edee"
         },
         {
           "year": 2041,
@@ -1270,7 +1270,7 @@
           "y": 2041,
           "m": 12,
           "d": 6,
-          "frac_bits": "0x3fe859c3853277f0"
+          "frac_bits": "0x3fe859c33f1fdfcf"
         },
         {
           "year": 2039,
@@ -1278,7 +1278,7 @@
           "y": 2039,
           "m": 10,
           "d": 23,
-          "frac_bits": "0x3fe1e3c4b3cdd946"
+          "frac_bits": "0x3fe1e3c46dbb4125"
         },
         {
           "year": 2003,
@@ -1294,7 +1294,7 @@
           "y": 2007,
           "m": 11,
           "d": 7,
-          "frac_bits": "0x3fe9ddef857e6020"
+          "frac_bits": "0x3fe9ddef7eb3e38b"
         },
         {
           "year": 1985,
@@ -1310,7 +1310,7 @@
           "y": 2047,
           "m": 4,
           "d": 20,
-          "frac_bits": "0x3fc2e51973bb0819"
+          "frac_bits": "0x3fc2e5185b70a797"
         },
         {
           "year": 2039,
@@ -1318,7 +1318,7 @@
           "y": 2039,
           "m": 8,
           "d": 23,
-          "frac_bits": "0x3fcfe0effb0b81f6"
+          "frac_bits": "0x3fcfe0eee2c12174"
         },
         {
           "year": 1993,
@@ -1342,7 +1342,7 @@
           "y": 2047,
           "m": 7,
           "d": 7,
-          "frac_bits": "0x3fc2b68b76372142"
+          "frac_bits": "0x3fc2b68a5decc0c0"
         },
         {
           "year": 1963,
@@ -1374,7 +1374,7 @@
           "y": 2027,
           "m": 6,
           "d": 5,
-          "frac_bits": "0x3fec92a94b9a2730"
+          "frac_bits": "0x3fec92a905878f10"
         },
         {
           "year": 1955,
@@ -1390,7 +1390,7 @@
           "y": 2008,
           "m": 10,
           "d": 23,
-          "frac_bits": "0x3fa866df5085a811"
+          "frac_bits": "0x3fa866ded56c546c"
         },
         {
           "year": 1965,
@@ -1422,7 +1422,7 @@
           "y": 2029,
           "m": 7,
           "d": 22,
-          "frac_bits": "0x3fe0ef4b5e168171"
+          "frac_bits": "0x3fe0ef4b1803e9b9"
         },
         {
           "year": 2023,
@@ -1430,7 +1430,7 @@
           "y": 2023,
           "m": 5,
           "d": 5,
-          "frac_bits": "0x3fe86a9cc6f8574d"
+          "frac_bits": "0x3fe86a9cc0107253"
         },
         {
           "year": 2040,
@@ -1438,7 +1438,7 @@
           "y": 2040,
           "m": 3,
           "d": 4,
-          "frac_bits": "0x3fef5c363855efc3"
+          "frac_bits": "0x3fef5c35f243580a"
         },
         {
           "year": 1955,
@@ -1486,7 +1486,7 @@
           "y": 2031,
           "m": 7,
           "d": 23,
-          "frac_bits": "0x3f7db26034db60f7"
+          "frac_bits": "0x3f7db23d2b8f84da"
         },
         {
           "year": 1970,
@@ -1510,7 +1510,7 @@
           "y": 2035,
           "m": 6,
           "d": 5,
-          "frac_bits": "0x3fea765418767ef9"
+          "frac_bits": "0x3fea7653d263e741"
         },
         {
           "year": 2039,
@@ -1518,7 +1518,7 @@
           "y": 2039,
           "m": 12,
           "d": 22,
-          "frac_bits": "0x3f9cd998a70e246a"
+          "frac_bits": "0x3f9cd98fe4bb2d63"
         },
         {
           "year": 2032,
@@ -1526,7 +1526,7 @@
           "y": 2032,
           "m": 3,
           "d": 5,
-          "frac_bits": "0x3f9c94bc827ea662"
+          "frac_bits": "0x3f9c94b3c02baf5b"
         },
         {
           "year": 2027,
@@ -1534,7 +1534,7 @@
           "y": 2027,
           "m": 12,
           "d": 7,
-          "frac_bits": "0x3fd701b79d620775"
+          "frac_bits": "0x3fd701b7113cd804"
         },
         {
           "year": 1971,
@@ -1550,7 +1550,7 @@
           "y": 2043,
           "m": 5,
           "d": 21,
-          "frac_bits": "0x3fc0cff11a576e61"
+          "frac_bits": "0x3fc0cff0020d0f80"
         },
         {
           "year": 1970,
@@ -1574,7 +1574,7 @@
           "y": 2031,
           "m": 1,
           "d": 5,
-          "frac_bits": "0x3fe1d8c84c834fcb"
+          "frac_bits": "0x3fe1d8c80670b813"
         },
         {
           "year": 2021,
@@ -1582,7 +1582,7 @@
           "y": 2021,
           "m": 5,
           "d": 20,
-          "frac_bits": "0x3fea2858d66a4f5b"
+          "frac_bits": "0x3fea2858e23f362b"
         },
         {
           "year": 2037,
@@ -1590,7 +1590,7 @@
           "y": 2037,
           "m": 7,
           "d": 6,
-          "frac_bits": "0x3fe7e4360f93eeac"
+          "frac_bits": "0x3fe7e435c98156f4"
         },
         {
           "year": 2048,
@@ -1598,7 +1598,7 @@
           "y": 2048,
           "m": 2,
           "d": 18,
-          "frac_bits": "0x3fefbed88d1496ee"
+          "frac_bits": "0x3fefbed84701ff36"
         },
         {
           "year": 1979,
@@ -1638,7 +1638,7 @@
           "y": 2041,
           "m": 7,
           "d": 6,
-          "frac_bits": "0x3fe6a20b36585db1"
+          "frac_bits": "0x3fe6a20af045c5f9"
         }
       ]
     },
@@ -1866,122 +1866,122 @@
         {
           "jd_ut1_bits": "0x416a1c0ff0000000",
           "longitude": 45.0,
-          "value_bits": "0x4067adcdb939c736"
+          "value_bits": "0x4067adcdb939c6e9"
         },
         {
           "jd_ut1_bits": "0x415e049e5bac4523",
           "longitude": -141.6921037928262,
-          "value_bits": "0x40657b74f7ff0369"
+          "value_bits": "0x40657b74f7ff02c1"
         },
         {
           "jd_ut1_bits": "0x4161a939ab04c714",
           "longitude": 123.00096534208814,
-          "value_bits": "0x407616d5613d01aa"
+          "value_bits": "0x407616d5613d0178"
         },
         {
           "jd_ut1_bits": "0x415e0466d1b2c868",
           "longitude": -108.39200336469611,
-          "value_bits": "0x40722158ad2e21b2"
+          "value_bits": "0x40722158ad2e21af"
         },
         {
           "jd_ut1_bits": "0x4157fc5a63513da2",
           "longitude": -121.84234712886479,
-          "value_bits": "0x40436b6cff9ed318"
+          "value_bits": "0x40436b6cff9ed0cc"
         },
         {
           "jd_ut1_bits": "0x41690fa77648ec63",
           "longitude": 152.0762690225789,
-          "value_bits": "0x40761a7e694e824d"
+          "value_bits": "0x40761a7e694e823e"
         },
         {
           "jd_ut1_bits": "0x416845976f53383a",
           "longitude": 35.620050405682434,
-          "value_bits": "0x4062f686481dbe0e"
+          "value_bits": "0x4062f686481dbe2a"
         },
         {
           "jd_ut1_bits": "0x415d286606197879",
           "longitude": -139.72761888447778,
-          "value_bits": "0x407070bca492929d"
+          "value_bits": "0x407070bca49292b6"
         },
         {
           "jd_ut1_bits": "0x41577e23315f4a61",
           "longitude": 174.71569641977237,
-          "value_bits": "0x405a197006bad214"
+          "value_bits": "0x405a197006bad0b4"
         },
         {
           "jd_ut1_bits": "0x4165c0bb00e62abf",
           "longitude": -93.79716827829883,
-          "value_bits": "0x406f90c878260b14"
+          "value_bits": "0x406f90c878260a9c"
         },
         {
           "jd_ut1_bits": "0x4151fc76b6bbac40",
           "longitude": 24.2484997280076,
-          "value_bits": "0x40711cc36bb746f6"
+          "value_bits": "0x40711cc36bb746c6"
         },
         {
           "jd_ut1_bits": "0x414559e7fe0a122c",
           "longitude": 83.48673414406596,
-          "value_bits": "0x40311971fbe8c140"
+          "value_bits": "0x40311971fbe8c1f0"
         },
         {
           "jd_ut1_bits": "0x4165f61d3f630bd9",
           "longitude": 172.07441772384033,
-          "value_bits": "0x40706b921bd4cbc0"
+          "value_bits": "0x40706b921bd4cb9c"
         },
         {
           "jd_ut1_bits": "0x415f2582bb0bf3b3",
           "longitude": -134.72621585264113,
-          "value_bits": "0x4074fda5daf20fd7"
+          "value_bits": "0x4074fda5daf20f93"
         },
         {
           "jd_ut1_bits": "0x41627014a92d8422",
           "longitude": 160.86552469379671,
-          "value_bits": "0x4036f52b0f1717d0"
+          "value_bits": "0x4036f52b0f171700"
         },
         {
           "jd_ut1_bits": "0x414d241438a44e73",
           "longitude": 9.962563470571439,
-          "value_bits": "0x4070f1607223db34"
+          "value_bits": "0x4070f1607223db0a"
         },
         {
           "jd_ut1_bits": "0x41613d3fc8f69cde",
           "longitude": 167.17064616268385,
-          "value_bits": "0x406a8e3bba016de8"
+          "value_bits": "0x406a8e3bba016e43"
         },
         {
           "jd_ut1_bits": "0x416881bcdac04f02",
           "longitude": 91.89547078888995,
-          "value_bits": "0x4051298d03c74b38"
+          "value_bits": "0x4051298d03c74ae4"
         },
         {
           "jd_ut1_bits": "0x41631deba809dec2",
           "longitude": 76.66163021488387,
-          "value_bits": "0x406930ce8dc0ff36"
+          "value_bits": "0x406930ce8dc0fec6"
         },
         {
           "jd_ut1_bits": "0x41591dde35a03b12",
           "longitude": 61.80730546978191,
-          "value_bits": "0x406acd4cea3d01ab"
+          "value_bits": "0x406acd4cea3d013b"
         },
         {
           "jd_ut1_bits": "0x4157f6a85c7d799b",
           "longitude": 143.86107047146038,
-          "value_bits": "0x40715bad7efbbb29"
+          "value_bits": "0x40715bad7efbbaec"
         },
         {
           "jd_ut1_bits": "0x415b7be05e845afc",
           "longitude": -90.75397908023714,
-          "value_bits": "0x4072b84d02ee0448"
+          "value_bits": "0x4072b84d02ee0440"
         },
         {
           "jd_ut1_bits": "0x414405c84cc5eeb3",
           "longitude": -172.4276663974588,
-          "value_bits": "0x404d5140e5822ef0"
+          "value_bits": "0x404d5140e5822fb4"
         },
         {
           "jd_ut1_bits": "0x41600d36dc2b4b9b",
           "longitude": 31.838441187726374,
-          "value_bits": "0x401193078194a700"
+          "value_bits": "0x4011930781949380"
         },
         {
           "jd_ut1_bits": "0x413dcb108ccf6247",
@@ -1991,7 +1991,7 @@
         {
           "jd_ut1_bits": "0x41438ed38356a07e",
           "longitude": -155.7358818802893,
-          "value_bits": "0x4073d5e77ca2046e"
+          "value_bits": "0x4073d5e77ca20489"
         },
         {
           "jd_ut1_bits": "0x414114ca66fd600b",
@@ -2001,72 +2001,72 @@
         {
           "jd_ut1_bits": "0x415e4f5cab6c3e75",
           "longitude": -79.74818497276308,
-          "value_bits": "0x40642b94d6479264"
+          "value_bits": "0x40642b94d647924b"
         },
         {
           "jd_ut1_bits": "0x415d038edaeb036e",
           "longitude": 14.12421530211165,
-          "value_bits": "0x4051a9e4d760cc62"
+          "value_bits": "0x4051a9e4d760cc00"
         },
         {
           "jd_ut1_bits": "0x4163df33a929c7fe",
           "longitude": 137.65790705066559,
-          "value_bits": "0x406873c12006de44"
+          "value_bits": "0x406873c12006dec6"
         },
         {
           "jd_ut1_bits": "0x41608de086e82cd2",
           "longitude": -92.52099273753917,
-          "value_bits": "0x406424fbdba3e52e"
+          "value_bits": "0x406424fbdba3e490"
         },
         {
           "jd_ut1_bits": "0x415c73ed96411c9f",
           "longitude": -33.45841386506282,
-          "value_bits": "0x405b92593d1ba752"
+          "value_bits": "0x405b92593d1ba812"
         },
         {
           "jd_ut1_bits": "0x4146c15e7af855f6",
           "longitude": 57.233789825278706,
-          "value_bits": "0x40731b4d595a3e03"
+          "value_bits": "0x40731b4d595a3e21"
         },
         {
           "jd_ut1_bits": "0x415719e537365750",
           "longitude": -32.003180622094305,
-          "value_bits": "0x40713abc892c8b03"
+          "value_bits": "0x40713abc892c8aad"
         },
         {
           "jd_ut1_bits": "0x41670a1a465f52b5",
           "longitude": -160.49837259641862,
-          "value_bits": "0x40696fbcc385e55f"
+          "value_bits": "0x40696fbcc385e4f0"
         },
         {
           "jd_ut1_bits": "0x41624bbe2c60fab4",
           "longitude": 52.62471046619439,
-          "value_bits": "0x40435280d48c0800"
+          "value_bits": "0x40435280d48c0a30"
         },
         {
           "jd_ut1_bits": "0x4143b6f9b43970d0",
           "longitude": 82.15689183882574,
-          "value_bits": "0x40528653e1691f98"
+          "value_bits": "0x40528653e1691e54"
         },
         {
           "jd_ut1_bits": "0x41659d0b8dc11cfa",
           "longitude": -140.66314839187055,
-          "value_bits": "0x4073b406e885e756"
+          "value_bits": "0x4073b406e885e726"
         },
         {
           "jd_ut1_bits": "0x414f87143bdbe3e8",
           "longitude": 13.062871407723975,
-          "value_bits": "0x405a64a419b9ec51"
+          "value_bits": "0x405a64a419b9ebb8"
         },
         {
           "jd_ut1_bits": "0x414ae42358c89402",
           "longitude": -113.94430711659602,
-          "value_bits": "0x405afd0278f4e23f"
+          "value_bits": "0x405afd0278f4e111"
         },
         {
           "jd_ut1_bits": "0x415bfc80c4298338",
           "longitude": 134.81494346540876,
-          "value_bits": "0x406e0baa2491e934"
+          "value_bits": "0x406e0baa2491e9de"
         }
       ]
     },

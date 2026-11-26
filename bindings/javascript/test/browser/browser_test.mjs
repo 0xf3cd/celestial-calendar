@@ -55,6 +55,14 @@ await rm(WORK, { recursive: true, force: true });
 await mkdir(WORK, { recursive: true });
 await cp(FIXTURE, WORK, { recursive: true });
 await cp(new URL("../support/chart_replay.mjs", import.meta.url), resolve(WORK, "src/chart_replay.mjs"));
+await cp(new URL("../support/observer_api.mjs", import.meta.url), resolve(WORK, "src/observer_api.mjs"));
+await cp(new URL("../support/diameter_api.mjs", import.meta.url), resolve(WORK, "src/diameter_api.mjs"));
+await cp(new URL("../support/altitude_api.mjs", import.meta.url), resolve(WORK, "src/altitude_api.mjs"));
+await cp(new URL("../support/rise_set_api.mjs", import.meta.url), resolve(WORK, "src/rise_set_api.mjs"));
+await cp(new URL("../../../../toolbox/rise_set_golden.json", import.meta.url), resolve(WORK, "src/rise_set_golden.json"));
+await cp(new URL("../support/position_events_api.mjs", import.meta.url), resolve(WORK, "src/position_events_api.mjs"));
+await cp(new URL("../../../../toolbox/position_events_golden.json", import.meta.url), resolve(WORK, "src/position_events_golden.json"));
+await cp(new URL("../../../../docs/examples/apparent_diameter/render.mjs", import.meta.url), resolve(WORK, "src/diameter_example.mjs"));
 await cp(new URL("../../../../docs/examples/chart_snapshot/data.json", import.meta.url), resolve(WORK, "src/chart_example.json"));
 await writeFile(
   resolve(WORK, "package.json"),
@@ -167,6 +175,24 @@ try {
     assert.equal(result.survived, true, "module did not survive a translated failure");
     assert.equal(result.sharedExports, true, "alias exports differ from the resolved primary");
     assert.equal(typeof result.chart.jdUt1, "number", "missing chart replay residual");
+    assert.deepEqual(result.observer, { targets: 10, exactPoles: 2, refractionStates: 2 });
+    assert.deepEqual(result.diameter, { targets: 10, exactPoles: 2 });
+    assert.equal(result.riseSet.cases, 360);
+    assert.equal(result.riseSet.targets, 10);
+    assert.equal(result.positionEvents.cases, 66);
+    assert.equal(result.positionEvents.nodeEventChecks, 8);
+    assert.equal(result.positionEvents.endpointChecks, 2);
+    assert.equal(result.positionEvents.tangent, true);
+    assert(result.positionEvents.maximumDifference <= 1e-9);
+    assert(result.riseSet.maximumMomentDifferenceDays <= 1e-8);
+    assert.deepEqual(result.altitude, { targets: 10, refractionModels: 2, unresolved: 2 });
+    assert.deepEqual(result.diameterExample, { arcsecondsPerPixel: 10, targets: ["sun", "moon", "jupiter"] });
+    const renderedDisks = await page.evaluate(() => [...document.querySelectorAll(".apparent-disk")].map((node) => ({
+      width: node.getBoundingClientRect().width,
+      expected: Number(node.dataset.arcseconds) / 10 * Number(node.dataset.magnification),
+    })));
+    assert.equal(renderedDisks.length, 3);
+    for (const disk of renderedDisks) assert(Math.abs(disk.width - disk.expected) < 0.02, "CSS-pixel disk scale");
     assert.deepEqual(Object.keys(result.lichun).sort(), ["jieqi", "momentUt1"]);
     assert.equal(result.lichunMatches, true);
     assert.equal(result.lichun.momentUt1.year, 2024);
@@ -200,6 +226,7 @@ try {
       exceptionTranslated: true,
       moduleSurvived: true,
       chart: result.chart,
+      altitude: result.altitude,
     }));
     tested.push(name);
     await browser.close();

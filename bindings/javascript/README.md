@@ -18,8 +18,12 @@ WebAssembly module.
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README_ZH.md)
 
-This guide describes the current source, including unreleased changes. The install command below gets the latest published
-version on npm; use its matching documentation. See [Migrating to 1.0](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/MIGRATING_1_0.md)
+<!-- package-context -->
+This guide describes the accompanying source revision. The install command below gets the latest published version
+on npm, which may differ from this source revision; use its matching documentation.
+<!-- /package-context -->
+
+See [Migrating to 1.0](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/MIGRATING_1_0.md)
 for the removed logging API, Sun distance rename and changed error classes.
 
 <a id="install"></a>
@@ -44,6 +48,81 @@ Each JavaScript block below is a standalone ES module for `example.mjs` in your 
 <a id="examples"></a>
 ## Examples
 
+For selected geocentric positions without a full chart, use
+[`position.ecliptic` and `position.equatorial`](#independent-positions).
+For longitude crossings, stations and directed two-body differences, use
+[`events`](../../docs/EPHEMERIS_EVENTS.md#javascript).
+
+For interval altitude events, upper transits and intersections such as
+“Mars above 20° while the Sun is below −18°”, see [altitude events and observing windows](../../docs/ALTITUDE_EVENTS.md).
+The queries take explicit JDE(TT) intervals. Sampled searches can miss events without reporting an error.
+
+For daily Sun, Moon and planet summaries, use `riseSet.solar`, `riseSet.lunar`
+and `riseSet.planet`. The [rise/set guide](../../docs/RISE_SET.md) explains their
+UT1-date selection, missing events, and conversion from TT to clock times.
+
+For full scalar disk sizes in arcseconds, use `diameter.query` with an optional
+WGS84 observer. See [apparent diameters](../../docs/APPARENT_DIAMETERS.md) for radius
+conventions, supported targets and browser scaling.
+
+### Local sky from a WGS84 observer
+
+Latitude/longitude are degrees (east-positive longitude); elevation is ellipsoidal
+height in metres. Azimuth is north-zero/east-positive. Optional angles are `null`.
+See the [observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md)
+for strict UTC, provider/model guards and optional refraction.
+
+```js
+import { init, observer } from "@0xf3cd/celestial";
+
+await init();
+const sky = observer.position("moon", { year: 2026, month: 11, day: 7, fraction: 0 }, {
+  scale: "utc", observer: { latitudeDeg: -33.85, longitudeDeg: 151.2, elevationM: 50 },
+});
+if (!(sky.distanceAu > 0) || sky.apparentAltitudeDeg !== null) throw new Error("observer result");
+console.log(sky.altitudeDeg, sky.azimuthDeg);
+```
+
+<a id="independent-positions"></a>
+### Selected geocentric positions
+
+```js
+import { init, position } from "@0xf3cd/celestial";
+
+await init();
+const bodies = position.ecliptic(["moon", "trueAscending"], 2451545.0);
+console.log(bodies[0].longitudeDeg, bodies[0].distanceAu);
+console.log(bodies[1].distanceAu); // null: a mathematical node has no distance
+const equatorial = position.equatorial(["mars"], 2451545.0);
+console.log(equatorial[0].rightAscensionDeg, equatorial[0].declinationDeg);
+```
+
+The time is JDE(TT), not JD(UT1) or a JavaScript timestamp. Both operations return
+frozen arrays of frozen records in the supplied target order. Selections use the
+same fourteen names as `chart.snapshot`; empty or repeated selections fail.
+Ecliptic results give `longitudeDeg` and `latitudeDeg`; equatorial results give
+`rightAscensionDeg` and `declinationDeg`. Longitudes and right ascensions are in
+`[0,360)` degrees. Distances are AU, including the Moon's, or `null` for nodes.
+Later queries and WASM memory growth do not change an earlier result.
+
+Each selected target uses its own position-provider domain. No chart-wide joint
+window, house calculation, civil conversion or rate sampling is required.
+Pluto positions accept `[2409543.5,2488069.5)` JDE(TT). Position projection uses
+fixed IAU 1980 nutation and true obliquity.
+
+`sourceCode` is the existing C position-source identity:
+
+- 1: Sun / VSOP87D
+- 2: Moon / truncated ELP2000-82B
+- 3: planets / VSOP87D
+- 4: Pluto / Pluto95
+- 5: mean nodes
+- 6: Meeus five-term true nodes
+
+These codes identify providers, not an accuracy bound. See the
+[C query contracts](../../docs/API.md#c-independent-position-and-house-queries)
+and [model descriptions](../python/README.md#capabilities).
+
 <a id="chart-snapshot"></a>
 ### Chart Snapshot at a Fixed Instant
 
@@ -57,7 +136,6 @@ const snapshot = chart.snapshot(
     scale: "utc",
     location: { latitudeDeg: 51.5, longitudeDeg: 0 },
     system: "placidus",
-    model: "default",
   },
 );
 console.log(snapshot.times); // { jdUt1, jdeTt }
@@ -131,7 +209,7 @@ invertible. After the leap table's last entry, these conversions retain its fina
 import { init, time } from "@0xf3cd/celestial";
 
 await init();
-const utc = { year: 2026, month: 10, day: 28, fraction: (19 * 3600 + 35 * 60 + 37) / 86400 };
+const utc = { year: 2026, month: 10, day: 28, fraction: (19 * 3600 + 35 * 60 + 37) / 86400 }; // 19:35:37 UTC
 const jdeTt = time.utcToJde(utc);
 console.log(time.jdeToUtc(jdeTt));
 ```
@@ -165,10 +243,15 @@ if (upcoming === undefined) throw new Error("No later Jieqi in the queried years
 console.log(celestial.jieqi.name(upcoming.jieqi));
 console.log("UT1:", upcoming.momentUt1);
 console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
+const upcomingJdeTt = celestial.time.ut1ToJde(upcoming.momentUt1);
+console.log("UTC:", celestial.time.jdeToUtc(upcomingJdeTt));
 ```
 
 This enumerates all terms in both years and orders them by moment, not enum value. Remaining days are fractional
-UT1 days. `momentUt1` is UT1, not UTC or a UTC+8 wall clock. This is a fixed contemporary query across one year
+UT1 days. `jdUt1` and `cutoffJd` are JD(UT1), not JDE(TT); do not pass them to `time.jdeToUtc()`.
+For UTC display, first use `celestial.time.ut1ToJde(upcoming.momentUt1)`, then pass that JDE to
+`celestial.time.jdeToUtc()`.
+`momentUt1` is UT1, not UTC or a UTC+8 wall clock. This is a fixed contemporary query across one year
 boundary, not a search algorithm for the entire API domain; the query-year domain and failure conditions of
 `jieqi.moment()` are listed under [API Contract](#api-contract).
 
@@ -213,11 +296,10 @@ and have the static server send it with `Content-Type: application/wasm`.
 <a id="api-contract"></a>
 ## API Contract
 
-The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, and `chart` namespaces, and the
-package ships TypeScript declarations. The package uses only the `jieqi` / `lunar` names, with no `solarTerms` /
-`lunarCalendar` aliases. Model and Moon phase options are string-literal unions such as `"full"` and
-`"algo3"`. There is no logging configuration or `init` configuration argument. Independent position, equatorial,
-house, event, capability and model-text queries are not public JavaScript APIs.
+The root entry provides the `time`, `sun`, `moon`, `jieqi`, `lunar`, `chart`, `position`, `events`, `observer`, `diameter`, and `riseSet` namespaces, and the
+package ships TypeScript declarations. Model and Moon phase options are string-literal unions such as `"full"` and
+`"algo3"`.
+Independent house, capability and model-text query families remain C/Python-only.
 `Jieqi` is a frozen object of 24 named constants, from `Jieqi.LICHUN = 0` to
 `Jieqi.DAHAN = 23`, spelled as in the Python package. The TypeScript type `Jieqi` is the matching
 `0 | 1 | ... | 23` union; a plain `number` variable must be narrowed before it is passed to `jieqi.moment()` or
@@ -285,7 +367,7 @@ set to `undefined`. With TypeScript's `exactOptionalPropertyTypes` enabled, type
 
 Native `GregorianDate` and `CivilDateTimeResult` results use astronomical years in `[-32767, 32767]`, with year 0
 denoting 1 BCE. `CivilDateTimeResult` adds an integer `hour` and `minute` and a possibly fractional `second` to `CivilDateTime`.
-`time.jdeToUt1()`, `sun.apparentSolarTime()`, and `JieqiMoment.momentUt1` use this output.
+`time.jdeToUt1()`, `time.jdeToUtc()`, `sun.apparentSolarTime()`, and `JieqiMoment.momentUt1` use this output.
 These fields are derived from the day fraction and are not rounded to milliseconds; `second` counts seconds, not
 milliseconds. A result can be reused as a civil-moment input when it fits the receiving operation's input window.
 Functions read `fraction`, not the derived clock fields. The operation name, not this shared record type, says which time scale applies.

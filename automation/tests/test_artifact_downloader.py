@@ -476,15 +476,17 @@ def test_release_collector_validates_archives_before_python_flatten(
     downloaded_paths.extend(paths)
     return paths
 
-  def validate(paths, version):
+  def validate(paths, version, *, expected_commit):
     order.append("validate")
+    assert expected_commit == "tagged-sha"
     assert version == PROJECT_VERSION
     assert {path.stem for path in paths} == set().union(*(expected for _field, _name, expected in SOURCE_SPECS))
     if validation_error is not None:
       raise validation_error
 
-  def flatten(paths, save_to):
+  def flatten(paths, save_to, *, expected_commit):
     order.append("flatten")
+    assert expected_commit == "tagged-sha"
     assert save_to == tmp_path
     assert all(path.is_file() for path in paths)
     return []

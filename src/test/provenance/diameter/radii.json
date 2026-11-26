@@ -1,0 +1,21 @@
+{
+  "collected_on": "2026-11-08",
+  "material_boundary": "Adopted IAU/JPL numeric facts remain under source terms, outside the project MIT grant; no permission claim.",
+  "definitions": {
+    "1": {"name": "IAU_2015_SOLAR_NOMINAL", "source": "https://arxiv.org/abs/1605.09788v1", "table": "Prsa et al. 2016 Table 1; IAU 2015 Resolution B3", "manuscript_sha256": "2b7bcd88a5169f3a18caae9326f3c51905721cd3b7c034d1de45f7b85d6f4a99", "convention": "nominal spherical solar scale, not a measured time-varying limb"},
+    "2": {"name": "JPL_SSD_SATELLITE_MEAN", "source": "https://ssd.jpl.nasa.gov/sats/phys_par/", "table": "Moon mean radius, reference 1, Archinal et al. 2018", "convention": "mean spherical lunar limb, not an almanac k convention"},
+    "3": {"name": "JPL_SSD_PLANET_EQUATORIAL", "source": "https://ssd.jpl.nasa.gov/planets/phys_par.html", "table": "equatorial radius column, reference D, Archinal et al. 2018", "convention": "equatorial scalar disk, not a projected ellipse; Saturn excludes rings"}
+  },
+  "radii": [
+    {"target": "sun", "radius_km": 695700.0, "definition": 1},
+    {"target": "moon", "radius_km": 1737.4, "definition": 2},
+    {"target": "mercury", "radius_km": 2440.53, "definition": 3},
+    {"target": "venus", "radius_km": 6051.8, "definition": 3},
+    {"target": "mars", "radius_km": 3396.19, "definition": 3},
+    {"target": "jupiter", "radius_km": 71492.0, "definition": 3},
+    {"target": "saturn", "radius_km": 60268.0, "definition": 3},
+    {"target": "uranus", "radius_km": 25559.0, "definition": 3},
+    {"target": "neptune", "radius_km": 24764.0, "definition": 3},
+    {"target": "pluto", "radius_km": 1188.3, "definition": 3}
+  ]
+}

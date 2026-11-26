@@ -28,7 +28,7 @@ from automation.markdown_source import ANCHOR, COMMENTS, link_targets, links, se
 
 REPO = Path(__file__).resolve().parents[2]
 
-# Each English guide and its Chinese translation show the same examples, character for character.
+# Each English guide and its Chinese translation show the same code; JavaScript // comments may be translated.
 GUIDE_PAIRS = (
   ("README.md", "README_ZH.md"),
   ("bindings/python/README.md", "bindings/python/README_ZH.md"),
@@ -37,6 +37,11 @@ GUIDE_PAIRS = (
 # The Chinese root guide links to the English native-runtime matrix, references and license instead of copying them.
 ANCHORS_ONLY_IN = {"README.md": {"native-runtime", "references", "license"}, "README_ZH.md": {"references-and-license"}}
 GUIDES = (REPO / "README.md", REPO / "README_ZH.md", *sorted(REPO.glob("bindings/*/README*.md")))
+JS_COMMENT_PARTS = re.compile(
+  r"""(?P<string>"(?:\\[^\r\n]|[^"\\\r\n])*"|'(?:\\[^\r\n]|[^'\\\r\n])*')"""
+  r"|(?P<comment>//[^\r\n\u2028\u2029]*)"
+  r"""|(?P<unsupported>[`/'"\\])"""
+)
 PYTHON_READER = REPO / "bindings/python/test/consumer/doc_examples.py"
 NODE_READER = REPO / "bindings/javascript/test/support/doc_examples.mjs"
 # A link to this repository takes one of these spellings, so that a dead one cannot hide behind another: any other
@@ -80,6 +85,19 @@ def anchors(path: Path) -> set[str]:
 
 def code_blocks(parsed: list[Token]) -> list[tuple[str, str]]:
   return [(token.info, token.content) for token in parsed if token.type in ("fence", "code_block")]
+
+
+def comparable_code_blocks(parsed: list[Token]) -> list[tuple[str, str]]:
+  """Ignore JavaScript // comment text, preserving delimiters, line breaks and all other code."""
+  blocks = []
+  for info, code in code_blocks(parsed):
+    if info == "js":
+      # Templates, block comments and unquoted slashes require a parser; keep those blocks byte-for-byte.
+      parts = list(JS_COMMENT_PARTS.finditer(code))
+      if not any(part.lastgroup == "unsupported" for part in parts):
+        code = JS_COMMENT_PARTS.sub(lambda part: "//" if part.lastgroup == "comment" else part[0], code)
+    blocks.append((info, code))
+  return blocks
 
 
 def names_this_repository(text: str) -> bool:
@@ -154,10 +172,100 @@ def tracked() -> set[Path]:
 
 @pytest.mark.parametrize(("english", "chinese"), GUIDE_PAIRS)
 def test_translated_guides_share_code_blocks(english, chinese):
-  english_blocks, chinese_blocks = code_blocks(document(REPO / english)), code_blocks(document(REPO / chinese))
+  english_blocks = comparable_code_blocks(document(REPO / english))
+  chinese_blocks = comparable_code_blocks(document(REPO / chinese))
 
   assert english_blocks
   assert chinese_blocks == english_blocks
+
+
+@pytest.mark.parametrize(
+  "code",
+  [
+    "console.log(bodies[1].distanceAu); // {comment}\n",
+    "// {comment}\nconsole.log(1);\n",
+    "console.log(\"https://example.com\", '// literal'); // {comment}\n",
+    r"""console.log("escaped \" // literal", 'escaped \' // literal'); // {comment}""" + "\n",
+  ],
+)
+def test_translated_javascript_comments_preserve_code(code):
+  english = tokens("```js\n" + code.format(comment="no distance") + "```\n")
+  chinese = tokens("```js\n" + code.format(comment="没有距离") + "```\n")
+  assert code_blocks(english) != code_blocks(chinese)
+  assert comparable_code_blocks(english) == comparable_code_blocks(chinese)
+
+
+@pytest.mark.parametrize(
+  ("english", "chinese"),
+  [
+    ("console.log(1); // value\n", "console.log(2); // 值\n"),
+    ("console.log(1); // value\n", "console.warn(1); // 值\n"),
+    ('console.log("// value");\n', 'console.log("// 值");\n'),
+    ("console.log('// value');\n", "console.log('// 值');\n"),
+    ('console.log("https://example.com/en");\n', 'console.log("https://example.com/zh");\n'),
+    ("console.log(`// value`);\n", "console.log(`// 值`);\n"),
+    ("const x = /[//]value/;\n", "const x = /[//]值/;\n"),
+    ("const x = 1 /* // value */;\n", "const x = 1 /* // 值 */;\n"),
+    ("console.log(1); // value\n", "console.log(1); // 值\nconsole.log(2);\n"),
+    ("console.log(1); // value\n", "console.log(1); // 值\u2028console.log(2);\n"),
+    ("console.log(1); // value\n", "console.log(1); // 值\u2029console.log(2);\n"),
+    ("console.log(1); // value\n", "console.log(1);\n"),
+    ("console.log(1); // value\n", "console.log(1); // 值\n\n"),
+  ],
+)
+def test_translated_javascript_examples_reject_other_changes(english, chinese):
+  assert comparable_code_blocks(tokens("```js\n" + english + "```\n")) != comparable_code_blocks(
+    tokens("```js\n" + chinese + "```\n")
+  )
+
+
+@pytest.mark.parametrize("language", ["python", "sh", "text", ""])
+def test_other_translated_fences_remain_exact(language):
+  english = tokens(f"```{language}\n// value\n```\n")
+  chinese = tokens(f"```{language}\n// 值\n```\n")
+  assert comparable_code_blocks(english) != comparable_code_blocks(chinese)
+
+
+def test_translated_fences_preserve_language_and_count():
+  example = "```js\nconsole.log(1); // value\n```\n"
+  assert comparable_code_blocks(tokens(example)) != comparable_code_blocks(tokens(example.replace("```js", "```text")))
+  assert comparable_code_blocks(tokens(example)) != comparable_code_blocks(tokens(example + example))
+
+
+def test_api_header_include_spellings_resolve():
+  guide = (REPO / "docs/API.md").read_text(encoding="utf-8")
+  spellings = re.findall(r'`"([^"\n]+\.hpp)"`', guide)
+  assert spellings
+  roots = [REPO / "src" / name for name in ("astro", "calendar", "util")]
+  assert not [name for name in spellings if not any((root / name).is_file() for root in roots)]
+
+
+@pytest.mark.parametrize(
+  ("package", "language", "conversion", "display"),
+  [
+    (
+      "python",
+      "python",
+      "upcoming_jde_tt = celestial.ut1_to_jde(upcoming.moment_ut1)",
+      "celestial.jde_to_utc(upcoming_jde_tt)",
+    ),
+    (
+      "javascript",
+      "js",
+      "const upcomingJdeTt = celestial.time.ut1ToJde(upcoming.momentUt1);",
+      "celestial.time.jdeToUtc(upcomingJdeTt)",
+    ),
+  ],
+)
+def test_next_jieqi_utc_display_converts_the_selected_ut1_moment(package, language, conversion, display):
+  programs = [
+    code
+    for info, code in code_blocks(document(REPO / "bindings" / package / "README.md"))
+    if info == language and "Remaining UT1 days:" in code
+  ]
+  assert len(programs) == 1
+  assert conversion in programs[0]
+  assert display in programs[0]
 
 
 @pytest.mark.parametrize(("english", "chinese"), GUIDE_PAIRS)
@@ -201,9 +309,14 @@ def test_build_guide_preserves_moved_maintenance_navigation():
 
 
 @pytest.mark.parametrize("guide", GUIDES, ids=lambda path: str(path.relative_to(REPO)))
-def test_source_guide_warns_about_unreleased_changes(guide):
+def test_source_guide_distinguishes_checkout_from_installed_version(guide):
   text = visible_text(document(guide))
-  assert "unreleased changes" in text or "尚未发布的改动" in text
+  expected = (
+    ("本文对应其所在的源码版本", "可能与这份源码不同")
+    if guide.name.endswith("_ZH.md")
+    else ("accompanying source revision", "may differ")
+  )
+  assert all(phrase in text for phrase in expected)
 
 
 def test_old_english_readme_points_to_the_guides():
@@ -233,11 +346,29 @@ def test_links_name_existing_paths_and_explicit_anchors():
   assert not failures, "\n".join(failures)
 
 
-def test_cpp_quickstart_compiles_and_runs(tmp_path):
-  # README.md's C++ example is a whole program that needs only the headers.
-  blocks = [code for info, code in code_blocks(document(REPO / "README.md")) if info == "cpp"]
-  assert len(blocks) == 1, "expected exactly one complete C++ quickstart"
-  block = blocks[0]
+@pytest.mark.parametrize(
+  ("guide", "block_index", "block_count", "example", "expected"),
+  [
+    ("README.md", 0, 1, None, "冬至 2026 (UT1):"),
+    (
+      "docs/UTC_CONVERSIONS.md",
+      0,
+      1,
+      "docs/examples/utc_jieqi/example.cpp",
+      "立冬\nUTC: 2026-11-07 09:52\nUTC+8: 2026-11-07 17:52\n",
+    ),
+    ("docs/OBSERVER.md", 0, 2, None, ""),
+    ("docs/OBSERVER.md", 1, 2, None, ""),
+    ("docs/ALTITUDE_EVENTS.md", 0, 1, None, ""),
+    ("docs/RISE_SET.md", 0, 1, None, "sunrise: absent\nlunar transit: "),
+  ],
+)
+def test_cpp_quickstart_compiles_and_runs(tmp_path, guide, block_index, block_count, example, expected):
+  blocks = [code for info, code in code_blocks(document(REPO / guide)) if info == "cpp"]
+  assert len(blocks) == block_count, "unexpected number of complete C++ programs"
+  block = blocks[block_index]
+  if example:
+    assert (REPO / example).read_text(encoding="utf-8").endswith(block), "embedded C++ program differs from its source"
   source = tmp_path / "quickstart.cpp"
   source.write_text(block, encoding="utf-8")
   compiler = shlex.split(os.environ.get("CXX", ""))
@@ -249,7 +380,164 @@ def test_cpp_quickstart_compiles_and_runs(tmp_path):
   binary = tmp_path / "quickstart"
   command = [*compiler, "-std=c++23", "-Isrc/astro", "-Isrc/calendar", "-Isrc/util", str(source), "-o", str(binary)]
   subprocess.run(command, cwd=REPO, check=True, capture_output=True, text=True)
-  assert subprocess.check_output([str(binary)], text=True)
+  output = subprocess.check_output([str(binary)], text=True, encoding="utf-8")
+  assert output == expected if example or not expected else output.startswith(expected)
+
+
+def test_rise_set_c11_example_runs_against_real_exports(tmp_path):
+  source = REPO / "docs/examples/rise_set/main.c"
+  obj = tmp_path / "rise_set.o"
+  binary = tmp_path / "rise_set"
+  c_compiler = shlex.split(os.environ.get("CC", "clang"))
+  cpp_compiler = shlex.split(os.environ.get("CXX", "clang++"))
+  subprocess.run(
+    [
+      *c_compiler,
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic",
+      "-Isrc/shared_lib",
+      "-c",
+      str(source),
+      "-o",
+      str(obj),
+    ],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  subprocess.run(
+    [
+      *cpp_compiler,
+      "-std=c++23",
+      "-Isrc/astro",
+      "-Isrc/calendar",
+      "-Isrc/util",
+      str(obj),
+      "src/shared_lib/lib_rise_set.cpp",
+      "src/shared_lib/lib_astro.cpp",
+      "src/shared_lib/lib.cpp",
+      "-o",
+      str(binary),
+    ],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  output = subprocess.check_output([str(binary)], text=True)
+  assert "sunrise: absent" in output and "sunset: absent" in output
+  assert "solar transit: 2025-06-21" in output and "day UTC" in output
+
+
+def test_altitude_c_program_compiles_as_c11_and_runs_against_the_real_exports(tmp_path):
+  blocks = [code for info, code in code_blocks(document(REPO / "docs/ALTITUDE_EVENTS.md")) if info == "c"]
+  assert len(blocks) == 1, "expected one complete altitude C program"
+  source = tmp_path / "altitude.c"
+  source.write_text(blocks[0], encoding="utf-8")
+  obj = tmp_path / "altitude.o"
+  binary = tmp_path / "altitude"
+  c_compiler = shlex.split(os.environ.get("CC", "clang"))
+  cpp_compiler = shlex.split(os.environ.get("CXX", "clang++"))
+  subprocess.run(
+    [*c_compiler, "-std=c11", "-Isrc/shared_lib", "-c", str(source), "-o", str(obj)],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  subprocess.run(
+    [
+      *cpp_compiler,
+      "-std=c++23",
+      "-Isrc/astro",
+      "-Isrc/calendar",
+      "-Isrc/util",
+      str(obj),
+      "src/shared_lib/lib_altitude.cpp",
+      "src/shared_lib/lib.cpp",
+      "-o",
+      str(binary),
+    ],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  assert subprocess.check_output([str(binary)], text=True) == ""
+
+
+@pytest.mark.parametrize(
+  ("guide", "block_index", "block_count", "export_source", "truncated"),
+  [
+    ("docs/APPARENT_DIAMETERS.md", 0, 1, "lib_diameter.cpp", False),
+    ("docs/API.md", 1, 2, "lib_events.cpp", False),
+    ("docs/API.md", 1, 2, "lib_events.cpp", True),
+  ],
+)
+def test_c_query_examples_compile_and_run(tmp_path, guide, block_index, block_count, export_source, truncated):
+  blocks = [code for info, code in code_blocks(document(REPO / guide)) if info == "c"]
+  assert len(blocks) == block_count, "unexpected number of complete C programs"
+  block = blocks[block_index]
+  if truncated:
+    assert block.count("slots, 8") == 1
+    block = block.replace("slots, 8", "slots, 0", 1)
+  source = tmp_path / "query.c"
+  source.write_text(block, encoding="utf-8")
+  obj = tmp_path / "query.o"
+  binary = tmp_path / "query"
+  c_compiler = shlex.split(os.environ.get("CC", "clang"))
+  cpp_compiler = shlex.split(os.environ.get("CXX", "clang++"))
+  subprocess.run(
+    [
+      *c_compiler,
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic",
+      "-Isrc/shared_lib",
+      "-c",
+      str(source),
+      "-o",
+      str(obj),
+    ],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  subprocess.run(
+    [
+      *cpp_compiler,
+      "-std=c++23",
+      "-Isrc/astro",
+      "-Isrc/calendar",
+      "-Isrc/util",
+      str(obj),
+      f"src/shared_lib/{export_source}",
+      "src/shared_lib/lib.cpp",
+      "-o",
+      str(binary),
+    ],
+    cwd=REPO,
+    check=True,
+    capture_output=True,
+    text=True,
+  )
+  result = subprocess.run([str(binary)], capture_output=True, text=True)
+  if truncated:
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr.startswith("Longitude event output truncated: 0 of ")
+  else:
+    result.check_returncode()
+    assert result.stdout and result.stderr == ""
+    if guide == "docs/APPARENT_DIAMETERS.md":
+      assert re.fullmatch(r"Moon diameter: [0-9.]+ arcsec\n", result.stdout)
 
 
 @pytest.fixture
@@ -386,26 +674,45 @@ def test_python_main_reconciles_actual_execution_count(python_reader, tmp_path, 
     exec(compile(source, str(PYTHON_READER), "exec"), python_reader.__dict__)
   root = tmp_path / "checkout"
   (root / "bindings/python").mkdir(parents=True)
-  guide = "```python\nprint('one')\n```\n\n```python\nprint('two')\n```\n"
+  guide = (
+    "<!-- package-context -->source<!-- /package-context -->\n"
+    "```python\nprint('one')\n```\n\n```python\nprint('two')\n```\n"
+  )
   (root / "bindings/python/README.md").write_text(guide, encoding="utf-8")
   (root / "README.md").write_text("```python\nprint('root')\n```\n\n```text\nroot\n```\n", encoding="utf-8")
+  (root / "docs").mkdir()
+  (root / "docs/ALTITUDE_EVENTS.md").write_text("```python\nprint('altitude')\n```\n", encoding="utf-8")
+  (root / "docs/RISE_SET.md").write_text("```python\nprint('daily')\n```\n", encoding="utf-8")
   calls = []
 
   def run(code, cwd, expected=None):
     calls.append(code)
     if code.startswith("import importlib.metadata"):
-      return json.dumps({"metadata": "Name: celestial-calendar\n\n" + guide})
+      return json.dumps(
+        {
+          "metadata": "Name: celestial-calendar\n\n" + python_reader.render_readme(guide, "1.2.0", "a" * 40),
+          "version": "1.2.0",
+          "urls": [f"{label}, {url}" for label, url in python_reader.python_urls("a" * 40).items()],
+        }
+      )
     return expected or "unused\n"
 
   monkeypatch.setattr(python_reader, "REPO", root)
   monkeypatch.setattr(python_reader, "run_program", run)
   monkeypatch.setattr(python_reader, "verify_provenance", lambda record: None)
+  monkeypatch.setattr(python_reader.subprocess, "check_output", lambda *args, **kwargs: "a" * 40 + "\n")
   if skip:
     with pytest.raises(AssertionError):
       python_reader.main()
   else:
     python_reader.main()
-    assert calls[1:] == ["print('root')\n", "print('one')\n", "print('two')\n"]
+    assert calls[1:] == [
+      "print('root')\n",
+      "print('one')\n",
+      "print('two')\n",
+      "print('altitude')\n",
+      "print('daily')\n",
+    ]
 
 
 def test_node_skipped_program_is_rejected(tmp_path):

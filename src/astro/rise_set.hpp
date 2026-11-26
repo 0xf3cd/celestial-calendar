@@ -45,7 +45,7 @@
  *       `BodyProvider` (jde_tt → apparent equatorial coordinates), and the event
  *       altitude h₀ is injected by the caller. Per-body conventions (standard
  *       altitudes, ephemeris wiring) live in the `sun` / `moon` sub-namespaces;
- *       no planet provider is wired into this layer.
+ *       planetary daily queries are provided separately by `planet_rise_set.hpp`.
  */
 namespace astro::rise_set {
 
@@ -192,6 +192,9 @@ struct Result {
  * @brief A body position provider: apparent equatorial coordinates at one instant.
  * @note The instant is a julian ephemeris day on the **TT** scale. This is the single seam
  *       through which the engine sees a body; per-body sub-namespaces supply the providers.
+ * @note Coordinates use the true equator/equinox of date. The origin belongs to the provider:
+ *       existing Sun/Moon providers are geocentric; the planetary day provider is topocentric.
+ *       Pair h₀ with that origin, without applying parallax or refraction twice.
  */
 template <typename P>
 concept BodyProvider = std::invocable<const P&, double>
@@ -209,14 +212,7 @@ namespace detail {
  *        or either is not finite.
  */
 inline auto validate(const GeoLocation& location) -> void {
-  const double lat = location.latitude.deg();
-
-  if (not std::isfinite(lat) or lat < -90.0 or lat > 90.0) {
-    throw std::invalid_argument {
-      std::format("Argument `location.latitude` out of range [-90, 90], got {}", lat)
-    };
-  }
-
+  astro::geolocation::validate_latitude(location.latitude, "location.latitude");
   astro::geolocation::validate_longitude(location.longitude, "location.longitude");
 }
 
@@ -1157,6 +1153,8 @@ inline constexpr auto apparent_equatorial = &astro::moon::equatorial_coord::appa
  *         horizon. The 0.7275 factor folds the parallax (and the upper-limb semidiameter) into
  *         the horizon dip, so **geocentric** coordinates can be used directly — no topocentric
  *         reduction (Ch.40) is needed at minute-level accuracy.
+ * @note Do not reuse this geocentric threshold for @ref astro::observer::Position "observer::Position".
+ *       Its centre includes parallax; apparent_altitude includes any requested refraction.
  * @throw std::invalid_argument If `p` is invalid (see `refraction::at_horizon`).
  * @throw std::runtime_error For `Model::SAEMUNDSSON`, if the horizon iteration does not
  *        converge (see `refraction::at_horizon`).

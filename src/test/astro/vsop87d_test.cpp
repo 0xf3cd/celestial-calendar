@@ -21,18 +21,19 @@ namespace astro::vsop87d::test {
 
 using namespace astro::vsop87d;
 
-// Data was obtained from PyMeeus (https://pypi.org/project/PyMeeus/).
-// PyMeeus is a well-implemented Python library for astronomical calculations.
+// PyMeeus 0.5.12 (https://pypi.org/project/PyMeeus/).
+// Collected 2026-11-04 by statistics/vsop87d_reference.py; seven fixed epochs, no random sampling.
 // Retained material boundary (V15): these output rows remain subject to PyMeeus's output conditional
 // and outside the project MIT grant; no permission conclusion is claimed.
 //
-// The values are directly returned by VSOP87D models, no adjustment or correction.
+// Columns: JDE(TT), unwrapped L (rad), B (rad), R (AU); no FK5 correction.
+// The 1e-10 tolerances cover binary64 summation differences in the same VSOP87D series.
 // Retained data: vsop87d-0.
 const std::unordered_map<double, std::tuple<double, double, double>> EARTH_DATASET {
   //    JDE          L-tables expected   B-tables expected        R-tables expected
-  {     2445701.1, { -98.77924318611353, -2.4184395622860954e-07, 0.9832889892830442 } },
+  {     2445701.1, { -98.77924318611353,  -2.418439562286097e-07, 0.9832889892830442 } },
   {     2451545.0, {  1.751923868114564, -3.9655715721671785e-06, 0.9833276819105508 } },
-  {     2454359.1, {  50.13242197757078,  1.8719976476477224e-06, 1.0057018016353796 } },
+  {     2454359.1, {  50.13242197757078,   1.871997647647722e-06, 1.0057018016353796 } },
   { 2454774.36215, { 57.278324034743825,  1.7796468063658446e-06,  0.991769848723092 } },
   {    2460505.25, {  155.8898001662818,   5.631659339720899e-07, 1.0165107642588653 } },
   { 2462597.96105, { 191.92860080429793,  -5.548701174542588e-07, 1.0006923288119707 } },

@@ -27,7 +27,14 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[3]
 sys.path.append(str(REPO))
 
-from toolbox.build_python_aliases import ALIAS_NAMES, PRIMARY_PACKAGE, PYPI_PACKAGES, validate_alias_wheel  # noqa: E402
+from toolbox.build_python_aliases import (  # noqa: E402
+  ALIAS_NAMES,
+  PRIMARY_PACKAGE,
+  PYPI_PACKAGES,
+  alias_readme,
+  validate_alias_wheel,
+)
+from toolbox import package_docs  # noqa: E402
 
 
 def run(command: list[str], cwd: Path, success: bool = True) -> str:
@@ -61,6 +68,8 @@ for name in {ALIAS_NAMES!r}:
         assert all(getattr(alias, key) is getattr(primary, key) for key in primary.__all__)
         civil = alias.CivilDateTime(2026, 1, 1, 0.5)
         assert alias.utc_to_jde(civil) == primary.utc_to_jde(civil)
+        sky = alias.topocentric_position(alias.Target.MOON, civil, alias.CivilScale.UTC, alias.Observer(90, 0, 0))
+        assert sky.azimuth_deg is None and sky.apparent_altitude_deg is None and sky.distance_au > 0
         try:
             importlib.import_module(name + '.chart')
         except ModuleNotFoundError:
@@ -74,9 +83,22 @@ for name in {ALIAS_NAMES!r}:
             pass
         else:
             raise AssertionError('unrequested alias was installed')
-print(json.dumps({{'package': str(Path(primary.__file__).resolve().parent), 'exports': primary.__all__}}))
+print(json.dumps({{'package': str(Path(primary.__file__).resolve().parent), 'exports': primary.__all__,
+    'documentation': {{name: dict(urls=importlib.metadata.metadata(name).get_all('Project-URL'),
+        readme=importlib.metadata.distribution(name).read_text('METADATA').split('\\n\\n', 1)[1])
+        for name in ('celestial-calendar', *{names!r})}}}}))
 """
-  return json.loads(run([str(python), "-I", "-c", source], cwd))
+  record = json.loads(run([str(python), "-I", "-c", source], cwd))
+  sha = run(["git", "rev-parse", "HEAD"], REPO).strip()
+  for name, documentation in record.pop("documentation").items():
+    expected = (
+      package_docs.render_readme((REPO / "bindings/python/README.md").read_text(encoding="utf-8"), version, sha)
+      if name == PRIMARY_PACKAGE
+      else alias_readme(name, version=version, sha=sha)
+    )
+    assert documentation["readme"] == expected, f"installed {name} README differs from expected source"
+    assert set(documentation["urls"]) == {f"{label}, {url}" for label, url in package_docs.python_urls(sha).items()}
+  return record
 
 
 def local_wheels(directory: Path, version: str) -> dict[str, Path]:

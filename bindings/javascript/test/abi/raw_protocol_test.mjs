@@ -179,6 +179,24 @@ assert.deepEqual([ut1.year, ut1.month, ut1.day], [2024, 6, 1]);
 finite(ut1.fraction);
 
 const sun = validSret("celestial_sun_apparent_geocentric_coord", [2460463.0]);
+const disk = validSret("celestial_apparent_diameter", [1, 2026, 11, 7, 0, 0, 0, 0, NaN, NaN, NaN]);
+assert.equal(disk.target_code, 1);
+assert.equal(disk.centre_code, 0);
+assert.equal(disk.source_code, 2);
+assert.equal(disk.radius_definition_code, 2);
+assert.equal(disk.delta_t_identity_code, 5);
+assert.equal(disk.radius_km, 1737.4);
+assert(disk.distance_au > 0 && disk.diameter_arcsec > 0 && disk.diameter_arcsec < 648000);
+const observed = validSret("celestial_topocentric_position", [1, 2026, 11, 7, 0, 0, 0, -33.85, 151.2, 50, 0, NaN, NaN]);
+assert.equal(observed.present_fields, 12);
+assert.equal(observed.target_code, 1);
+assert.equal(observed.source_code, 2);
+assert.equal(observed.delta_t_identity_code, 5);
+finite(observed.jd_ut1, observed.jde_tt, observed.altitude_deg, observed.distance_au);
+for (const pole of [-90, 90]) {
+  const result = validSret("celestial_topocentric_position", [0, 2026, 11, 7, 0, 0, 0, pole, 42, 0, 0, NaN, NaN]);
+  assert.equal(result.present_fields & 8, 0);
+}
 assert(sun.lon >= 0 && sun.lon < 360);
 finite(sun.lat, sun.r);
 const moon = validSret("celestial_moon_apparent_geocentric_coord", [2460463.0]);
@@ -474,8 +492,23 @@ const recordedFailure = (name, invoke) => {
   assert.equal(lastError(), message, "kind reader preserves message");
   recordedNames.add(name);
 };
+recordedFailure("celestial_apparent_diameter", () => !rawSret(
+  "celestial_apparent_diameter", [10, 2026, 11, 7, 0, 0, 0, 0, NaN, NaN, NaN],
+).valid);
+assert.equal(M._celestial_last_error_kind(), 1);
+recordedFailure("celestial_topocentric_position", () => !rawSret(
+  "celestial_topocentric_position", [10, 2026, 11, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+).valid);
+assert.equal(M._celestial_last_error_kind(), 1);
 recordedFailure("celestial_ut1_to_jd", () => !rawSret("celestial_ut1_to_jd", [2024, 6, 1, 1.5]).valid);
 recordedFailure("celestial_ut1_to_jde", () => !rawSret("celestial_ut1_to_jde", [2024, 13, 1, 0.5]).valid);
+for (const fraction of [0, 0.9, 0.999, 1 - Number.EPSILON / 2]) {
+  recordedFailure("celestial_ut1_to_jde", () => !rawSret("celestial_ut1_to_jde", [0, 12, 31, fraction]).valid);
+  assert.equal(M._celestial_last_error_kind(), 1);
+  assert.equal(lastError(), "Year 0 is out of range [1, 32767].");
+}
+validSret("celestial_ut1_to_jde", [1, 1, 1, 0]);
+assert.equal(M._celestial_last_error_kind(), 0);
 recordedFailure("celestial_jde_to_ut1", () => !rawSret("celestial_jde_to_ut1", [Number.NaN]).valid);
 recordedFailure("celestial_utc_to_jde", () => !rawSret("celestial_utc_to_jde", [2024, 2, 30, 0]).valid);
 recordedFailure("celestial_jde_to_utc", () => !rawSret("celestial_jde_to_utc", [Number.NaN]).valid);
@@ -542,6 +575,14 @@ try {
 }
 recordedFailure("celestial_equation_of_time", () => !rawSret("celestial_equation_of_time", [Number.NaN]).valid);
 recordedFailure("celestial_apparent_solar_time", () => !rawSret("celestial_apparent_solar_time", [2024, 6, 1, 0.5, 200]).valid);
+for (const fraction of [0, 0.9, 0.999, 1 - Number.EPSILON / 2]) {
+  recordedFailure("celestial_apparent_solar_time", () => !rawSret("celestial_apparent_solar_time", [0, 12, 31, fraction, 0]).valid);
+  assert.equal(M._celestial_last_error_kind(), 1);
+  assert.equal(lastError(), "Year 0 is out of range [1, 32767].");
+}
+const yearZeroSolarDate = validSret("celestial_apparent_solar_time", [1, 1, 1, 0, -180]);
+assert.deepEqual([yearZeroSolarDate.year, yearZeroSolarDate.month, yearZeroSolarDate.day], [0, 12, 31]);
+assert.equal(M._celestial_last_error_kind(), 0);
 recordedFailure("celestial_query_jieqi_moment", () => !rawSret("celestial_query_jieqi_moment", [2024, 24]).valid);
 recordedFailure("celestial_get_supported_lunar_year_range", () => !rawSret("celestial_get_supported_lunar_year_range", [0]).valid);
 recordedFailure("celestial_get_lunar_year_info", () => !rawSret("celestial_get_lunar_year_info", [9, 2024]).valid);
@@ -977,6 +1018,123 @@ for (const entry of golden.sections.longitude_difference_events.entries) {
   ++goldenCount;
 }
 
+const altitudeCount = M._malloc(4);
+const altitudeInputs = M._malloc(80);
+const altitudeSlots = M._malloc(16 * 88);
+assert(altitudeCount && altitudeInputs && altitudeSlots);
+try {
+  const putCondition = (index, target, level, refraction = 0, temperature = 0, pressure = 0) => {
+    const pointer = altitudeInputs + index * 40;
+    const view = new DataView(M.HEAPU8.buffer);
+    [target, 1, refraction, 0].forEach((value, field) => view.setUint32(pointer + field * 4, value, true));
+    [level, temperature, pressure].forEach((value, field) => view.setFloat64(pointer + 16 + field * 8, value, true));
+    const actual = readLayout(pointer, "CelestialAltitudeCondition");
+    assert.equal(actual.target_code, target);
+    assert.equal(actual.level_deg, level);
+  };
+  putCondition(0, 0, 0);
+  putCondition(1, 0, -6);
+  const invoke = (name, prefix, capacity, site = [0, -77, 0], interval = [2451545, 2451546]) => {
+    M.HEAPU32[altitudeCount >> 2] = 0xDEADBEEF;
+    return M[`_${name}`](...prefix, ...site, ...interval, altitudeCount, capacity ? altitudeSlots : 0, capacity);
+  };
+  for (const [name, prefix, expectedTags] of [
+    ["celestial_altitude_events", [altitudeInputs], [0, 1, 1]],
+    ["celestial_upper_transits", [4], [3]],
+    ["celestial_observing_windows", [altitudeInputs, 2], [0, 0, 1, 1, 1, 1, 2, 2]],
+  ]) {
+    const total = expectedTags.length;
+    assert.equal(invoke(name, prefix, 16), total);
+    assert.equal(M._celestial_last_error_kind(), 0);
+    const full = M.HEAPU8.slice(altitudeSlots, altitudeSlots + total * 88);
+    const records = expectedTags.map((tag, index) => {
+      const record = readLayout(altitudeSlots + index * 88, "CelestialAltitudeRecord");
+      assert.equal(record.tag, tag);
+      assert.equal(record.reserved, 0);
+      return record;
+    });
+    for (let capacity = 0; capacity <= total + 1; ++capacity) {
+      M.HEAPU8.fill(0xA5, altitudeSlots, altitudeSlots + 16 * 88);
+      const written = invoke(name, prefix, capacity);
+      assert.equal(M._celestial_last_error_kind(), 0);
+      assert.equal(M.HEAPU32[altitudeCount >> 2], total);
+      assert.equal(written, Math.min(capacity, total));
+      assert.deepEqual(M.HEAPU8.slice(altitudeSlots, altitudeSlots + written * 88), full.slice(0, written * 88));
+      assert(M.HEAPU8.subarray(altitudeSlots + written * 88, altitudeSlots + 16 * 88).every((byte) => byte === 0xA5));
+    }
+    if (name === "celestial_altitude_events") {
+      assert.equal(records[0].initially_satisfied, 1);
+      assert.deepEqual(records.slice(1).map((record) => record.direction_code), [1, 0]);
+    }
+    happyExports.add(name);
+  }
+  for (const code of [1, 2]) {
+    putCondition(0, 0, 10, code, 15, 1013.25);
+    assert.equal(invoke("celestial_altitude_events", [altitudeInputs], 16, [90, -77, 0], [2451545, 2451545.25]), 1);
+    assert.equal(M._celestial_last_error_kind(), 0);
+    const record = readLayout(altitudeSlots, "CelestialAltitudeRecord");
+    assert.equal(record.refraction_code, code);
+    assert.equal(record.temperature_c, 15);
+    assert.equal(record.pressure_hpa, 1013.25);
+    assert(record.geometric_level_deg > 9 && record.geometric_level_deg < 10);
+  }
+  putCondition(0, 0, -89);
+  putCondition(1, 9, 48.605252016244656);
+  for (const [name, prefix, kind] of [
+    ["celestial_altitude_events", [altitudeInputs + 40], 2],
+    ["celestial_upper_transits", [10], 1],
+    ["celestial_observing_windows", [altitudeInputs, 2], 2],
+  ]) {
+    M.HEAPU8.fill(0xA5, altitudeSlots, altitudeSlots + 16 * 88);
+    recordedFailure(name, () => invoke(name, prefix, 16, [30, -77, 0], [2451545, 2451545.25]) === 0);
+    assert.equal(M._celestial_last_error_kind(), kind);
+    assert.equal(M.HEAPU32[altitudeCount >> 2], 0);
+    assert(M.HEAPU8.subarray(altitudeSlots, altitudeSlots + 16 * 88).every((byte) => byte === 0xA5));
+  }
+} finally {
+  M._free(altitudeCount);
+  M._free(altitudeInputs);
+  M._free(altitudeSlots);
+}
+
+const dailyGolden = JSON.parse(await readFile(resolve(REPO, "toolbox/rise_set_golden.json"), "utf8"));
+const dailyPins = {
+  CelestialSolarRiseSet: [56, [0, 4, 8, 12, 16, 20, 24, 32, 40, 48]],
+  CelestialLunarRiseSet: [72, [0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64]],
+  CelestialPlanetRiseSet: [64, [0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56]],
+};
+for (const [name, [size, offsets]] of Object.entries(dailyPins)) {
+  assert.equal(manifest.layouts[name].size, size);
+  assert.equal(manifest.layouts[name].alignment, 8);
+  assert.deepEqual(manifest.layouts[name].fields.map((field) => field.offset), offsets);
+}
+for (const entry of dailyGolden.entries) {
+  const [year, month, day, latitude, longitude, elevation] = dailyGolden.days[entry.day_index];
+  let name;
+  let args = [year, month, day, latitude, longitude];
+  if (entry.target === 0) {
+    name = "celestial_solar_rise_set"; args.push(entry.custom ? -18 : -50 / 60);
+  } else if (entry.target === 1) {
+    name = "celestial_lunar_rise_set"; args.push(...(entry.custom ? [2, -20, 800] : [1, 15, 1013.25]));
+  } else {
+    name = "celestial_planet_rise_set"; args = [entry.target, ...args, elevation, entry.custom ? 0 : -34 / 60];
+  }
+  if (entry.error) {
+    recordedFailure(name, () => !rawSret(name, args).valid);
+    assert.equal(M._celestial_last_error_kind(), entry.error);
+    continue;
+  }
+  const record = validSret(name, args);
+  for (const [field, value] of Object.entries(entry.fields)) {
+    if (typeof value === "string") close(record[field], bitsOf(value), field.endsWith("_jde_tt") ? MAX_MOMENT_DIFF_DAYS : 0, field);
+    else assert.equal(record[field], value, field);
+  }
+}
+for (const [name, args] of [
+  ["celestial_solar_rise_set", [2025, 257, 1, 40, 0, 0]],
+  ["celestial_lunar_rise_set", [2025, 1, 1, 40, 0, 257, 15, 1013.25]],
+  ["celestial_planet_rise_set", [258, 2025, 1, 1, 40, 0, 0, 0]],
+]) recordedFailure(name, () => !rawSret(name, args).valid);
 const expectedExports = BINDINGS.map(({ cName }) => cName);
 assert.deepEqual(
   [...recordedNames].sort(),
@@ -984,17 +1142,17 @@ assert.deepEqual(
   "all recording exports exercised a failure",
 );
 assert.equal(goldenCount, 395, "golden replay count");
-assert.equal(BINDINGS.length, 38, "C export inventory");
-assert.equal(Object.keys(manifest.layouts).length, 29, "C record inventory");
-assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 38 exports executed successfully");
-assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 29 layouts decoded");
+assert.equal(BINDINGS.length, 46, "C export inventory");
+assert.equal(Object.keys(manifest.layouts).length, 36, "C record inventory");
+assert.deepEqual([...happyExports].sort(), expectedExports.sort(), "all 46 exports executed successfully");
+assert.deepEqual([...seenLayouts].sort(), Object.keys(manifest.layouts).sort(), "all 36 layouts decoded");
 assert.deepEqual(
   [...new Set(manifest.exports.map(({ protocol }) => protocol.kind).filter((kind) => kind.endsWith("fill")))].sort(),
   ["companion-fill", "count-fill", "requested-fill"],
   "three count/fill protocol classes",
 );
 
-console.log("PASS raw exports 38/38; layouts 29/29; recording seams 36/36");
+console.log("PASS raw exports 46/46; layouts 36/36; recording seams 44/44; daily native cases 360");
 console.log(`PASS private chart sret: order, absence, units, systems, scales, DEFAULT/models; rejected inputs ${chartFailureCount}`);
 console.log("PASS caller string + borrowed string + three count/fill classes + legal zero");
 console.log("PASS memory growth refreshed HEAP views; translated exception survived");

@@ -42,8 +42,8 @@
  * The two error readers preserve both values. Check the error kind to distinguish a
  * legal empty result from failure, even when allocating the error message failed.
  * Among calls with a total-count output parameter, only celestial_longitude_events,
- * celestial_longitude_stations and celestial_longitude_difference_events permit a
- * successful zero total. Other such calls have a positive total on success.
+ * celestial_longitude_stations, celestial_longitude_difference_events and celestial_upper_transits
+ * permit a successful zero total. Other such calls have a positive total on success.
  * celestial_solar_lon_roots may return zero roots, and celestial_new_moons_after_jde
  * permits a zero request; check the error kind after these calls too.
  *
@@ -125,6 +125,8 @@ typedef struct CelestialJulianDay {
  * @param d The day.
  * @param fraction The fraction of the day. Must be in the range [0.0, 1.0).
  * @returns A `CelestialJulianDay` struct. JD is based on UT1.
+ * @note At the end of year 32767, rounding can produce JD 13689325.5. The C++
+ *       `jd_to_ut1()` inverse rejects that rounded value, so a civil roundtrip is not guaranteed.
  */
 CELESTIAL_API CelestialJulianDay celestial_ut1_to_jd(int32_t y, uint32_t m, uint32_t d, double fraction);
 
@@ -140,7 +142,7 @@ CELESTIAL_API CelestialJulianDay celestial_ut1_to_jde(int32_t y, uint32_t m, uin
 
 typedef struct CelestialUT1Time {
   bool     valid;    /* Indicates if the result is valid. */
-  int32_t  year;     /* The year. */
+  int32_t  year;     /* The year; the inverse conversion can return year 400. */
   uint32_t month;    /* The month. */
   uint32_t day;      /* The day. */
   double   fraction; /* The fraction of the day, in the range [0.0, 1.0). */
@@ -148,8 +150,10 @@ typedef struct CelestialUT1Time {
 
 /**
  * @brief Convert Julian Ephemeris Day Number (JDE) to UT1 datetime.
- * @param jde The julian ephemeris day number, which is based on TT.
+ * @param jde Finite JDE(TT) in [1867522.5, 13689325.5).
  * @returns A `CelestialUT1Time` struct.
+ * @note Uses the fixed ΔT model Algo5 for TT minus UT1. The lower endpoint returns 400-12-31;
+ *       `celestial_ut1_to_jde()` may return a JDE outside this inverse's input window.
  */
 CELESTIAL_API CelestialUT1Time celestial_jde_to_ut1(double jde);
 
@@ -169,7 +173,7 @@ typedef struct CelestialUTCTime {
  * @param d The day.
  * @param fraction The fraction of the UTC day, in [0.0, 1.0); 23:59:60 is not representable.
  * @returns A `CelestialJulianDay` struct containing JDE(TT).
- * @note Before 1972-01-01 the input is treated as UT1 using fixed Algo5. Modern dates use the
+ * @note Before 1972-01-01 the input is treated as UT1 using the fixed ΔT model Algo5. Modern dates use the
  *       fixed leap-second table, retaining its final offset after the last entry.
  * @note The 1972 model seam and leap-second boundaries are not generally invertible.
  * @see celestial_jde_to_utc
@@ -180,7 +184,7 @@ CELESTIAL_API CelestialJulianDay celestial_utc_to_jde(int32_t y, uint32_t m, uin
  * @brief Convert TT-based Julian Ephemeris Day (JDE) to UTC civil fields.
  * @param jde_tt Finite JDE(TT) in [1867522.5, 13689325.5).
  * @returns A `CelestialUTCTime` struct; the lower endpoint can return a date in year 400.
- * @note Before 1972-01-01 the result uses the UT1 substitute with fixed Algo5. The final
+ * @note Before 1972-01-01 the result uses the UT1 substitute with the fixed ΔT model Algo5. The final
  *       leap-second offset is retained beyond the table; leap seconds and the 1972 seam
  *       do not promise an exact inverse, including round-off at leap-step midnights.
  * @see celestial_utc_to_jde
@@ -353,6 +357,10 @@ typedef struct CelestialApparentSolarTime {
  * @param longitude The observer's geographic longitude in degrees, positive east, in [-180, 180].
  * @returns A `CelestialApparentSolarTime` struct; the local apparent solar date may differ from the
  *          input UTC date — a large enough longitude shifts the moment across midnight.
+ * @note Before 1972-01-01, UTC fields use the UT1 substitute. The returned clock differs from
+ *       UT1-based apparent solar time by UTC minus UT1. After the last leap-table step,
+ *       UT1 minus UTC is 69.184 s minus Delta T; its magnitude is no longer bounded by 0.9 s.
+ *       See `docs/DESIGN.md#time-scales`.
  */
 CELESTIAL_API CelestialApparentSolarTime celestial_apparent_solar_time(int32_t y, uint32_t m, uint32_t d, double fraction, double longitude);
 
@@ -397,6 +405,9 @@ typedef struct CelestialJieqiMomentQuery {
  *       era: `docs/DESIGN.md#time-scales`.
  * @note The returned date is not an east-eight wall date; rendering the same instant at a
  *       fixed UTC+8 offset can change its calendar date.
+ *       Convert both instants to one time scale before comparing a Jieqi moment with a UTC cutoff.
+ *       For UTC display, pass the returned UT1 fields through `celestial_ut1_to_jde()`, then
+ *       `celestial_jde_to_utc()`, before applying a display offset.
  */
 CELESTIAL_API CelestialJieqiMomentQuery celestial_query_jieqi_moment(int32_t year, uint8_t jq_idx);
 
@@ -714,8 +725,8 @@ typedef struct CelestialLongitudeDifferenceEventRecord {
 CELESTIAL_API uint32_t celestial_longitude_events(uint32_t target_code, double target_longitude_deg, double start_jde_tt, double end_jde_tt, uint32_t *event_count, CelestialLongitudeEventRecord *slots, uint32_t slot_count);
 
 /**
- * @brief Find the JDE(TT)s where `target`'s seven-point ephemeris::longitude_rate is
- *        stationary in the half-open interval [start, end), written to `slots`.
+ * @brief Find longitude stations (zeros of `target`'s seven-point ephemeris::longitude_rate)
+ *        in the half-open interval [start, end), written to `slots`.
  * @param target_code A CELESTIAL_TARGET_* code.
  * @param start_jde_tt Inclusive start, finite, within the target's longitude-rate domain.
  * @param end_jde_tt Exclusive end; the nonempty span must not exceed 3660 TT days.
@@ -767,6 +778,9 @@ CELESTIAL_API uint32_t celestial_longitude_difference_events(uint32_t first_targ
 #define CELESTIAL_OPERATION_EQUATORIAL     UINT32_C(4)
 #define CELESTIAL_OPERATION_CHART          UINT32_C(5)
 #define CELESTIAL_OPERATION_DELTA_T        UINT32_C(6)
+#define CELESTIAL_OPERATION_TOPOCENTRIC    UINT32_C(7)
+#define CELESTIAL_OPERATION_APPARENT_DIAMETER UINT32_C(8)
+#define CELESTIAL_OPERATION_RISE_SET         UINT32_C(9)
 
 #define CELESTIAL_STATUS_SOURCE_WINDOW           UINT32_C(0)
 #define CELESTIAL_STATUS_IMPLEMENTATION_WINDOW   UINT32_C(1)
@@ -865,10 +879,11 @@ CELESTIAL_API uint32_t celestial_model_identity_text(uint32_t kind_code, uint32_
 /**
  * @brief Describe an operation's source, input policy and model use.
  * @param operation_code A CELESTIAL_OPERATION_* code. Target operations describe TT inputs;
- *                       HOUSES, CHART and DELTA_T describe their operation-specific model use.
+ *                       HOUSES, CHART, DELTA_T and TOPOCENTRIC describe operation-specific model use.
  *                       Unknown operations fail. Model identity text uses celestial_model_identity_text.
  * @param subject_code Target operations require one CELESTIAL_TARGET_* code (not ALL).
- *                     HOUSES, CHART and DELTA_T require CELESTIAL_TARGET_ALL because they have no target.
+ *                     HOUSES, CHART, DELTA_T, TOPOCENTRIC, APPARENT_DIAMETER and RISE_SET require
+ *                     CELESTIAL_TARGET_ALL for their common policy.
  *                     Unknown or inapplicable subjects fail. Use kind/identity pairs with
  *                     celestial_model_identity_text to describe individual models.
  * @param buffer Caller-owned UTF-8 buffer; may be null only when capacity is zero.
@@ -998,6 +1013,302 @@ typedef struct CelestialCivilHouseCapability {
  */
 CELESTIAL_API CelestialCivilHouseCapability celestial_house_capability(uint32_t delta_t_model_code);
 
+/* ---------- Topocentric Observer Queries ---------- */
+
+#define CELESTIAL_REFRACTION_NONE        UINT32_C(0)
+#define CELESTIAL_REFRACTION_BENNETT     UINT32_C(1)
+#define CELESTIAL_REFRACTION_SAEMUNDSSON UINT32_C(2)
+
+#define CELESTIAL_PRESENT_RIGHT_ASCENSION   UINT32_C(4)
+#define CELESTIAL_PRESENT_AZIMUTH           UINT32_C(8)
+#define CELESTIAL_PRESENT_APPARENT_ALTITUDE UINT32_C(16)
+
+/** @brief One observer-relative centre position; consume payload only when valid is true. */
+typedef struct CelestialTopocentricPosition {
+  bool valid;
+  uint32_t target_code;
+  uint32_t source_code;          /* Resolved CELESTIAL_POSITION_SOURCE_* identity. */
+  uint32_t delta_t_identity_code; /* Resolved CELESTIAL_DELTA_T_MODEL_* identity, never DEFAULT. */
+  uint32_t present_fields;       /* Only RIGHT_ASCENSION, AZIMUTH and APPARENT_ALTITUDE; absent storage is unused. */
+  double jd_ut1;
+  double jde_tt;
+  double right_ascension_deg;    /* Present in [0, 360) unless the equatorial projection is unresolved. */
+  double declination_deg;        /* Required, in [-90, 90]. */
+  double distance_au;            /* Required finite positive observer-to-body distance. */
+  double altitude_deg;           /* Required geometric centre altitude, in [-90, 90]. */
+  double azimuth_deg;            /* Present north-zero/east-positive in [0, 360); absent at exact geographic poles or an unresolved horizontal projection. */
+  double apparent_altitude_deg;  /* Optional refraction result; Saemundsson's lower endpoint permits -1e-9 degrees. */
+} CelestialTopocentricPosition;
+
+/**
+ * @brief Observe the Sun, Moon or one planet from a fixed WGS84 geodetic site.
+ * @param target_code A physical CELESTIAL_TARGET_* value; lunar nodes are rejected.
+ * @param year Gregorian year in [1, 32767]; resolved UT1/TT years must also be >= 1,
+ *        and resolved dates and time shifts must stay representable. No chart civil-year limits
+ *        or extra time margins for numerical rates apply.
+ * @param month Gregorian month in [1, 12].
+ * @param day Valid Gregorian day before chrono field narrowing.
+ * @param fraction Finite civil-day fraction in [0, 1), excluding inserted leap seconds.
+ * @param civil_scale_code UTC from 1972-01-01, or explicitly labelled UT1.
+ * @param delta_t_model_code A CELESTIAL_DELTA_T_MODEL_* selector; its own model guards apply.
+ * @param latitude_deg North-positive geodetic latitude in [-90, 90].
+ * @param longitude_deg East-positive longitude in [-180, 180].
+ * @param elevation_m Finite ellipsoidal height in metres, not geoid height; must be greater than
+ *        -a(1-f)^2 (about -6335439.3 m), with WGS84 semi-major axis a and flattening f.
+ * @param refraction_code NONE (default-off policy), BENNETT or SAEMUNDSSON.
+ * @param temperature_c Temperature in [-90, 60] C when refraction is enabled; otherwise unused.
+ * @param pressure_hpa Pressure in [300, 1100] hPa when refraction is enabled; otherwise unused.
+ * @return Owned result with optional direction/refraction fields; valid is false on failure.
+ * @note Provider position domains apply. UTC-derived UT1 is modelled, not observed DUT1.
+ *       Fixed IAU1980 axes; no added diurnal aberration, polar motion or observer light-time solve.
+ *       Unsupported refraction altitude leaves only that field absent. Undefined azimuth/RA does
+ *       not erase meaningful altitude, declination or distance. The query reports a computation error
+ *       if it cannot resolve the observer-to-body separation at floating-point precision.
+ *       Read celestial_last_error_kind/message on failure; invalid payload has no contract.
+ */
+CELESTIAL_API CelestialTopocentricPosition celestial_topocentric_position(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, double latitude_deg, double longitude_deg, double elevation_m, uint32_t refraction_code, double temperature_c, double pressure_hpa);
+
+/* ---------- Apparent Angular Diameters ---------- */
+
+#define CELESTIAL_DIAMETER_CENTRE_GEOCENTRIC  UINT32_C(0)
+#define CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC UINT32_C(1)
+
+#define CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL   UINT32_C(1)
+#define CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN   UINT32_C(2)
+#define CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL UINT32_C(3)
+
+/** @brief A full spherical disk diameter; every payload field is required when valid is true. */
+typedef struct CelestialApparentDiameter {
+  bool valid;
+  uint32_t target_code;
+  uint32_t centre_code;             /* CELESTIAL_DIAMETER_CENTRE_* selection. */
+  uint32_t source_code;             /* Resolved CELESTIAL_POSITION_SOURCE_* identity. */
+  uint32_t radius_definition_code;  /* CELESTIAL_RADIUS_DEFINITION_* source and convention. */
+  uint32_t delta_t_identity_code;   /* Resolved Delta T identity, never DEFAULT. */
+  double jd_ut1;
+  double jde_tt;
+  double radius_km;
+  double distance_au;               /* Actual provider/observer distance used, greater than the radius. */
+  double diameter_arcsec;           /* Finite and strictly between 0 and 648000. */
+} CelestialApparentDiameter;
+
+/**
+ * @brief Return 2 asin(radius/distance) for the Sun, Moon or one planet, in arcseconds.
+ * @param target_code Physical CELESTIAL_TARGET_*; lunar nodes are rejected.
+ * @param year Gregorian year in [1, 32767]; resolved times must remain representable.
+ * @param month Gregorian month in [1, 12].
+ * @param day Valid Gregorian day before chrono field narrowing.
+ * @param fraction Finite civil-day fraction in [0, 1), excluding inserted leap seconds.
+ * @param civil_scale_code Explicit UTC (from 1972-01-01) or UT1.
+ * @param delta_t_model_code Delta T selector; its own model guards apply.
+ * @param centre_code GEOCENTRIC or TOPOCENTRIC; only TOPOCENTRIC reads the site fields.
+ * @param latitude_deg WGS84 geodetic latitude in [-90, 90], unused for GEOCENTRIC.
+ * @param longitude_deg East longitude in [-180, 180], unused for GEOCENTRIC.
+ * @param elevation_m Ellipsoidal height in metres, with the observer query's admission; unused for GEOCENTRIC.
+ * @return Owned scalar disk and its radius/distance/time/source identities, or valid=false on failure.
+ * @note Uses existing provider distance and optional observer translation, without a new light-time solve.
+ *       Solar radius is nominal, lunar radius mean, planetary radius equatorial; Saturn excludes rings.
+ *       Provider position domains apply without a chart/rate window. A resolved observer inside the
+ *       target is invalid input; unresolved geometry is a computation error. Read last_error_kind/message.
+ */
+CELESTIAL_API CelestialApparentDiameter celestial_apparent_diameter(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double fraction, uint32_t civil_scale_code, uint32_t delta_t_model_code, uint32_t centre_code, double latitude_deg, double longitude_deg, double elevation_m);
+
+
+/* ---------- Rise, Transit and Set ---------- */
+
+#define CELESTIAL_PRESENT_RISE    UINT32_C(32)
+#define CELESTIAL_PRESENT_TRANSIT UINT32_C(64)
+#define CELESTIAL_PRESENT_SET     UINT32_C(128)
+
+#define CELESTIAL_RISE_SET_POLAR_NONE  UINT32_C(0)
+#define CELESTIAL_RISE_SET_POLAR_DAY   UINT32_C(1)
+#define CELESTIAL_RISE_SET_POLAR_NIGHT UINT32_C(2)
+
+/** @brief Solar events around the selected local transit, with the supplied geocentric altitude. */
+typedef struct CelestialSolarRiseSet {
+  bool valid;
+  uint32_t source_code;            /* CELESTIAL_POSITION_SOURCE_* */
+  uint32_t delta_t_identity_code;  /* CELESTIAL_DELTA_T_MODEL_* */
+  uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
+  uint32_t present_fields;         /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
+  uint32_t polar_code;             /* CELESTIAL_RISE_SET_POLAR_*; DAY/NIGHT have no rise or set. */
+  double rise_jde_tt;
+  double transit_jde_tt;
+  double set_jde_tt;
+  double h0_deg;
+} CelestialSolarRiseSet;
+
+/** @brief Representative lunar events in [0h,24h) UT1, with the supplied horizon atmosphere. */
+typedef struct CelestialLunarRiseSet {
+  bool valid;
+  uint32_t source_code;            /* CELESTIAL_POSITION_SOURCE_* */
+  uint32_t delta_t_identity_code;  /* CELESTIAL_DELTA_T_MODEL_* */
+  uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
+  uint32_t refraction_code;        /* CELESTIAL_REFRACTION_* */
+  uint32_t present_fields;         /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
+  uint32_t polar_code;             /* Independent of missing transit; DAY/NIGHT have no rise or set. */
+  double rise_jde_tt;
+  double transit_jde_tt;
+  double set_jde_tt;
+  double temperature_c;
+  double pressure_hpa;
+} CelestialLunarRiseSet;
+
+/** @brief Representative planetary events in [0h,24h) UT1, with the supplied topocentric altitude. */
+typedef struct CelestialPlanetRiseSet {
+  bool valid;
+  uint32_t target_code;
+  uint32_t source_code;            /* CELESTIAL_POSITION_SOURCE_* */
+  uint32_t delta_t_identity_code;  /* CELESTIAL_DELTA_T_MODEL_* */
+  uint32_t nutation_identity_code; /* CELESTIAL_NUTATION_MODEL_* */
+  uint32_t present_fields;         /* CELESTIAL_PRESENT_RISE/TRANSIT/SET; absent event slots are zero. */
+  uint32_t polar_code;             /* CELESTIAL_RISE_SET_POLAR_*; DAY/NIGHT have no rise or set. */
+  double rise_jde_tt;
+  double transit_jde_tt;
+  double set_jde_tt;
+  double h0_deg;
+} CelestialPlanetRiseSet;
+
+/**
+ * @brief Return solar rise, upper transit and set around local mean noon of a UT1 date.
+ * @param year Gregorian UT1 year in [1,32767]; all internal time conversions must remain supported.
+ * @param month Gregorian month in [1,12].
+ * @param day Valid Gregorian day.
+ * @param latitude_deg Geodetic latitude in [-90,90].
+ * @param longitude_deg East longitude in [-180,180]; the endpoint signs can select transits a day apart.
+ * @param h0_deg Geocentric centre altitude in [-90,90]; use -50/60 for standard sunrise/set,
+ *        or -6, -12, -18 for civil, nautical or astronomical twilight.
+ * @return TT events by value, with position source/default Delta T/IAU1980 codes, or valid=false.
+ * @note This is transit-centred: rise/set can lie outside the input date. Transit is always present
+ *       on success. DAY/NIGHT mean polar day/night at h0. Read last_error_kind/message on failure.
+ *       The weather-to-h0 helper sun::h0_from is available only in C++.
+ */
+CELESTIAL_API CelestialSolarRiseSet celestial_solar_rise_set(int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, double h0_deg);
+
+/**
+ * @brief Return representative lunar rise, upper transit and set for one UT1 date.
+ * @param year Gregorian UT1 year in [1,32767]; all internal time conversions must remain supported.
+ * @param month Gregorian month in [1,12].
+ * @param day Valid Gregorian day.
+ * @param latitude_deg Geodetic latitude in [-90,90].
+ * @param longitude_deg East longitude in [-180,180].
+ * @param refraction_code BENNETT or SAEMUNDSSON; NONE is rejected.
+ * @param temperature_c Finite temperature greater than -273 Celsius.
+ * @param pressure_hpa Finite positive pressure in hPa.
+ * @return TT events by value, polar topology and source/model codes, or valid=false.
+ * @note Uses geocentric coordinates and h0 = 0.7275 * midday horizontal parallax - horizon refraction.
+ *       Any event can be absent without polar day/night. Of two rises or sets, returns the later;
+ *       of two transits, the earlier. A rise or set exactly at 0h UT1 belongs to neither neighbouring day.
+ *       Fixed default Delta T/IAU1980; convert TT for civil display. Read last_error_kind/message on failure.
+ */
+CELESTIAL_API CelestialLunarRiseSet celestial_lunar_rise_set(int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, uint32_t refraction_code, double temperature_c, double pressure_hpa);
+
+/**
+ * @brief Return representative planetary rise, upper transit and set for one UT1 date.
+ * @param target_code Mercury through Pluto; Sun, Moon, nodes and unknown codes are rejected.
+ * @param year Gregorian UT1 year in [1,32767]; all internal time conversions must remain supported.
+ *        Provider samples must also remain inside the target's domain.
+ * @param month Gregorian month in [1,12].
+ * @param day Valid Gregorian day.
+ * @param latitude_deg WGS84 geodetic latitude in [-90,90].
+ * @param longitude_deg East longitude in [-180,180].
+ * @param elevation_m Signed WGS84 ellipsoidal height in metres, subject to the observer's admission.
+ * @param h0_deg Airless topocentric centre altitude in [-90,90]; standard rise/set uses -34/60.
+ * @return TT events by value, polar topology and source/model codes, or valid=false.
+ * @note Parallax is already in the coordinates; standard refraction is in h0. Elevation changes the
+ *       site vector, not the horizon plane. Window and representative selection match the lunar query.
+ *       Every provider sample must fit its EQUATORIAL domain, including estimates and derivatives
+ *       outside the day. Even if the TT equivalent of the input date's 0h UT1 is in range, other samples may not be.
+ *       Fixed default Delta T/IAU1980.
+ *       Read last_error_kind/message on failure.
+ */
+CELESTIAL_API CelestialPlanetRiseSet celestial_planet_rise_set(uint32_t target_code, int32_t year, uint32_t month, uint32_t day, double latitude_deg, double longitude_deg, double elevation_m, double h0_deg);
+
+/* ---------- Interval Altitude Events and Observing Windows ---------- */
+
+#define CELESTIAL_ALTITUDE_SENSE_BELOW UINT32_C(0)
+#define CELESTIAL_ALTITUDE_SENSE_ABOVE UINT32_C(1)
+
+#define CELESTIAL_ALTITUDE_RECORD_CONDITION     UINT32_C(0)
+#define CELESTIAL_ALTITUDE_RECORD_EVENT         UINT32_C(1)
+#define CELESTIAL_ALTITUDE_RECORD_WINDOW        UINT32_C(2)
+#define CELESTIAL_ALTITUDE_RECORD_UPPER_TRANSIT UINT32_C(3)
+
+/** @brief One physical body's centre-altitude threshold and satisfying side. */
+typedef struct CelestialAltitudeCondition {
+  uint32_t target_code;     /* A physical CELESTIAL_TARGET_* code: Sun, Moon or planet. */
+  uint32_t sense_code;      /* CELESTIAL_ALTITUDE_SENSE_ABOVE or BELOW. */
+  uint32_t refraction_code; /* Existing CELESTIAL_REFRACTION_NONE, BENNETT or SAEMUNDSSON. */
+  uint32_t reserved;        /* Must be zero. */
+  double level_deg;         /* Requested geometric or apparent centre altitude in degrees. */
+  double temperature_c;     /* Atmospheric temperature; must be zero for REFRACTION_NONE. */
+  double pressure_hpa;      /* Atmospheric pressure; must be zero for REFRACTION_NONE. */
+} CelestialAltitudeCondition;
+
+/**
+ * @brief One tagged altitude/transit/window record; unused fields are zero.
+ * @note CONDITION records occur first in input order, followed by EVENT records ordered by
+ *       TT then condition index, then WINDOW records in time order. A transit query returns
+ *       only UPPER_TRANSIT records. A condition's source/clock/level metadata apply to its events.
+ */
+typedef struct CelestialAltitudeRecord {
+  uint32_t tag;                  /* A CELESTIAL_ALTITUDE_RECORD_* code. */
+  uint32_t condition_index;      /* CONDITION/EVENT: zero-based input condition index. */
+  uint32_t target_code;          /* CONDITION/UPPER_TRANSIT: physical CELESTIAL_TARGET_* code. */
+  uint32_t position_source_code; /* CONDITION/UPPER_TRANSIT: CELESTIAL_POSITION_SOURCE_* code. */
+  uint32_t delta_t_model_code;   /* CONDITION/UPPER_TRANSIT: fixed CELESTIAL_DELTA_T_MODEL_ALGO5. */
+  uint32_t refraction_code;      /* CONDITION: original CELESTIAL_REFRACTION_* convention. */
+  uint32_t sense_code;           /* CONDITION: original CELESTIAL_ALTITUDE_SENSE_* value. */
+  uint32_t direction_code;       /* EVENT: CELESTIAL_EVENT_DIRECTION_INCREASING or DECREASING. */
+  uint32_t initially_satisfied;  /* CONDITION: 0 or 1 immediately after start-event replay. */
+  uint32_t reserved;             /* Always zero. */
+  double jde_tt;                /* EVENT/UPPER_TRANSIT: reported TT; WINDOW: inclusive start. */
+  double end_jde_tt;             /* WINDOW: exclusive end; positive duration. */
+  double requested_level_deg;    /* CONDITION: original centre-altitude threshold. */
+  double geometric_level_deg;    /* CONDITION: resolved geometric centre-altitude threshold. */
+  double temperature_c;          /* CONDITION: requested weather; zero for REFRACTION_NONE. */
+  double pressure_hpa;           /* CONDITION: requested weather; zero for REFRACTION_NONE. */
+} CelestialAltitudeRecord;
+
+/**
+ * @brief Find centre-altitude crossings for one condition over [start,end) in JDE(TT).
+ * @param condition One condition; must not be null. Geometric levels are strictly inside (-90,90).
+ * @param latitude_deg WGS84 geodetic latitude in [-90,90] degrees.
+ * @param longitude_deg Geographic longitude in [-180,180] degrees, positive east.
+ * @param elevation_m WGS84 ellipsoidal height in metres, above the observer geodetic-map floor.
+ * @param start_jde_tt Inclusive start, within the inverse calendar and physical-provider domains.
+ * @param end_jde_tt Exclusive end; the nonempty interval may end at the inverse calendar's upper bound.
+ * @param record_count Required total-record output; set to zero on failure.
+ * @param slots Caller-owned output storage; may be null only when slot_count is zero.
+ * @param slot_count Capacity; a short fill returns the exact prefix without changing the full total.
+ * @return Number written, equal to min(total,slot_count) on success. A count pass writes no slots.
+ * @note Fixed ALGO5/IAU1980. Start events are included and already reflected in initially_satisfied;
+ *       end events are excluded. Sampling can miss events without an error; success does not guarantee
+ *       completeness. No TANGENT events are returned. Detected near contacts, failed refinement or
+ *       exhausted work fail the whole query with CELESTIAL_ERROR_COMPUTATION, zero total and untouched slots.
+ *       Refraction weather outside [-90,60] degrees Celsius or [300,1100] hPa is CELESTIAL_ERROR_INVALID_INPUT.
+ *       Use celestial_last_error_kind to distinguish empty success.
+ */
+CELESTIAL_API uint32_t celestial_altitude_events(const CelestialAltitudeCondition *condition, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count);
+
+/**
+ * @brief Find upper meridian passages over [start,end) in JDE(TT).
+ * @param target_code A physical CELESTIAL_TARGET_* code, with no altitude threshold or refraction.
+ * @note Sampling limits, site, domain, count/fill and failure contracts match celestial_altitude_events.
+ *       At a geographic pole, passage is relative to the supplied longitude.
+ */
+CELESTIAL_API uint32_t celestial_upper_transits(uint32_t target_code, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count);
+
+/**
+ * @brief Intersect altitude conditions and retain their companion events over [start,end) in JDE(TT).
+ * @param conditions Input condition list; may be null only when condition_count is zero.
+ * @param condition_count Number of input conditions. An empty conjunction returns the whole interval.
+ * @note Site, domain, count/fill and failure contracts match celestial_altitude_events. Windows are
+ *       maximal positive-duration operational spans, not strict point sets at isolated equalities.
+ *       Windows are reconstructed from detected crossings, with the same sampling limits.
+ *       Failure in any condition fails the whole query.
+ */
+CELESTIAL_API uint32_t celestial_observing_windows(const CelestialAltitudeCondition *conditions, uint32_t condition_count, double latitude_deg, double longitude_deg, double elevation_m, double start_jde_tt, double end_jde_tt, uint32_t *record_count, CelestialAltitudeRecord *slots, uint32_t slot_count);
 
 #ifdef __cplusplus
 }

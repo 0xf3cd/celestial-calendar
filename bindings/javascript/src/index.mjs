@@ -127,6 +127,8 @@ const nativeCode = (value, prefix, operation, field) => {
   return value;
 };
 
+const isPhysicalTarget = (code) => code < CHART_CODES.targets.meanAscending;
+
 const allocate = (M, bytes, operation) => {
   if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > MAX_OUTPUT_BYTES) {
     throw new CelestialError(operation, `${operation} exceeds the binding's 16 MiB output limit.`, false);
@@ -215,7 +217,7 @@ const isCountFillProtocol = (protocol, binding, parameters, argumentCount) => {
       && protocol[role] === parameters.at(index - roles.length)?.name);
 };
 
-const countThenFill = (cName, operation, args) => {
+const countThenFill = (cName, operation, args, layoutName = null, readRecord = readLayout) => {
   const M = requireModule(operation);
   const binding = bindingOf(cName);
   const protocol = PROTOCOLS?.[cName];
@@ -226,7 +228,8 @@ const countThenFill = (cName, operation, args) => {
   const countPtr = allocate(M, 4, operation);
 
   try {
-    M.HEAPU32[countPtr >> 2] = 0;
+    // Both passes must write their total, including an empty success.
+    M.HEAPU32[countPtr >> 2] = 0xFFFFFFFF;
     const queried = M[binding.wasmName](...args, countPtr, 0, 0);
     checkError(M, operation);
     const count = M.HEAPU32[countPtr >> 2];
@@ -236,15 +239,27 @@ const countThenFill = (cName, operation, args) => {
       return [];
     }
 
-    const slots = allocate(M, count * 8, operation);
+    const stride = layoutName === null ? 8 : LAYOUTS[layoutName].size;
+    const slots = allocate(M, count * stride, operation);
     try {
-      M.HEAPF64.fill(NaN, slots >> 3, (slots >> 3) + count);
+      if (layoutName === null) M.HEAPF64.fill(NaN, slots >> 3, (slots >> 3) + count);
+      else {
+        M.HEAPU8.fill(0xA5, slots, slots + count * stride);
+        for (let index = 0; index < count; ++index) {
+          for (const field of LAYOUTS[layoutName].fields) {
+            if (field.type === "double") M.HEAPF64[(slots + index * stride + field.offset) >> 3] = NaN;
+          }
+        }
+      }
+      M.HEAPU32[countPtr >> 2] = 0xFFFFFFFF;
       const written = M[binding.wasmName](...args, countPtr, slots, count);
       checkError(M, operation);
       if (written !== count || M.HEAPU32[countPtr >> 2] !== count) {
         malformed(operation, "changed fill total");
       }
-      return readDoubles(M, slots, count).map((value) => nativeFinite(value, operation, "moment"));
+      return layoutName === null
+        ? readDoubles(M, slots, count).map((value) => nativeFinite(value, operation, "moment"))
+        : Array.from({ length: count }, (_, index) => readRecord(M, slots + index * stride, layoutName));
     } finally {
       M._free(slots);
     }
@@ -551,7 +566,7 @@ const readChartSnapshot = (M, ptr) => {
   const bodies = Object.entries(CHART_CODES.targets).map(([target, code], index) => {
     const bodyPtr = bodiesPtr + index * LAYOUTS.CelestialChartBody.size;
     const readBody = (name) => readChartField(M, bodyPtr, "CelestialChartBody", name);
-    const isNode = code >= CHART_CODES.targets.meanAscending;
+    const isNode = !isPhysicalTarget(code);
     const present = CHART_CODES.present.latitude | (isNode ? 0 : CHART_CODES.present.distance);
     if (readBody("target_code") !== code) malformedChart(`bodies[${index}].target_code`);
     nativeCode(readBody("source_code"), "CELESTIAL_POSITION_SOURCE_", "chart.snapshot", `${target}.source_code`);
@@ -652,6 +667,606 @@ const snapshot = (civil, options) => {
   }
 };
 
+const observerPosition = (target, civil, options) => {
+  const operation = "observer.position";
+  const M = requireModule(operation);
+  const physicalTargets = Object.fromEntries(
+    Object.entries(CHART_CODES.targets).filter(([, code]) => isPhysicalTarget(code)),
+  );
+  const targetCode = enumValue(target, "target", physicalTargets);
+  const value = nativeCivilDateTime(civil, "civil");
+  requiredRecord(options, "options", ["scale", "observer"], []);
+  const extraKeys = Reflect.ownKeys(options).some((key) => !["scale", "observer", "model", "refraction"].includes(key));
+  const inheritedOption = ["model", "refraction"].some((key) => key in options && !Object.hasOwn(options, key));
+  if (extraKeys || inheritedOption) throw new TypeError("options requires own scale/observer/model/refraction fields only.");
+  const scale = enumValue(options.scale, "options.scale", CHART_CODES.scales);
+  const site = requiredRecord(options.observer, "options.observer", ["latitudeDeg", "longitudeDeg", "elevationM"], []);
+  const latitude = finiteNumber(site.latitudeDeg, "options.observer.latitudeDeg");
+  const longitude = finiteNumber(site.longitudeDeg, "options.observer.longitudeDeg");
+  const elevation = finiteNumber(site.elevationM, "options.observer.elevationM");
+  const modelCode = enumValue(options.model === undefined ? "default" : options.model, "options.model", CHART_CODES.models);
+
+  let refractionCode = CODES.CELESTIAL_REFRACTION_NONE;
+  let temperature = 0;
+  let pressure = 0;
+  if (options.refraction !== undefined) {
+    const weather = requiredRecord(options.refraction, "options.refraction", ["model"], []);
+    const extraWeather = Reflect.ownKeys(weather).some((key) => !["model", "temperatureC", "pressureHpa"].includes(key));
+    const inheritedWeather = ["temperatureC", "pressureHpa"].some((key) => key in weather && !Object.hasOwn(weather, key));
+    if (extraWeather || inheritedWeather) throw new TypeError("refraction requires own model/temperatureC/pressureHpa fields only.");
+    refractionCode = enumValue(weather.model, "options.refraction.model", {
+      bennett: CODES.CELESTIAL_REFRACTION_BENNETT,
+      saemundsson: CODES.CELESTIAL_REFRACTION_SAEMUNDSSON,
+    });
+    temperature = finiteNumber(weather.temperatureC === undefined ? 15 : weather.temperatureC, "temperatureC");
+    pressure = finiteNumber(weather.pressureHpa === undefined ? 1013.25 : weather.pressureHpa, "pressureHpa");
+  }
+
+  const layout = LAYOUTS.CelestialTopocentricPosition;
+  const ptr = allocate(M, layout.size, operation);
+  const read = (name) => readField(M, ptr, layout.fields.find((field) => field.name === name));
+  const finite = (name) => nativeFinite(read(name), operation, name);
+  const angle = (name) => {
+    const result = finite(name);
+    if (result < 0 || result >= 360) malformed(operation, name);
+    return result;
+  };
+  try {
+    M[bindingOf("celestial_topocentric_position").wasmName](
+      ptr, targetCode, value.year, value.month, value.day, value.fraction, scale, modelCode,
+      latitude, longitude, elevation, refractionCode, temperature, pressure,
+    );
+    checkError(M, operation);
+    if (read("valid") !== 1 || read("target_code") !== targetCode) malformed(operation, "valid/target_code");
+    const sourceCode = nativeCode(read("source_code"), "CELESTIAL_POSITION_SOURCE_", operation, "source_code");
+    const deltaCode = nativeCode(read("delta_t_identity_code"), "CELESTIAL_DELTA_T_MODEL_", operation, "delta_t_identity_code");
+    if (modelCode !== CODES.CELESTIAL_DELTA_T_MODEL_DEFAULT && deltaCode !== modelCode) {
+      malformed(operation, "resolved Delta T model differs from selection");
+    }
+    const raBit = CODES.CELESTIAL_PRESENT_RIGHT_ASCENSION;
+    const azBit = CODES.CELESTIAL_PRESENT_AZIMUTH;
+    const apparentBit = CODES.CELESTIAL_PRESENT_APPARENT_ALTITUDE;
+    const mask = read("present_fields");
+    if ((mask & ~(raBit | azBit | apparentBit)) !== 0
+      || (refractionCode === CODES.CELESTIAL_REFRACTION_NONE && (mask & apparentBit))
+      || (Math.abs(latitude) === 90 && (mask & azBit))) malformed(operation, "present_fields");
+    const declinationDeg = finite("declination_deg");
+    const altitudeDeg = finite("altitude_deg");
+    const distanceAu = finite("distance_au");
+    if (declinationDeg < -90 || declinationDeg > 90 || altitudeDeg < -90 || altitudeDeg > 90 || distanceAu <= 0) {
+      malformed(operation, "declination/altitude/distance");
+    }
+    const apparentAltitudeDeg = mask & apparentBit ? finite("apparent_altitude_deg") : null;
+    if (apparentAltitudeDeg !== null && (apparentAltitudeDeg < -1e-9 || apparentAltitudeDeg > 90)) {
+      malformed(operation, "apparent_altitude_deg");
+    }
+    return {
+      target,
+      sourceCode,
+      deltaTModel: Object.entries(CHART_CODES.models).find(([name, code]) => name !== "default" && code === deltaCode)[0],
+      times: { jdUt1: finite("jd_ut1"), jdeTt: finite("jde_tt") },
+      rightAscensionDeg: mask & raBit ? angle("right_ascension_deg") : null,
+      declinationDeg,
+      distanceAu,
+      altitudeDeg,
+      azimuthDeg: mask & azBit ? angle("azimuth_deg") : null,
+      apparentAltitudeDeg,
+    };
+  } finally {
+    M._free(ptr);
+  }
+};
+
+const ALTITUDE_TARGETS = Object.freeze(Object.fromEntries(
+  Object.entries(CHART_CODES.targets).filter(([, code]) => isPhysicalTarget(code)),
+));
+const ALTITUDE_SENSES = Object.freeze({
+  below: CODES.CELESTIAL_ALTITUDE_SENSE_BELOW, above: CODES.CELESTIAL_ALTITUDE_SENSE_ABOVE,
+});
+const EVENT_DIRECTIONS = Object.freeze({
+  [CODES.CELESTIAL_EVENT_DIRECTION_INCREASING]: "increasing",
+  [CODES.CELESTIAL_EVENT_DIRECTION_DECREASING]: "decreasing",
+});
+
+const altitudeCondition = (input) => {
+  requiredRecord(input, "condition", ["target", "level", "sense"], []);
+  if (Reflect.ownKeys(input).some((key) => !["target", "level", "sense"].includes(key))) {
+    throw new TypeError("condition requires own target/level/sense fields only.");
+  }
+  const targetCode = enumValue(input.target, "condition.target", ALTITUDE_TARGETS);
+  const senseCode = enumValue(input.sense, "condition.sense", ALTITUDE_SENSES);
+  const level = requiredRecord(input.level, "condition.level", ["kind", "altitudeDeg"], []);
+  enumValue(level.kind, "condition.level.kind", { geometric: 0, refracted: 1 });
+  const allowed = level.kind === "geometric" ? ["kind", "altitudeDeg"] : ["kind", "altitudeDeg", "refraction"];
+  if (Reflect.ownKeys(level).some((key) => !allowed.includes(key)) || ("refraction" in level && !Object.hasOwn(level, "refraction"))) {
+    throw new TypeError("level fields must belong to its geometric or refracted convention.");
+  }
+  const altitudeDeg = finiteNumber(level.altitudeDeg, "condition.level.altitudeDeg");
+  let refractionCode = CODES.CELESTIAL_REFRACTION_NONE;
+  let temperatureC = 0;
+  let pressureHpa = 0;
+  let refraction;
+  if (level.kind === "refracted") {
+    requiredRecord(level, "condition.level", ["refraction"], []);
+    const weather = requiredRecord(level.refraction, "refraction", ["model"], []);
+    const keys = ["model", "temperatureC", "pressureHpa"];
+    if (Reflect.ownKeys(weather).some((key) => !keys.includes(key))
+      || keys.some((key) => key in weather && !Object.hasOwn(weather, key))) {
+      throw new TypeError("refraction requires own model/temperatureC/pressureHpa fields only.");
+    }
+    refractionCode = enumValue(weather.model, "refraction.model", {
+      bennett: CODES.CELESTIAL_REFRACTION_BENNETT, saemundsson: CODES.CELESTIAL_REFRACTION_SAEMUNDSSON,
+    });
+    temperatureC = finiteNumber(weather.temperatureC === undefined ? 15 : weather.temperatureC, "temperatureC");
+    pressureHpa = finiteNumber(weather.pressureHpa === undefined ? 1013.25 : weather.pressureHpa, "pressureHpa");
+    refraction = Object.freeze({ model: weather.model, temperatureC, pressureHpa });
+  }
+  return {
+    condition: Object.freeze({
+      target: input.target, sense: input.sense,
+      level: Object.freeze(refraction === undefined ? { kind: "geometric", altitudeDeg }
+        : { kind: "refracted", altitudeDeg, refraction }),
+    }),
+    native: { target_code: targetCode, sense_code: senseCode, refraction_code: refractionCode, reserved: 0,
+      level_deg: altitudeDeg, temperature_c: temperatureC, pressure_hpa: pressureHpa },
+  };
+};
+
+const physicalSource = (code) => code === 0 ? CODES.CELESTIAL_POSITION_SOURCE_SUN_VSOP87D
+    : code === 1 ? CODES.CELESTIAL_POSITION_SOURCE_MOON_ELP2000_82B_TRUNC
+      : code === 9 ? CODES.CELESTIAL_POSITION_SOURCE_PLUTO_PLUTO95_APPARENT : CODES.CELESTIAL_POSITION_SOURCE_PLANET_VSOP87D;
+
+const positionSource = (code) => {
+  if (isPhysicalTarget(code)) return physicalSource(code);
+  if (code === CHART_CODES.targets.meanAscending || code === CHART_CODES.targets.meanDescending) {
+    return CODES.CELESTIAL_POSITION_SOURCE_NODE_MEAN;
+  }
+  return CODES.CELESTIAL_POSITION_SOURCE_NODE_TRUE_MEEUS_FIVE_TERM;
+};
+
+const altitudeIdentities = (record, target, operation) => {
+  const code = ALTITUDE_TARGETS[target];
+  const source = physicalSource(code);
+  if (record.target_code !== code || record.position_source_code !== source
+    || record.delta_t_model_code !== CODES.CELESTIAL_DELTA_T_MODEL_ALGO5) malformed(operation, "target/source/clock");
+  return { sourceCode: source, deltaTModel: "algo5" };
+};
+
+const altitudeUnused = (record, fields, operation) => {
+  for (const name of Object.keys(record)) {
+    if (name !== "tag" && !fields.includes(name) && record[name] !== 0) malformed(operation, `unused ${name}`);
+  }
+};
+
+const altitudeSpans = (states, events, start, end) => {
+  const satisfied = states.map((state) => state.initiallySatisfied);
+  let unsatisfied = satisfied.filter((value) => !value).length;
+  let opening = start;
+  const spans = [];
+  for (let index = 0; index < events.length;) {
+    const time = events[index].jdeTt;
+    const wasActive = unsatisfied === 0;
+    do {
+      const event = events[index++];
+      if (time === start) continue;
+      const condition = event.conditionIndex;
+      const above = event.direction === "increasing";
+      const value = states[condition].condition.sense === "above" ? above : !above;
+      unsatisfied += Number(!value) - Number(!satisfied[condition]);
+      satisfied[condition] = value;
+    } while (index < events.length && events[index].jdeTt === time);
+    const active = unsatisfied === 0;
+    if (wasActive && !active && opening < time) spans.push({ startJdeTt: opening, endJdeTt: time });
+    else if (!wasActive && active) opening = time;
+  }
+  if (unsatisfied === 0 && opening < end) spans.push({ startJdeTt: opening, endJdeTt: end });
+  return spans;
+};
+
+const decodeAltitude = (records, requested, target, start, end, kind, operation) => {
+  if (kind === "transits") {
+    let previous = -Infinity;
+    return Object.freeze(records.map((record) => {
+      altitudeUnused(record, ["target_code", "position_source_code", "delta_t_model_code", "jde_tt"], operation);
+      const time = nativeFinite(record.jde_tt, operation, "jde_tt");
+      if (record.tag !== CODES.CELESTIAL_ALTITUDE_RECORD_UPPER_TRANSIT || time < start || time >= end || time <= previous) {
+        malformed(operation, "transit tag/interval/order");
+      }
+      previous = time;
+      return Object.freeze({ jdeTt: time, target, ...altitudeIdentities(record, target, operation) });
+    }));
+  }
+  if (records.length < requested.length) malformed(operation, "missing condition metadata");
+  const conditions = Object.freeze(requested.map(({ condition, native }, index) => {
+    const record = records[index];
+    altitudeUnused(record, ["condition_index", "target_code", "position_source_code", "delta_t_model_code", "refraction_code",
+      "sense_code", "initially_satisfied", "requested_level_deg", "geometric_level_deg", "temperature_c", "pressure_hpa"], operation);
+    if (record.tag !== CODES.CELESTIAL_ALTITUDE_RECORD_CONDITION || record.condition_index !== index
+      || ![0, 1].includes(record.initially_satisfied)) malformed(operation, "condition tag/index/state");
+    for (const [field, expected] of [["refraction_code", native.refraction_code], ["sense_code", native.sense_code],
+      ["requested_level_deg", native.level_deg], ["temperature_c", native.temperature_c], ["pressure_hpa", native.pressure_hpa]]) {
+      if (record[field] !== expected) malformed(operation, `requested ${field}`);
+    }
+    const geometricLevelDeg = nativeFinite(record.geometric_level_deg, operation, "geometric_level_deg");
+    if (geometricLevelDeg < -90 || geometricLevelDeg > 90
+      || (condition.level.kind === "geometric" && geometricLevelDeg !== condition.level.altitudeDeg)) {
+      malformed(operation, "resolved geometric level");
+    }
+    return Object.freeze({ condition, ...altitudeIdentities(record, condition.target, operation),
+      geometricLevelDeg, initiallySatisfied: record.initially_satisfied === 1 });
+  }));
+  const events = [];
+  const windows = [];
+  let previous = [-Infinity, -1];
+  for (const record of records.slice(requested.length)) {
+    if (record.tag === CODES.CELESTIAL_ALTITUDE_RECORD_EVENT && windows.length === 0) {
+      altitudeUnused(record, ["condition_index", "direction_code", "jde_tt"], operation);
+      const time = nativeFinite(record.jde_tt, operation, "jde_tt");
+      const index = record.condition_index;
+      if (index >= conditions.length || time < start || time >= end || time < previous[0]
+        || (time === previous[0] && index <= previous[1]) || !Object.hasOwn(EVENT_DIRECTIONS, record.direction_code)) {
+        malformed(operation, "event association/interval/order/direction");
+      }
+      events.push(Object.freeze({ jdeTt: time, conditionIndex: index, direction: EVENT_DIRECTIONS[record.direction_code] }));
+      previous = [time, index];
+    } else if (record.tag === CODES.CELESTIAL_ALTITUDE_RECORD_WINDOW && kind === "windows") {
+      altitudeUnused(record, ["jde_tt", "end_jde_tt"], operation);
+      const left = nativeFinite(record.jde_tt, operation, "jde_tt");
+      const right = nativeFinite(record.end_jde_tt, operation, "end_jde_tt");
+      if (left < start || left >= right || right > end || (windows.length && windows.at(-1).endJdeTt >= left)) {
+        malformed(operation, "window interval/order");
+      }
+      windows.push(Object.freeze({ startJdeTt: left, endJdeTt: right }));
+    } else malformed(operation, "unexpected altitude tag/order");
+  }
+  if (kind === "windows") {
+    const expected = altitudeSpans(conditions, events, start, end);
+    if (expected.length !== windows.length || expected.some((span, index) => span.startJdeTt !== windows[index].startJdeTt
+      || span.endJdeTt !== windows[index].endJdeTt)) malformed(operation, "window/state/event disagreement");
+    return Object.freeze({ conditions, events: Object.freeze(events), windows: Object.freeze(windows) });
+  }
+  return Object.freeze({ condition: conditions[0], events: Object.freeze(events) });
+};
+
+const altitudeQuery = (kind, site, selection, startJdeTt, endJdeTt) => {
+  const method = { altitude: "altitudeEvents", transits: "upperTransits", windows: "observingWindows" }[kind];
+  const operation = `observer.${method}`;
+  const M = requireModule(operation);
+  requiredRecord(site, "observer", ["latitudeDeg", "longitudeDeg", "elevationM"], []);
+  const location = [finiteNumber(site.latitudeDeg, "latitudeDeg"), finiteNumber(site.longitudeDeg, "longitudeDeg"),
+    finiteNumber(site.elevationM, "elevationM")];
+  const start = finiteNumber(startJdeTt, "startJdeTt");
+  const end = finiteNumber(endJdeTt, "endJdeTt");
+  if (kind === "transits") {
+    const code = enumValue(selection, "target", ALTITUDE_TARGETS);
+    const records = countThenFill("celestial_upper_transits", operation, [code, ...location, start, end], "CelestialAltitudeRecord");
+    return decodeAltitude(records, [], selection, start, end, kind, operation);
+  }
+  if (kind === "windows" && !Array.isArray(selection)) throw new TypeError("conditions must be an array.");
+  if (kind === "windows" && selection.length > 2048) {
+    throw new CelestialError(operation, "condition list exceeds the native work budget.", false);
+  }
+  const requested = Array.from(kind === "altitude" ? [selection] : selection, altitudeCondition);
+  const layout = LAYOUTS.CelestialAltitudeCondition;
+  const inputs = requested.length ? allocate(M, requested.length * layout.size, operation) : 0;
+  try {
+    requested.forEach(({ native }, index) => {
+      for (const field of layout.fields) {
+        const address = inputs + index * layout.size + field.offset;
+        if (field.type === "double") M.HEAPF64[address >> 3] = native[field.name];
+        else M.HEAPU32[address >> 2] = native[field.name];
+      }
+    });
+    const prefix = kind === "altitude" ? [inputs] : [inputs, requested.length];
+    const name = kind === "altitude" ? "celestial_altitude_events" : "celestial_observing_windows";
+    const records = countThenFill(name, operation, [...prefix, ...location, start, end], "CelestialAltitudeRecord");
+    return decodeAltitude(records, requested, null, start, end, kind, operation);
+  } finally {
+    if (inputs) M._free(inputs);
+  }
+};
+
+const readPositionRecord = (M, ptr, layoutName) => {
+  const fields = LAYOUTS[layoutName].fields;
+  const present = readField(M, ptr, fields.find((field) => field.name === "present_fields"));
+  return Object.fromEntries(fields.map((field) => [
+    field.name,
+    field.name === "distance_au" && !(present & CODES.CELESTIAL_PRESENT_DISTANCE) ? null : readField(M, ptr, field),
+  ]));
+};
+
+const selectedPositions = (cName, operation, targets, jdeTt, layoutName, coordinates) => {
+  const M = requireModule(operation);
+  if (!Array.isArray(targets)) throw new TypeError("targets must be an array.");
+  const count = targets.length;
+  if (count === 0) throw new RangeError("targets must not be empty.");
+  if (count > Object.keys(CHART_CODES.targets).length) throw new RangeError("Too many selected targets.");
+  const selection = Array.from({ length: count }, (_, index) => {
+    const target = targets[index];
+    return { target, code: enumValue(target, "target", CHART_CODES.targets) };
+  });
+  if (new Set(selection.map(({ code }) => code)).size !== selection.length) throw new RangeError("Duplicate target.");
+  const time = finiteNumber(jdeTt, "jdeTt");
+  const inputs = allocate(M, selection.length * 4, operation);
+  try {
+    M.HEAPU32.set(selection.map(({ code }) => code), inputs >> 2);
+    const records = countThenFill(cName, operation, [inputs, selection.length, time], layoutName, readPositionRecord);
+    if (records.length !== selection.length) malformed(operation, "position count");
+    return Object.freeze(records.map((record, index) => {
+      const { target, code } = selection[index];
+      const node = !isPhysicalTarget(code);
+      const present = CODES.CELESTIAL_PRESENT_LATITUDE | (node ? 0 : CODES.CELESTIAL_PRESENT_DISTANCE);
+      const sourceCode = positionSource(code);
+      if (record.target_code !== code || record.present_fields !== present || record.source_code !== sourceCode) {
+        malformed(operation, "target/presence/source");
+      }
+      const distanceAu = node ? null : nativeFinite(record.distance_au, operation, "distance_au");
+      if (!node && distanceAu <= 0) malformed(operation, "distance_au");
+      return Object.freeze({ target, ...coordinates(record, node, operation), distanceAu, sourceCode });
+    }));
+  } finally {
+    M._free(inputs);
+  }
+};
+
+const eclipticPositions = (targets, jdeTt) => selectedPositions(
+  "celestial_positions", "position.ecliptic", targets, jdeTt, "CelestialPositionRecord",
+  (record, node, operation) => {
+    const longitudeDeg = nativeFinite(record.longitude_deg, operation, "longitude_deg");
+    const latitudeDeg = nativeFinite(record.latitude_deg, operation, "latitude_deg");
+    if (longitudeDeg < 0 || longitudeDeg >= 360 || latitudeDeg < -90 || latitudeDeg > 90 || (node && latitudeDeg !== 0)) {
+      malformed(operation, "ecliptic coordinates");
+    }
+    return { longitudeDeg, latitudeDeg };
+  },
+);
+
+const equatorialPositions = (targets, jdeTt) => selectedPositions(
+  "celestial_equatorial_positions", "position.equatorial", targets, jdeTt, "CelestialEquatorialPositionRecord",
+  (record, _node, operation) => {
+    const rightAscensionDeg = nativeFinite(record.right_ascension_deg, operation, "right_ascension_deg");
+    const declinationDeg = nativeFinite(record.declination_deg, operation, "declination_deg");
+    if (rightAscensionDeg < 0 || rightAscensionDeg >= 360 || declinationDeg < -90 || declinationDeg > 90) {
+      malformed(operation, "equatorial coordinates");
+    }
+    return { rightAscensionDeg, declinationDeg };
+  },
+);
+
+const LONGITUDE_DIRECTIONS = Object.freeze({
+  ...EVENT_DIRECTIONS,
+  [CODES.CELESTIAL_EVENT_DIRECTION_TANGENT]: "tangent",
+});
+const STATION_MOTIONS = Object.freeze({
+  [CODES.CELESTIAL_EVENT_MOTION_DIRECT]: "direct",
+  [CODES.CELESTIAL_EVENT_MOTION_RETROGRADE]: "retrograde",
+});
+const eventCode = (code, choices, operation, field) => {
+  if (!Object.hasOwn(choices, code)) malformed(operation, field);
+  return choices[code];
+};
+
+const longitudeRecords = (cName, operation, args, startJdeTt, endJdeTt, layoutName) => {
+  const start = finiteNumber(startJdeTt, "startJdeTt");
+  const end = finiteNumber(endJdeTt, "endJdeTt");
+  const records = countThenFill(cName, operation, [...args, start, end], layoutName);
+  let previous = -Infinity;
+  for (const record of records) {
+    for (const field of LAYOUTS[layoutName].fields) {
+      if (field.type === "double") nativeFinite(record[field.name], operation, field.name);
+    }
+    if (record.jde_tt < start || record.jde_tt >= end || record.jde_tt <= previous) {
+      malformed(operation, "event interval/order");
+    }
+    previous = record.jde_tt;
+  }
+  return records;
+};
+
+const intervalLongitudeCrossings = (target, longitudeDeg, startJdeTt, endJdeTt) => {
+  const operation = "events.longitudeCrossings";
+  requireModule(operation);
+  const code = enumValue(target, "target", CHART_CODES.targets);
+  const longitude = finiteNumber(longitudeDeg, "longitudeDeg");
+  const records = longitudeRecords("celestial_longitude_events", operation, [code, longitude],
+    startJdeTt, endJdeTt, "CelestialLongitudeEventRecord");
+  return Object.freeze(records.map((record) => Object.freeze({
+    jdeTt: record.jde_tt, longitudeDeg: record.longitude_deg,
+    longitudeRateDegPerTtDay: record.longitude_rate_deg_per_tt_day,
+    direction: eventCode(record.direction_code, LONGITUDE_DIRECTIONS, operation, "direction"),
+  })));
+};
+
+const longitudeStations = (target, startJdeTt, endJdeTt) => {
+  const operation = "events.longitudeStations";
+  requireModule(operation);
+  const code = enumValue(target, "target", CHART_CODES.targets);
+  const records = longitudeRecords("celestial_longitude_stations", operation, [code],
+    startJdeTt, endJdeTt, "CelestialStationEventRecord");
+  return Object.freeze(records.map((record) => Object.freeze({
+    jdeTt: record.jde_tt, longitudeDeg: record.longitude_deg,
+    longitudeRateDegPerTtDay: record.longitude_rate_deg_per_tt_day,
+    motionBefore: eventCode(record.motion_before_code, STATION_MOTIONS, operation, "motion_before"),
+    motionAfter: eventCode(record.motion_after_code, STATION_MOTIONS, operation, "motion_after"),
+  })));
+};
+
+const longitudeDifferences = (first, second, differenceDeg, startJdeTt, endJdeTt) => {
+  const operation = "events.longitudeDifferences";
+  requireModule(operation);
+  const firstCode = enumValue(first, "first", CHART_CODES.targets);
+  const secondCode = enumValue(second, "second", CHART_CODES.targets);
+  const difference = finiteNumber(differenceDeg, "differenceDeg");
+  const records = longitudeRecords("celestial_longitude_difference_events", operation, [firstCode, secondCode, difference],
+    startJdeTt, endJdeTt, "CelestialLongitudeDifferenceEventRecord");
+  return Object.freeze(records.map((record) => {
+    if (record.signed_difference_deg <= -180 || record.signed_difference_deg > 180) malformed(operation, "signed difference");
+    return Object.freeze({
+      jdeTt: record.jde_tt, longitudeADeg: record.longitude_a_deg, longitudeBDeg: record.longitude_b_deg,
+      longitudeRateADegPerTtDay: record.longitude_rate_a_deg_per_tt_day,
+      longitudeRateBDegPerTtDay: record.longitude_rate_b_deg_per_tt_day,
+      signedDifferenceDeg: record.signed_difference_deg,
+      direction: eventCode(record.direction_code, LONGITUDE_DIRECTIONS, operation, "direction"),
+    });
+  }));
+};
+
+// NIST SP 330 (2019), Table 8; ERFA v2.0.1 erfam.h, ERFA_DAU, converted to km.
+// Retained material boundary (R34): this exact NIST/ERFA AU definition remains under its source terms
+// and outside the project MIT grant; the validation wrapper is project-authored.
+const DIAMETER_AU_KM = 149597870.7;
+
+const diameterQuery = (target, civil, options) => {
+  const operation = "diameter.query";
+  requireModule(operation);
+  const targets = Object.fromEntries(
+    Object.entries(CHART_CODES.targets).filter(([, code]) => isPhysicalTarget(code)),
+  );
+  const targetCode = enumValue(target, "target", targets);
+  const value = nativeCivilDateTime(civil, "civil");
+  requiredRecord(options, "options", ["scale"], []);
+  const extraKeys = Reflect.ownKeys(options).some((key) => !["scale", "observer", "model"].includes(key));
+  const inheritedOption = ["observer", "model"].some((key) => key in options && !Object.hasOwn(options, key));
+  if (extraKeys || inheritedOption) throw new TypeError("options requires own scale/observer/model fields only.");
+  const scale = enumValue(options.scale, "options.scale", CHART_CODES.scales);
+  const modelCode = enumValue(options.model === undefined ? "default" : options.model, "options.model", CHART_CODES.models);
+  const site = options.observer === undefined ? null
+    : requiredRecord(options.observer, "options.observer", ["latitudeDeg", "longitudeDeg", "elevationM"], []);
+  const centre = site === null ? "geocentric" : "topocentric";
+  const centreCode = site === null ? CODES.CELESTIAL_DIAMETER_CENTRE_GEOCENTRIC : CODES.CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC;
+
+  const native = callSret("celestial_apparent_diameter", operation, [
+    targetCode, value.year, value.month, value.day, value.fraction, scale, modelCode, centreCode,
+    site === null ? 0 : finiteNumber(site.latitudeDeg, "options.observer.latitudeDeg"),
+    site === null ? 0 : finiteNumber(site.longitudeDeg, "options.observer.longitudeDeg"),
+    site === null ? 0 : finiteNumber(site.elevationM, "options.observer.elevationM"),
+  ]);
+
+  if (native.target_code !== targetCode || native.centre_code !== centreCode) malformed(operation, "target/centre");
+  const sourceCode = nativeCode(native.source_code, "CELESTIAL_POSITION_SOURCE_", operation, "source_code");
+  const radiusDefinitionCode = nativeCode(native.radius_definition_code, "CELESTIAL_RADIUS_DEFINITION_", operation, "radius_definition_code");
+  const deltaCode = nativeCode(native.delta_t_identity_code, "CELESTIAL_DELTA_T_MODEL_", operation, "delta_t_identity_code");
+  if (modelCode !== CODES.CELESTIAL_DELTA_T_MODEL_DEFAULT && deltaCode !== modelCode) malformed(operation, "Delta T selection");
+  if (native.radius_km <= 0 || native.distance_au <= native.radius_km / DIAMETER_AU_KM
+    || native.diameter_arcsec <= 0 || native.diameter_arcsec >= 648000) malformed(operation, "radius/distance/diameter");
+
+  return Object.freeze({
+    target, centre, sourceCode, radiusDefinitionCode,
+    radiusKm: native.radius_km,
+    distanceAu: native.distance_au,
+    diameterArcsec: native.diameter_arcsec,
+    times: Object.freeze({ jdUt1: native.jd_ut1, jdeTt: native.jde_tt }),
+    deltaTModel: Object.entries(CHART_CODES.models).find(([name, code]) => name !== "default" && code === deltaCode)[0],
+  });
+};
+
+const riseSetOptions = (value, keys, name = "options") => {
+  requiredRecord(value, name, [], []);
+  if (Reflect.ownKeys(value).some((key) => !keys.includes(key))
+    || keys.some((key) => key in value && !Object.hasOwn(value, key))) {
+    throw new TypeError(`${name} requires own ${keys.join("/")} fields only.`);
+  }
+  return value;
+};
+
+const riseSetSite = (value, keys) => {
+  const site = requiredRecord(value, "site", keys, []);
+  if (Reflect.ownKeys(site).some((key) => !keys.includes(key))
+    || (!keys.includes("elevationM") && "elevationM" in site)) throw new TypeError("Unknown site field.");
+  return keys.map((key) => finiteNumber(site[key], `site.${key}`));
+};
+
+const riseSetRefraction = (options) => {
+  riseSetOptions(options, ["refraction"]);
+  const weather = options.refraction === undefined ? { model: "bennett" } : options.refraction;
+  requiredRecord(weather, "refraction", ["model"], []);
+  riseSetOptions(weather, ["model", "temperatureC", "pressureHpa"], "refraction");
+  const code = enumValue(weather.model, "refraction.model", {
+    bennett: CODES.CELESTIAL_REFRACTION_BENNETT,
+    saemundsson: CODES.CELESTIAL_REFRACTION_SAEMUNDSSON,
+  });
+  const temperatureC = finiteNumber(weather.temperatureC === undefined ? 15 : weather.temperatureC, "temperatureC");
+  const pressureHpa = finiteNumber(weather.pressureHpa === undefined ? 1013.25 : weather.pressureHpa, "pressureHpa");
+  return { code, params: Object.freeze({ model: weather.model, temperatureC, pressureHpa }) };
+};
+
+const riseSetEvents = (native, operation, target) => {
+  const code = CHART_CODES.targets[target];
+  if (native.source_code !== physicalSource(code)
+    || native.delta_t_identity_code !== CODES.CELESTIAL_DELTA_T_MODEL_ALGO5
+    || native.nutation_identity_code !== CODES.CELESTIAL_NUTATION_MODEL_IAU_1980
+    || (target !== "sun" && target !== "moon" && native.target_code !== code)) malformed(operation, "target/source/models");
+  const rise = CODES.CELESTIAL_PRESENT_RISE;
+  const transit = CODES.CELESTIAL_PRESENT_TRANSIT;
+  const setting = CODES.CELESTIAL_PRESENT_SET;
+  const mask = native.present_fields;
+  const polar = {
+    [CODES.CELESTIAL_RISE_SET_POLAR_NONE]: "none",
+    [CODES.CELESTIAL_RISE_SET_POLAR_DAY]: "day",
+    [CODES.CELESTIAL_RISE_SET_POLAR_NIGHT]: "night",
+  }[native.polar_code];
+  if (mask & ~(rise | transit | setting) || polar === undefined
+    || (polar !== "none" && mask & (rise | setting))
+    || (target === "sun" && !(mask & transit))) malformed(operation, "presence/topology");
+  const event = (field, bit) => {
+    if (!(mask & bit) && native[field] !== 0) malformed(operation, `absent ${field}`);
+    return mask & bit ? native[field] : null;
+  };
+  return {
+    target, sourceCode: native.source_code, deltaTModel: "algo5", nutationModel: "iau1980", polar,
+    riseJdeTt: event("rise_jde_tt", rise),
+    transitJdeTt: event("transit_jde_tt", transit),
+    setJdeTt: event("set_jde_tt", setting),
+  };
+};
+
+const solarRiseSet = (dateUt1, location, options = {}) => {
+  const operation = "riseSet.solar";
+  requireModule(operation);
+  const date = nativeGregorianDate(dateUt1, "dateUt1");
+  const site = riseSetSite(location, ["latitudeDeg", "longitudeDeg"]);
+  riseSetOptions(options, ["h0Deg"]);
+  const h0 = finiteNumber(options.h0Deg === undefined ? -50 / 60 : options.h0Deg, "h0Deg");
+  const native = callSret("celestial_solar_rise_set", operation, [date.year, date.month, date.day, ...site, h0]);
+  const result = riseSetEvents(native, operation, "sun");
+  if (native.h0_deg !== h0) malformed(operation, "h0");
+  return Object.freeze({ ...result, h0Deg: h0 });
+};
+
+const lunarRiseSet = (dateUt1, location, options = {}) => {
+  const operation = "riseSet.lunar";
+  requireModule(operation);
+  const date = nativeGregorianDate(dateUt1, "dateUt1");
+  const site = riseSetSite(location, ["latitudeDeg", "longitudeDeg"]);
+  const refraction = riseSetRefraction(options);
+  const native = callSret("celestial_lunar_rise_set", operation, [
+    date.year, date.month, date.day, ...site,
+    refraction.code, refraction.params.temperatureC, refraction.params.pressureHpa,
+  ]);
+  const result = riseSetEvents(native, operation, "moon");
+  if (native.refraction_code !== refraction.code || native.temperature_c !== refraction.params.temperatureC
+    || native.pressure_hpa !== refraction.params.pressureHpa) malformed(operation, "atmosphere");
+  return Object.freeze({ ...result, refraction: refraction.params });
+};
+
+const planetRiseSet = (target, dateUt1, observer, options = {}) => {
+  const operation = "riseSet.planet";
+  requireModule(operation);
+  const date = nativeGregorianDate(dateUt1, "dateUt1");
+  const site = riseSetSite(observer, ["latitudeDeg", "longitudeDeg", "elevationM"]);
+  const code = enumValue(target, "target", CHART_CODES.targets);
+  if (code < CHART_CODES.targets.mercury || code > CHART_CODES.targets.pluto) {
+    throw new RangeError("riseSet.planet requires Mercury through Pluto.");
+  }
+  riseSetOptions(options, ["h0Deg"]);
+  const h0 = finiteNumber(options.h0Deg === undefined ? -34 / 60 : options.h0Deg, "h0Deg");
+  const native = callSret("celestial_planet_rise_set", operation, [code, date.year, date.month, date.day, ...site, h0]);
+  const result = riseSetEvents(native, operation, target);
+  if (native.h0_deg !== h0) malformed(operation, "h0");
+  return Object.freeze({ ...result, h0Deg: h0 });
+};
+
+export const diameter = Object.freeze({ query: diameterQuery });
 export const time = Object.freeze({ ut1ToJd, ut1ToJde, jdeToUt1, utcToJde, jdeToUtc, localApparentSiderealTime, deltaT });
 export const sun = Object.freeze({
   apparentGeocentricCoordinate: sunApparentGeocentricCoordinate,
@@ -670,3 +1285,21 @@ export const moon = Object.freeze({
 export const jieqi = Object.freeze({ moment: jieqiMoment, name: jieqiName });
 export const lunar = Object.freeze({ supportedYearRange, yearInfo, fromGregorian, toGregorian });
 export const chart = Object.freeze({ snapshot });
+export const position = Object.freeze({ ecliptic: eclipticPositions, equatorial: equatorialPositions });
+export const events = Object.freeze({
+  longitudeCrossings: intervalLongitudeCrossings,
+  longitudeStations,
+  longitudeDifferences,
+});
+export const riseSet = Object.freeze({
+  solar: solarRiseSet,
+  lunar: lunarRiseSet,
+  planet: planetRiseSet,
+});
+
+export const observer = Object.freeze({
+  position: observerPosition,
+  altitudeEvents: (site, condition, startJdeTt, endJdeTt) => altitudeQuery("altitude", site, condition, startJdeTt, endJdeTt),
+  upperTransits: (site, target, startJdeTt, endJdeTt) => altitudeQuery("transits", site, target, startJdeTt, endJdeTt),
+  observingWindows: (site, conditions, startJdeTt, endJdeTt) => altitudeQuery("windows", site, conditions, startJdeTt, endJdeTt),
+});

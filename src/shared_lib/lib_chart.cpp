@@ -12,6 +12,7 @@
 
 #include "lib.hpp"
 #include "lib_chart.hpp"
+#include "lib_civil.hpp"
 #include "celestial.h"
 
 #include "datetime.hpp"
@@ -32,8 +33,8 @@ auto celestial_chart_snapshot(
   const uint32_t delta_t_model_code
 ) -> CelestialChartSnapshot {
   return lib::wrap_export(__func__, [=]() -> CelestialChartSnapshot {
-    lib::chart::validate_civil(year, month, day, fraction);
-    const auto scale = lib::chart::civil_scale(civil_scale_code);
+    lib::civil::validate(year, month, day, fraction);
+    const auto scale = lib::civil::scale(civil_scale_code);
     const auto system = lib::chart::house_system(house_system_code);
     const auto model = lib::codes::delta_t_model(delta_t_model_code);
 

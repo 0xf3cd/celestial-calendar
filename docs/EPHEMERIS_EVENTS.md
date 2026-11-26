@@ -1,8 +1,8 @@
 # Longitude events
 
 The interval searches are available from C++ (`ephemeris_events.hpp`), the C ABI
-(`celestial.h`) and Python (`celestial_calendar`); JavaScript exposes no event API.
-All three surfaces share this page's contracts: half-open interval membership, deterministic
+(`celestial.h`), Python (`celestial_calendar`) and JavaScript/TypeScript (`events`).
+All four surfaces share this page's contracts: half-open interval membership, deterministic
 ordering, exact numerical contacts, domains, limits and the conditional
 floating-point contract below. Include `ephemeris_events.hpp` with
 `-I src/astro -I src/calendar -I src/util` for interval queries over the 14
@@ -106,6 +106,41 @@ Whole-turn target shifts are equivalent; `-180°` and `180°` select the same
 level. Reversing the targets also reverses the requested angle and crossing
 direction. The API does not assign names or interpretations to angles.
 
+<a id="javascript"></a>
+## JavaScript
+
+```js
+import { init, events } from "@0xf3cd/celestial";
+
+await init();
+const crossings = events.longitudeCrossings("mercury", 0, 2460735.5, 2460785.5);
+const stations = events.longitudeStations("mercury", 2460735.5, 2460785.5);
+const differences = events.longitudeDifferences("moon", "sun", -60, 2460676.5, 2460707.5);
+console.log(crossings.map(({ jdeTt, direction }) => ({ jdeTt, direction })));
+console.log(stations.map(({ motionBefore, motionAfter }) => ({ motionBefore, motionAfter })));
+console.log(differences.map(({ signedDifferenceDeg }) => signedDifferenceDeg));
+```
+
+These searches use geocentric longitude, not the local centre altitude searched
+by [`observer.altitudeEvents`](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/ALTITUDE_EVENTS.md),
+and do not describe apparent-disk contacts.
+Use [`position.ecliptic/equatorial`](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README.md#independent-positions)
+to obtain coordinates at a single TT instant instead of searching an interval.
+The older `sun.longitudeCrossings(year, longitudeDeg)` remains an annual query
+with its own domain and endpoint rules.
+
+All three methods return frozen arrays of frozen records, with a legal no-event
+result of `[]`. Times are JDE(TT); rates are degrees per TT day.
+Component longitudes remain exactly as returned by native code, without wrapping.
+Crossings and differences report `"increasing"`, `"decreasing"` or `"tangent"` direction;
+stations report `"direct"` or `"retrograde"` motion before and after.
+
+The wrapper never returns a truncated or partially failed search. Wrong types
+throw `TypeError`; unknown targets, invalid intervals, nonfinite inputs and native
+input rejection throw `RangeError`. Resource/evaluation failures, malformed
+native successes and calls before `init()` throw `CelestialError`. Native domains,
+limits and numerical-contact rules below apply to every method.
+
 ## Search terminology
 
 - A **canonical cell** is a fixed interval on the target-domain grid. Its boundaries
@@ -124,7 +159,7 @@ direction. The API does not assign names or interpretations to angles.
   displacement is included in the observation's error allowance.
 
 These terms describe numerical interval membership and checks. The caller owns C
-output buffers; returned C++ and Python values remain independent of later calls.
+output buffers; returned C++, Python and JavaScript values remain independent of later calls.
 
 ## Results and interval membership
 

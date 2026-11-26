@@ -69,7 +69,7 @@ def test_release_preparation_validates_ref_and_stages_one_candidate():
   assert 're.fullmatch(r"v\\d+\\.\\d+\\.\\d+", ref_name)' in context["run"]
   assert 'os.environ["REF_PROTECTED"] != "true"' in context["run"]
   assert '["./project.py", "--version"]' in context["run"]
-  assert "git merge-base --is-ancestor HEAD origin/main" in context["run"]
+  assert "validate_release_source(Path.cwd(), ref_name, commit, expected)" in context["run"]
   assert "validate_release_document_versions" in context["run"]
   assert download["env"] == {
     "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
@@ -576,6 +576,26 @@ def test_rehearsal_has_a_dependent_second_pypi_gate_without_oidc():
   assert rehearsal["permissions"] == {"contents": "read"}
   assert all("id-token" not in job.get("permissions", {}) for job in jobs.values())
   assert jobs["gate_pypi_second"]["steps"][0]["with"] == {"name": "rehearsal-candidate"}
+
+
+@pytest.mark.parametrize(
+  ("ref_type", "ref_name", "accepted"),
+  [("tag", "v1.2.0-rehearsal", True), ("tag", "v1.2.0", False), ("branch", "v1.2.0-rehearsal", False)],
+)
+def test_rehearsal_ref_gate_and_retained_tag_guidance(ref_type, ref_name, accepted):
+  rehearsal = yaml.safe_load((RELEASE_WORKFLOW.parent / "release-rehearsal.yml").read_text())
+  script = rehearsal["jobs"]["validate_ref"]["steps"][0]["run"]
+  result = subprocess.run(
+    ["bash", "-euo", "pipefail", "-c", script],
+    env={"REF_TYPE": ref_type, "REF_NAME": ref_name},
+    capture_output=True,
+    text=True,
+  )
+  assert (result.returncode == 0) == accepted, result.stdout + result.stderr
+  guide = (RELEASE_WORKFLOW.parents[2] / "docs/RELEASING.md").read_text()
+  section = guide.split("Rehearse environment self-approval", 1)[1].split("\n## ", 1)[0]
+  assert "immutable" in section and "Retain the tag" in section
+  assert "disposable" not in section
 
 
 @pytest.mark.parametrize(

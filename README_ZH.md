@@ -3,14 +3,14 @@
 天文计算与公历、阴历转换：查询节气时刻、日月位置、日出日落。核心是 C++23 头文件库，
 也可通过 Python、JavaScript / TypeScript 或 C ABI 使用。
 
-[English](README.md) · [在线文档（开发版）](https://0xf3cd.github.io/celestial-calendar/) ·
+[English](README.md) · [在线文档](https://0xf3cd.github.io/celestial-calendar/) ·
 [Python](#python) · [JavaScript / TypeScript](#javascript) ·
 [C++](#cpp) · [C / FFI](#c-abi) · [功能与算法](#features) ·
 [构建（英文）](docs/BUILDING.md) · [验证（英文）](docs/VALIDATION.md) · [设计（英文）](docs/DESIGN.md)
 
-本文描述当前源码，含尚未发布的改动。从 0.x 升级请先读[迁移指南（英文）](docs/MIGRATING_1_0.md)。
-下面的安装命令取得 PyPI / npm 上的最新已发布版本，请以所装版本附带的文档为准。
-要自行构建当前源码，可按[本机 Python wheel](bindings/python/README.md#build-a-local-wheel) 或
+本文对应其所在的源码版本。从 0.x 升级请先读[迁移指南（英文）](docs/MIGRATING_1_0.md)。
+下面的安装命令取得 PyPI / npm 上的最新已发布版本，可能与这份源码不同，请以所装版本附带的文档为准。
+要自行构建源码，可按[本机 Python wheel](bindings/python/README.md#build-a-local-wheel) 或
 [WASM / npm 包](docs/BUILDING.md#wasm)的步骤。
 
 干支计算不在本库 API 内，请用 [bazi](https://github.com/0xf3cd/bazi)。
@@ -117,20 +117,31 @@ int main() {
 }
 ```
 
-把它存为 `build/quickstart.cpp`（`build/` 不存在就先建；Git 会忽略它），在源码根目录用支持 C++23 的 clang++ 编译运行：
+把它存为 `build/quickstart.cpp`（`build/` 不存在就先建；Git 会忽略它），在源码根目录用支持 C++23 的 clang++ 编译运行。
+
+三个 include 根目录都要用上；嵌套头文件保留子目录，如 `"lunar/converter.hpp"`。
 
 ```sh
-# Headers include each other by basename; all three directories are needed.
 clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
   build/quickstart.cpp -o build/quickstart
 ./build/quickstart
 ```
 
+`moment.fraction()` 是该 UT1 日已经过的比例：`0.0` 表示午夜，`0.5` 表示正午。
+
 节气 API 位于 [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp)，包括 `jieqi_ut1_moment`、`jieqi_jde`、
 `JieqiGenerator`。其他功能也按领域组织在 `src/astro/`、`src/calendar/`、`src/util/` 的自包含头文件中。
 月交点、黄经速率、星盘、行星照明与行星事件头文件的说明见
 [API 参考的 C++ 指南（英文）](docs/API.md#cpp-guide)。星盘快照也能从 C、Python 和 JavaScript 调用；
-独立黄道／赤道位置、民用时刻宫位、区间事件和能力查询另有 C 与 Python 接口，JavaScript 不暴露这些查询。
+独立黄道／赤道位置和区间黄经事件也有 C、Python 与 JavaScript 接口；
+独立民用时刻宫位和能力查询仍只提供 C 与 Python 接口。
+[`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) 提供定黄经、留站和带方向两体黄经差的区间搜索；
+半开区间的端点归属、精确切触和浮点前提见[黄经事件指南（英文）](docs/EPHEMERIS_EVENTS.md)。
+独立位置按所选目标各自的模型窗口查询；民用宫位遵循共用民用策略，不套快照的联合目标／速率窗口。
+C 与 Python 的结果会记录解析后的模型／来源身份。
+[C++ 头文件清单（英文）](docs/API.md#cpp-headers)列出实际 include 写法、公开物理类型与底层支持头文件；
+可运行的[下一个节气示例（英文）](docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8)
+直接用 `JieqiGenerator` 取得 TT 时刻，再用 `calendar::add_seconds()` 显示 UTC+8。
 
 <a id="c-abi"></a>
 ### C 与其他语言：C ABI
@@ -212,8 +223,8 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
 正容量会截断并补 NUL。节气时刻固定通过 Algo5 转为 UT1，不是 UTC 或东八区日期。ABI 演进规则见
 [C API 指南（英文）](docs/API.md#c-chart-snapshot)。
 
-从 1.1.0 起，预编译的 macOS arm64 库要求 macOS 15 或更新版本。
-完整运行环境要求（支持下限与产物实测值）以英文版的[原生运行环境表](README.md#native-runtime)为准。
+各平台的最低运行环境（包括 macOS arm64 的系统版本下限）和产物实测值，统一见英文版的
+[原生运行环境表](README.md#native-runtime)。
 
 <a id="features"></a>
 ## 功能与算法
@@ -228,23 +239,27 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
 - C++ 头文件提供日月、水星至冥王星及月交点的地心视黄道／赤道位置，以及行星照明几何、逆行标记与合朔时刻。
   水星至海王星使用 VSOP87D；`Planet::PLUTO` 使用精度较低的 Meeus 第 37 章模型，其视位置与照明几何
   JDE(TT) 域为 `[2409543.5, 2488069.5)`，居中逆行判断域为 `[2409544.0, 2488069.0)`。
-- C++ 头文件以 JDE(TT) 查询平升交点、平降交点、真升交点和真降交点的真黄道、真春分点经度；
+- C++ 头文件以 JDE(TT) 查询平升交点、平降交点、真升交点和真降交点的日期真黄道、日期真春分点经度；
   真交点采用 Meeus 五项修正，纬度按定义恒为零，物理距离不存在。
 - C++ `ephemeris.hpp` 提供日月、行星及月交点的统一瞬时黄经速率，单位为度/TT 日；
   在现有视位置模型上做局部解卷绕的七点中心差分。留站附近，速率的正负号可能与一天跨度的逆行标记不一致，
   见 [`planet.hpp`](src/astro/planet.hpp) 的 `is_retrograde`。
+- 日月与行星的[观测者站心坐标查询（英文指南）](docs/OBSERVER.md)，可通过 C++、C、Python 和 JavaScript 使用。
+- [区间高度事件、上中天与观测窗口（英文指南）](docs/ALTITUDE_EVENTS.md)，可通过 C++、C、Python 和 JavaScript/TypeScript 使用；采样搜索可能漏检事件，成功返回不保证已找到全部事件。
+- 日月与行星的[视角直径查询（英文指南）](docs/APPARENT_DIAMETERS.md)，使用地心或站心距离，可通过 C++、C、Python 和 JavaScript 使用。
 - 固定时刻星盘快照：以显式 UTC/UT1 民用输入、ΔT 模型和地点/宫制，一次取得十四个天体/点的位置与速率、
   四轴和十二宫头。C++ 为 [`chart.hpp`](src/astro/chart.hpp)，C 为 [`celestial_chart_snapshot`](docs/API.md#c-chart-snapshot)，
   Python 为 [`chart_snapshot`](bindings/python/README_ZH.md#chart-snapshot-example)，
   JavaScript 为 [`chart.snapshot`](bindings/javascript/README_ZH.md#chart-snapshot)。
   C ABI 和两个语言包仍只通过这份快照提供单时刻黄经速率查询；行星、月交点也有
   [独立位置与宫位查询](bindings/python/README_ZH.md#independent-queries)，
-  JavaScript 则不暴露这两个独立查询。
+  JavaScript 提供[独立位置](bindings/javascript/README.md#independent-positions)，不提供独立宫位查询。
 - 区间黄经事件（供定黄经过宫、留站、带方向的两体黄经差）：C++ 见
   [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) 与
   [黄经事件指南](docs/EPHEMERIS_EVENTS.md)；同一查询在 C ABI 为
   `celestial_longitude_events`／`celestial_longitude_stations`／`celestial_longitude_difference_events`，在 Python 为
-  [`longitude_events` 等](bindings/python/README_ZH.md#interval-longitude-events)。JavaScript 不暴露事件 API。
+  [`longitude_events` 等](bindings/python/README_ZH.md#interval-longitude-events)。
+  JavaScript 提供 [`events` 三入口](docs/EPHEMERIS_EVENTS.md#javascript)，保留相同区间契约。
 - 操作能力与模型身份（每个公开操作接受什么输入、结果背后站着哪些模型）：C ABI 为
   `celestial_capabilities`／`celestial_house_capability`／`celestial_model_identities` 及操作／模型说明文本，Python 为
   [`capabilities` 等](bindings/python/README_ZH.md#capabilities)，C++ 为
@@ -255,10 +270,11 @@ cc -std=c11 build/quickstart.c -I src/shared_lib -L build/shared_lib \
   [`positions`／`equatorial_positions`／`house_query`](bindings/python/README_ZH.md#independent-queries)，C++ 为
   [`ephemeris.hpp`](src/astro/ephemeris.hpp) 的 `position`／`equatorial_position` 与
   [`house.hpp`](src/astro/house.hpp) 的数值宫位操作。C 与 Python 结果带解析后的模型／来源身份；民用宫位查询
-  遵循共用民用策略，但不受快照的联合目标／速率窗口限制。JavaScript 不暴露这些独立查询。
+  遵循共用民用策略，但不受快照的联合目标／速率窗口限制。
+  JavaScript 的 `position.ecliptic/equatorial` 提供独立位置，不提供独立宫位查询。
 - C++ 可按公历年查询行星的合、冲、方照、大距和精确留站，返回按 JDE(TT) 排序的事件；年份归属采用
   `[Jan 1, next Jan 1)` UTC，1972 年前沿用本库的 UT1 替代。输入年域 `[1, 32766]` 不保证计算总能成功，
-  不表示 VSOP87D 在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。
+  不表示各模型在远年代仍具有现代星历精度；冥王星只提供外行星事件，完整公历年域为 `[1886, 2098]`。
 - 均时差与地方真太阳时。
 - UT1 / UTC / TT 时标转换、闰秒与 ΔT、儒略日、恒星时、黄赤交角、章动。
 - [C ABI 共享库](#c-abi)、[Python 原生 wheel](#python) 和 [JavaScript / TypeScript WASM 包](#javascript)。
@@ -277,7 +293,8 @@ JavaScript 用 `lunar.supportedYearRange()`，C++ 用各 `calendar::lunar::algoN
 
 时标要分开。JD UT1 与 JDE TT 不能互换；节气结果是 UT1，而 C 的 `celestial_apparent_solar_time()`、
 Python 的 `apparent_solar_time()` 和 JavaScript 的 `sun.apparentSolarTime()`
-接受民用 UTC。纯 `/date` 桥接不提供 UTC 到 UT1、或 Date 到 JDE 的转换。本库不使用观测 DUT1（UT1 − UTC），
+接受民用 UTC。JavaScript 包的纯 [`/date` 桥接](bindings/javascript/README_ZH.md#date-bridge)按固定偏移选取民用日期，
+不提供 UTC 到 UT1、或 Date 到 JDE 的转换。本库不使用观测 DUT1（UT1 − UTC），
 所以 UT1 结果不是 UTC 时间；本库的 UTC 模型以及两者在各年代相差多少，见[时标（英文）](docs/DESIGN.md#time-scales)。
 
 C ABI 和两个语言包中，地理经度东正，太阳与月亮的角度单位为度。太阳距离为 AU；独立的月亮坐标接口给出千米，

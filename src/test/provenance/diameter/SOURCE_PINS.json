@@ -1,0 +1,6 @@
+{
+  "calibration_sha256": "eaa29733328e791cadec3bee55792866a7e6a117e6d6239672e55f4705fe91b2",
+  "baseline_source_sha": "1caf4f97f641e889498bb3c2252b2a8118e0e115",
+  "collection": "2026-11-08/09; requests retain actual timestamps where available",
+  "scope": "50 numeric rows; original source geometry and pre-feature native ranges remain separate"
+}

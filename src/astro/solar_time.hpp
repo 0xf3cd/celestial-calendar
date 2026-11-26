@@ -92,8 +92,9 @@ namespace detail {
  *        also propagated from `calendar::add_seconds` when the shifted result falls
  *        outside the representable year range.
  *        Invalid pre-1972 datetimes are rejected by @ref astro::julian_day::utc_to_jde.
- * @note Apparent solar time follows Earth rotation (UT1); feeding UTC leaves the
- *       |UT1 − UTC| < 0.9 s steering gap in the result, and before 1972 the input
+ * @note Apparent solar time follows Earth rotation (UT1). The returned UTC-based clock differs
+ *       from UT1-based apparent solar time by UTC − UT1. Beyond the last leap-table step,
+ *       UT1 − UTC = 69.184 s − ΔT is no longer bounded by 0.9 s. Before 1972 the input
  *       degrades to UT1 (see `astro::leap_second`). E is evaluated at the input
  *       instant — the output relabels that same physical moment (the up-to-±12 h
  *       longitude offset is a label shift, not a time shift), so no fixed-point

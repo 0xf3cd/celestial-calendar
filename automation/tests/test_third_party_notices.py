@@ -74,7 +74,7 @@ def test_llvm_upstream_source_and_licence_text_remain_immutable(tmp_path, old):
 def test_canonical_notice_is_the_deterministic_assembly():
   notice = ROOT_NOTICE.read_bytes()
   assert notice == assemble_notices()
-  assert len(NOTICE_SOURCES) == 16
+  assert len(NOTICE_SOURCES) == 17
   by_title = {source.title: source for source in NOTICE_SOURCES}
   sofa = by_title["IAU SOFA issue 2023-10-11 — SOFA Software License"]
   erfa = by_title["ERFA v2.0.1 — LICENSE"]
@@ -142,7 +142,7 @@ def test_delta_t_source_markings_are_immutable_and_exact():
   hmnao_url = "https://web.archive.org/web/20230103030546id_/https://astro.ukho.gov.uk/nao/lvm/"
   record_url = (
     "https://github.com/0xf3cd/AstroTime-Analysis/blob/"
-    "ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json"
+    "5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814/DeltaT/algo5/record.json"
   )
 
   assert delta_t.count(xu_url) == 2

@@ -123,6 +123,55 @@ ABI_FIELD(CelestialDeltaT, valid, bool, 0);
 ABI_FIELD(CelestialDeltaT, model_identity_code, uint32_t, 4);
 ABI_FIELD(CelestialDeltaT, value, double, 8);
 
+ABI_RECORD(CelestialTopocentricPosition, 88, 8);
+ABI_FIELD(CelestialTopocentricPosition, valid, bool, 0);
+ABI_FIELD(CelestialTopocentricPosition, target_code, uint32_t, 4);
+ABI_FIELD(CelestialTopocentricPosition, source_code, uint32_t, 8);
+ABI_FIELD(CelestialTopocentricPosition, delta_t_identity_code, uint32_t, 12);
+ABI_FIELD(CelestialTopocentricPosition, present_fields, uint32_t, 16);
+ABI_FIELD(CelestialTopocentricPosition, jd_ut1, double, 24);
+ABI_FIELD(CelestialTopocentricPosition, jde_tt, double, 32);
+ABI_FIELD(CelestialTopocentricPosition, right_ascension_deg, double, 40);
+ABI_FIELD(CelestialTopocentricPosition, declination_deg, double, 48);
+ABI_FIELD(CelestialTopocentricPosition, distance_au, double, 56);
+ABI_FIELD(CelestialTopocentricPosition, altitude_deg, double, 64);
+ABI_FIELD(CelestialTopocentricPosition, azimuth_deg, double, 72);
+ABI_FIELD(CelestialTopocentricPosition, apparent_altitude_deg, double, 80);
+
+ABI_RECORD(CelestialAltitudeCondition, 40, 8);
+ABI_FIELD(CelestialAltitudeCondition, target_code, uint32_t, 0);
+ABI_FIELD(CelestialAltitudeCondition, sense_code, uint32_t, 4);
+ABI_FIELD(CelestialAltitudeCondition, refraction_code, uint32_t, 8);
+ABI_FIELD(CelestialAltitudeCondition, reserved, uint32_t, 12);
+ABI_FIELD(CelestialAltitudeCondition, level_deg, double, 16);
+ABI_FIELD(CelestialAltitudeCondition, temperature_c, double, 24);
+ABI_FIELD(CelestialAltitudeCondition, pressure_hpa, double, 32);
+
+ABI_RECORD(CelestialAltitudeRecord, 88, 8);
+ABI_FIELD(CelestialAltitudeRecord, tag, uint32_t, 0);
+ABI_FIELD(CelestialAltitudeRecord, condition_index, uint32_t, 4);
+ABI_FIELD(CelestialAltitudeRecord, target_code, uint32_t, 8);
+ABI_FIELD(CelestialAltitudeRecord, position_source_code, uint32_t, 12);
+ABI_FIELD(CelestialAltitudeRecord, delta_t_model_code, uint32_t, 16);
+ABI_FIELD(CelestialAltitudeRecord, refraction_code, uint32_t, 20);
+ABI_FIELD(CelestialAltitudeRecord, sense_code, uint32_t, 24);
+ABI_FIELD(CelestialAltitudeRecord, direction_code, uint32_t, 28);
+ABI_FIELD(CelestialAltitudeRecord, initially_satisfied, uint32_t, 32);
+ABI_FIELD(CelestialAltitudeRecord, reserved, uint32_t, 36);
+ABI_FIELD(CelestialAltitudeRecord, jde_tt, double, 40);
+ABI_FIELD(CelestialAltitudeRecord, end_jde_tt, double, 48);
+ABI_FIELD(CelestialAltitudeRecord, requested_level_deg, double, 56);
+ABI_FIELD(CelestialAltitudeRecord, geometric_level_deg, double, 64);
+ABI_FIELD(CelestialAltitudeRecord, temperature_c, double, 72);
+ABI_FIELD(CelestialAltitudeRecord, pressure_hpa, double, 80);
+
+ABI_CODE(CELESTIAL_ALTITUDE_SENSE_BELOW, 0);
+ABI_CODE(CELESTIAL_ALTITUDE_SENSE_ABOVE, 1);
+ABI_CODE(CELESTIAL_ALTITUDE_RECORD_CONDITION, 0);
+ABI_CODE(CELESTIAL_ALTITUDE_RECORD_EVENT, 1);
+ABI_CODE(CELESTIAL_ALTITUDE_RECORD_WINDOW, 2);
+ABI_CODE(CELESTIAL_ALTITUDE_RECORD_UPPER_TRANSIT, 3);
+
 ABI_RECORD(CelestialChartBody, 48, 8);
 ABI_FIELD(CelestialChartBody, target_code, uint32_t, 0);
 ABI_FIELD(CelestialChartBody, source_code, uint32_t, 4);
@@ -224,7 +273,65 @@ ABI_FIELD(CelestialCivilHouseCapability, delta_t_identity_code, uint32_t, 32);
 ABI_FIELD(CelestialCivilHouseCapability, has_derived_tt_cutoff, bool, 36);
 ABI_FIELD(CelestialCivilHouseCapability, derived_tt_end_jde_tt, double, 40);
 
+ABI_RECORD(CelestialApparentDiameter, 64, 8);
+ABI_FIELD(CelestialApparentDiameter, valid, bool, 0);
+ABI_FIELD(CelestialApparentDiameter, target_code, uint32_t, 4);
+ABI_FIELD(CelestialApparentDiameter, centre_code, uint32_t, 8);
+ABI_FIELD(CelestialApparentDiameter, source_code, uint32_t, 12);
+ABI_FIELD(CelestialApparentDiameter, radius_definition_code, uint32_t, 16);
+ABI_FIELD(CelestialApparentDiameter, delta_t_identity_code, uint32_t, 20);
+ABI_FIELD(CelestialApparentDiameter, jd_ut1, double, 24);
+ABI_FIELD(CelestialApparentDiameter, jde_tt, double, 32);
+ABI_FIELD(CelestialApparentDiameter, radius_km, double, 40);
+ABI_FIELD(CelestialApparentDiameter, distance_au, double, 48);
+ABI_FIELD(CelestialApparentDiameter, diameter_arcsec, double, 56);
+
+ABI_RECORD(CelestialSolarRiseSet, 56, 8);
+ABI_FIELD(CelestialSolarRiseSet, valid, bool, 0);
+ABI_FIELD(CelestialSolarRiseSet, source_code, uint32_t, 4);
+ABI_FIELD(CelestialSolarRiseSet, delta_t_identity_code, uint32_t, 8);
+ABI_FIELD(CelestialSolarRiseSet, nutation_identity_code, uint32_t, 12);
+ABI_FIELD(CelestialSolarRiseSet, present_fields, uint32_t, 16);
+ABI_FIELD(CelestialSolarRiseSet, polar_code, uint32_t, 20);
+ABI_FIELD(CelestialSolarRiseSet, rise_jde_tt, double, 24);
+ABI_FIELD(CelestialSolarRiseSet, transit_jde_tt, double, 32);
+ABI_FIELD(CelestialSolarRiseSet, set_jde_tt, double, 40);
+ABI_FIELD(CelestialSolarRiseSet, h0_deg, double, 48);
+
+ABI_RECORD(CelestialLunarRiseSet, 72, 8);
+ABI_FIELD(CelestialLunarRiseSet, valid, bool, 0);
+ABI_FIELD(CelestialLunarRiseSet, source_code, uint32_t, 4);
+ABI_FIELD(CelestialLunarRiseSet, delta_t_identity_code, uint32_t, 8);
+ABI_FIELD(CelestialLunarRiseSet, nutation_identity_code, uint32_t, 12);
+ABI_FIELD(CelestialLunarRiseSet, refraction_code, uint32_t, 16);
+ABI_FIELD(CelestialLunarRiseSet, present_fields, uint32_t, 20);
+ABI_FIELD(CelestialLunarRiseSet, polar_code, uint32_t, 24);
+ABI_FIELD(CelestialLunarRiseSet, rise_jde_tt, double, 32);
+ABI_FIELD(CelestialLunarRiseSet, transit_jde_tt, double, 40);
+ABI_FIELD(CelestialLunarRiseSet, set_jde_tt, double, 48);
+ABI_FIELD(CelestialLunarRiseSet, temperature_c, double, 56);
+ABI_FIELD(CelestialLunarRiseSet, pressure_hpa, double, 64);
+
+ABI_RECORD(CelestialPlanetRiseSet, 64, 8);
+ABI_FIELD(CelestialPlanetRiseSet, valid, bool, 0);
+ABI_FIELD(CelestialPlanetRiseSet, target_code, uint32_t, 4);
+ABI_FIELD(CelestialPlanetRiseSet, source_code, uint32_t, 8);
+ABI_FIELD(CelestialPlanetRiseSet, delta_t_identity_code, uint32_t, 12);
+ABI_FIELD(CelestialPlanetRiseSet, nutation_identity_code, uint32_t, 16);
+ABI_FIELD(CelestialPlanetRiseSet, present_fields, uint32_t, 20);
+ABI_FIELD(CelestialPlanetRiseSet, polar_code, uint32_t, 24);
+ABI_FIELD(CelestialPlanetRiseSet, rise_jde_tt, double, 32);
+ABI_FIELD(CelestialPlanetRiseSet, transit_jde_tt, double, 40);
+ABI_FIELD(CelestialPlanetRiseSet, set_jde_tt, double, 48);
+ABI_FIELD(CelestialPlanetRiseSet, h0_deg, double, 56);
+
 ABI_CODE(CELESTIAL_ERROR_NONE, 0);
+ABI_CODE(CELESTIAL_OPERATION_APPARENT_DIAMETER, 8);
+ABI_CODE(CELESTIAL_DIAMETER_CENTRE_GEOCENTRIC, 0);
+ABI_CODE(CELESTIAL_DIAMETER_CENTRE_TOPOCENTRIC, 1);
+ABI_CODE(CELESTIAL_RADIUS_DEFINITION_IAU_2015_SOLAR_NOMINAL, 1);
+ABI_CODE(CELESTIAL_RADIUS_DEFINITION_JPL_SSD_SATELLITE_MEAN, 2);
+ABI_CODE(CELESTIAL_RADIUS_DEFINITION_JPL_SSD_PLANET_EQUATORIAL, 3);
 ABI_CODE(CELESTIAL_ERROR_INVALID_INPUT, 1);
 ABI_CODE(CELESTIAL_ERROR_COMPUTATION, 2);
 ABI_CODE(CELESTIAL_ERROR_RESOURCE, 3);
@@ -256,6 +363,18 @@ ABI_CODE(CELESTIAL_TARGET_TRUE_ASCENDING, 12);
 ABI_CODE(CELESTIAL_TARGET_TRUE_DESCENDING, 13);
 ABI_CODE(CELESTIAL_PRESENT_LATITUDE, 1);
 ABI_CODE(CELESTIAL_PRESENT_DISTANCE, 2);
+ABI_CODE(CELESTIAL_PRESENT_RIGHT_ASCENSION, 4);
+ABI_CODE(CELESTIAL_PRESENT_AZIMUTH, 8);
+ABI_CODE(CELESTIAL_PRESENT_APPARENT_ALTITUDE, 16);
+ABI_CODE(CELESTIAL_PRESENT_RISE, 32);
+ABI_CODE(CELESTIAL_PRESENT_TRANSIT, 64);
+ABI_CODE(CELESTIAL_PRESENT_SET, 128);
+ABI_CODE(CELESTIAL_RISE_SET_POLAR_NONE, 0);
+ABI_CODE(CELESTIAL_RISE_SET_POLAR_DAY, 1);
+ABI_CODE(CELESTIAL_RISE_SET_POLAR_NIGHT, 2);
+ABI_CODE(CELESTIAL_REFRACTION_NONE, 0);
+ABI_CODE(CELESTIAL_REFRACTION_BENNETT, 1);
+ABI_CODE(CELESTIAL_REFRACTION_SAEMUNDSSON, 2);
 ABI_CODE(CELESTIAL_EVENT_DIRECTION_INCREASING, 0);
 ABI_CODE(CELESTIAL_EVENT_DIRECTION_DECREASING, 1);
 ABI_CODE(CELESTIAL_EVENT_DIRECTION_TANGENT, 2);
@@ -268,6 +387,8 @@ ABI_CODE(CELESTIAL_OPERATION_HOUSES, 3);
 ABI_CODE(CELESTIAL_OPERATION_EQUATORIAL, 4);
 ABI_CODE(CELESTIAL_OPERATION_CHART, 5);
 ABI_CODE(CELESTIAL_OPERATION_DELTA_T, 6);
+ABI_CODE(CELESTIAL_OPERATION_TOPOCENTRIC, 7);
+ABI_CODE(CELESTIAL_OPERATION_RISE_SET, 9);
 ABI_CODE(CELESTIAL_STATUS_SOURCE_WINDOW, 0);
 ABI_CODE(CELESTIAL_STATUS_IMPLEMENTATION_WINDOW, 1);
 ABI_CODE(CELESTIAL_STATUS_FINITE_INPUT_EVALUATION, 2);
@@ -289,6 +410,12 @@ ABI_CODE(CELESTIAL_NUTATION_MODEL_MEEUS, 1);
 ABI_CODE(CELESTIAL_NUTATION_MODEL_IAU_1980, 2);
 
 /* Function types include pointee constness, which ctypes cannot express. */
+_Static_assert(_Generic(&celestial_apparent_diameter,
+               CelestialApparentDiameter (*)(uint32_t, int32_t, uint32_t, uint32_t, double, uint32_t, uint32_t, uint32_t, double, double, double): 1,
+               default: 0) != 0, "celestial_apparent_diameter signature drifted");
+_Static_assert(_Generic(&celestial_topocentric_position,
+               CelestialTopocentricPosition (*)(uint32_t, int32_t, uint32_t, uint32_t, double, uint32_t, uint32_t, double, double, double, uint32_t, double, double): 1,
+               default: 0) != 0, "celestial_topocentric_position signature drifted");
 _Static_assert(_Generic(&celestial_last_error,
                const char * (*)(void): 1,
                default: 0) != 0, "celestial_last_error signature drifted");
@@ -403,3 +530,21 @@ _Static_assert(_Generic(&celestial_house_query,
 _Static_assert(_Generic(&celestial_house_capability,
                CelestialCivilHouseCapability (*)(uint32_t): 1,
                default: 0) != 0, "celestial_house_capability signature drifted");
+_Static_assert(_Generic(&celestial_altitude_events,
+               uint32_t (*)(const CelestialAltitudeCondition*, double, double, double, double, double, uint32_t*, CelestialAltitudeRecord*, uint32_t): 1,
+               default: 0) != 0, "celestial_altitude_events signature drifted");
+_Static_assert(_Generic(&celestial_upper_transits,
+               uint32_t (*)(uint32_t, double, double, double, double, double, uint32_t*, CelestialAltitudeRecord*, uint32_t): 1,
+               default: 0) != 0, "celestial_upper_transits signature drifted");
+_Static_assert(_Generic(&celestial_observing_windows,
+               uint32_t (*)(const CelestialAltitudeCondition*, uint32_t, double, double, double, double, double, uint32_t*, CelestialAltitudeRecord*, uint32_t): 1,
+               default: 0) != 0, "celestial_observing_windows signature drifted");
+_Static_assert(_Generic(&celestial_solar_rise_set,
+               CelestialSolarRiseSet (*)(int32_t, uint32_t, uint32_t, double, double, double): 1,
+               default: 0) != 0, "celestial_solar_rise_set signature drifted");
+_Static_assert(_Generic(&celestial_lunar_rise_set,
+               CelestialLunarRiseSet (*)(int32_t, uint32_t, uint32_t, double, double, uint32_t, double, double): 1,
+               default: 0) != 0, "celestial_lunar_rise_set signature drifted");
+_Static_assert(_Generic(&celestial_planet_rise_set,
+               CelestialPlanetRiseSet (*)(uint32_t, int32_t, uint32_t, uint32_t, double, double, double, double): 1,
+               default: 0) != 0, "celestial_planet_rise_set signature drifted");

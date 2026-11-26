@@ -117,6 +117,7 @@ The chart snapshot and interval-event APIs introduced in 0.8.0 and 0.9.0 remain 
 ## JavaScript and TypeScript
 
 Remove `config`, logging types/setters and initialization configuration. Use `await init()` without arguments.
+Use `jieqi` and `lunar`; there are no `solarTerms` or `lunarCalendar` aliases.
 The public namespaces remain `time`, `sun`, `moon`, `jieqi`, `lunar` and `chart`; no independent position,
 equatorial, house, event, capability or model-text query is added. The Sun coordinate's `radiusAu` becomes
 `distanceAu`; Moon distance remains `distanceKm`, and chart distances remain `distanceAu` (null for nodes).

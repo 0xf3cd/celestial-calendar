@@ -8,6 +8,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import copy
 import json
 import hashlib
 import os
@@ -33,16 +34,55 @@ JAVASCRIPT = ROOT / "bindings" / "javascript"
 WASM_CHECK = ROOT / "toolbox" / "wasm_check.mjs"
 
 
-def test_emsdk_source_is_pinned_even_on_cache_hits():
-  workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+def test_raw_wasm_size_budgets_agree():
+  match = re.search(r"const MAX_WASM_BYTES = ([\d_]+);", WASM_CHECK.read_text(encoding="utf-8"))
+  assert match is not None
+  assert int(match[1].replace("_", "")) == build_npm.MAX_WASM_BYTES == 1_360_000
+  assert build_npm.MAX_TARBALL_BYTES == 800_000
+
+
+@pytest.mark.parametrize("offset", [-1, 0, 1])
+def test_npm_raw_wasm_budget_boundary(tmp_path, monkeypatch, offset):
+  wasm = tmp_path / "input.wasm"
+  wasm.write_bytes(b"\0" * (build_npm.MAX_WASM_BYTES + offset))
+  monkeypatch.setattr(build_npm, "PACKAGE_FILES", {wasm: "celestial-jieqi.wasm"})
+  monkeypatch.setattr(build_npm.package_docs, "source_sha", lambda _: "1" * 40)
+  monkeypatch.setattr(build_npm.shutil, "which", lambda _: "npm")
+
+  class PackReached(Exception):
+    pass
+
+  def pack(*args, **kwargs):
+    assert args[0][1] == "pack"
+    raise PackReached
+
+  monkeypatch.setattr(build_npm.subprocess, "run", pack)
+  if offset > 0:
+    with pytest.raises(RuntimeError, match="raw WASM size .* exceeds 1360000 bytes"):
+      build_npm.pack_package(tmp_path / "output", "1.1.1", build_npm.PACKAGE_NAME)
+  else:
+    with pytest.raises(PackReached):
+      build_npm.pack_package(tmp_path / "output", "1.1.1", build_npm.PACKAGE_NAME)
+
+
+def assert_emsdk_source_contract(workflow):
   env = workflow["env"]
   steps = workflow["jobs"]["wasm"]["steps"]
   cache_step = next(step for step in steps if step.get("name") == "Cache emsdk")
+  cache_steps = [
+    step
+    for job in workflow["jobs"].values()
+    for step in job["steps"]
+    if str(step.get("uses", "")).startswith("actions/cache")
+  ]
+  assert cache_steps == [cache_step]
+  assert cache_step["with"]["path"] == "emsdk"
   install_step = next(step for step in steps if step.get("name") == "Install emsdk (cache miss only)")
   identity_step = next(step for step in steps if step.get("name") == "Verify emsdk source identity")
 
   assert env["EMSDK_VERSION"] == "6.0.6"
   assert env["EMSDK_COMMIT"] == "9981799f744be74ac67b1c1813ff172f63be0630"
+  assert cache_step["if"] == "github.event_name == 'pull_request'"
   assert cache_step["with"]["key"] == "emsdk-${{ env.EMSDK_VERSION }}-${{ env.EMSDK_COMMIT }}-${{ runner.os }}"
   assert install_step["if"] == "steps.emsdk-cache.outputs.cache-hit != 'true'"
   assert 'git -C emsdk fetch --depth 1 origin "$EMSDK_COMMIT"' in install_step["run"]
@@ -60,6 +100,34 @@ def test_emsdk_source_is_pinned_even_on_cache_hits():
     "exit 1",
     "fi",
   ]
+
+
+def test_emsdk_source_is_pinned_even_on_cache_hits():
+  assert_emsdk_source_contract(yaml.safe_load(WORKFLOW.read_text(encoding="utf-8")))
+
+
+@pytest.mark.parametrize("condition", [None, "true", "github.event_name == 'workflow_dispatch'"])
+def test_dispatched_producers_cannot_restore_or_save_an_emsdk_cache(condition):
+  document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  assert_emsdk_source_contract(document)
+  mutated = copy.deepcopy(document)
+  cache = next(step for step in mutated["jobs"]["wasm"]["steps"] if step.get("name") == "Cache emsdk")
+  if condition is None:
+    del cache["if"]
+  else:
+    cache["if"] = condition
+  with pytest.raises((AssertionError, KeyError)):
+    assert_emsdk_source_contract(mutated)
+
+
+@pytest.mark.parametrize("action", ["actions/cache@v6", "actions/cache/restore@v6", "actions/cache/save@v6"])
+@pytest.mark.parametrize("name", ["Cache emsdk", "Another SDK cache"])
+def test_additional_sdk_cache_steps_cannot_bypass_the_dispatch_boundary(action, name):
+  document = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+  assert_emsdk_source_contract(document)
+  document["jobs"]["wasm"]["steps"].append({"name": name, "uses": action, "with": {"path": "emsdk", "key": "sdk"}})
+  with pytest.raises(AssertionError):
+    assert_emsdk_source_contract(document)
 
 
 def test_wasm_artifact_inventory_matches_collector():
@@ -111,6 +179,13 @@ def test_javascript_test_entries_match_their_execution_owners():
   }
   assert {path.relative_to(test_root).as_posix() for path in test_root.glob("support/*.mjs")} == {
     "support/chart_api.mjs",
+    "support/observer_api.mjs",
+    "support/diameter_api.mjs",
+    "support/rise_set_api.mjs",
+    "support/altitude_api.mjs",
+    "support/altitude_fake.mjs",
+    "support/position_events_api.mjs",
+    "support/position_events_fake.mjs",
     "support/chart_replay.mjs",
     "support/doc_examples.mjs",
     "support/package_consumer.mjs",
@@ -185,6 +260,27 @@ def test_javascript_test_entries_match_their_execution_owners():
   assert registry_entries == {path for path in entries if path.startswith("registry/")}
   assert type_entries == {path for path in entries if path.startswith("types/")}
   assert package["scripts"]["test:types"] == "tsc --noEmit -p test/types/tsconfig.json"
+  assert 'import { testAltitudeFakeNative } from "./altitude_fake.mjs";' in (
+    test_root / "support/fake_native.mjs"
+  ).read_text(encoding="utf-8")
+  assert "runAltitudeAcceptance(celestial)" in (test_root / "support/package_consumer.mjs").read_text(encoding="utf-8")
+  assert "runAltitudeAcceptance(alias)" in (test_root / "browser/fixture/src/pages/index.astro").read_text(
+    encoding="utf-8"
+  )
+  assert 'import { testPositionEventsFakeNative } from "./position_events_fake.mjs";' in (
+    test_root / "support/fake_native.mjs"
+  ).read_text(encoding="utf-8")
+  for file, call in [
+    ("support/fake_native.mjs", "testPositionEventsFakeNative(fixture, M, control, reset, called, LAYOUTS);"),
+    ("node/public_api_test.mjs", "const positionEvents = runPositionEventsAcceptance(celestial,"),
+    ("support/package_consumer.mjs", "runPositionEventsAcceptance(celestial,"),
+    (
+      "browser/fixture/src/pages/index.astro",
+      "positionEvents: runPositionEventsAcceptance(alias, positionEventsGolden),",
+    ),
+    ("browser/browser_test.mjs", "assert.equal(result.positionEvents.cases, 66);"),
+  ]:
+    assert call in (test_root / file).read_text(encoding="utf-8"), file
   assert "node toolbox/wasm_check.mjs" in workflow_commands
   assert "npm run test:types --prefix bindings/javascript" in workflow_commands
 
@@ -203,6 +299,35 @@ def test_javascript_test_inventory_rejects_unowned_modules(tmp_path, monkeypatch
     test_javascript_test_entries_match_their_execution_owners()
 
   extra.unlink()
+  test_javascript_test_entries_match_their_execution_owners()
+
+
+@pytest.mark.parametrize(
+  ("file", "call"),
+  [
+    ("support/fake_native.mjs", "testPositionEventsFakeNative(fixture, M, control, reset, called, LAYOUTS);"),
+    ("node/public_api_test.mjs", "const positionEvents = runPositionEventsAcceptance(celestial,"),
+    ("support/package_consumer.mjs", "runPositionEventsAcceptance(celestial,"),
+    (
+      "browser/fixture/src/pages/index.astro",
+      "positionEvents: runPositionEventsAcceptance(alias, positionEventsGolden),",
+    ),
+    ("browser/browser_test.mjs", "assert.equal(result.positionEvents.cases, 66);"),
+  ],
+)
+def test_position_event_checks_require_execution(tmp_path, monkeypatch, file, call):
+  isolated = tmp_path / "javascript"
+  shutil.copytree(JAVASCRIPT / "test", isolated / "test")
+  shutil.copyfile(JAVASCRIPT / "package.json", isolated / "package.json")
+  monkeypatch.setattr(sys.modules[__name__], "JAVASCRIPT", isolated)
+  test_javascript_test_entries_match_their_execution_owners()
+  target = isolated / "test" / file
+  original = target.read_text(encoding="utf-8")
+  assert call in original
+  target.write_text(original.replace(call, ""), encoding="utf-8")
+  with pytest.raises(AssertionError):
+    test_javascript_test_entries_match_their_execution_owners()
+  target.write_text(original, encoding="utf-8")
   test_javascript_test_entries_match_their_execution_owners()
 
 

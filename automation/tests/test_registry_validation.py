@@ -21,7 +21,7 @@ from toolbox import registry_validation, registry_verifier
 from toolbox.build_python_aliases import PYPI_PACKAGES
 from toolbox.build_npm import ALIAS_NAME
 from toolbox.release_validation import npm_candidate_tarballs, python_wheel_groups, stage_release_candidate
-from automation.tests.test_release_validation import VERSION as CURRENT_VERSION, write_candidate_inputs
+from automation.tests.test_release_validation import COMMIT, VERSION as CURRENT_VERSION, write_candidate_inputs
 from toolbox.registry_validation import (
   NPM_PACKAGE,
   PYPI_PACKAGE,
@@ -493,7 +493,7 @@ def test_registry_cli_verify_uses_no_github_step_files(monkeypatch, tmp_path):
 def pair_candidate(tmp_path):
   assets, sources, notes = write_candidate_inputs(tmp_path)
   candidate = tmp_path / "candidate"
-  stage_release_candidate(assets, sources, candidate, f"v{CURRENT_VERSION}", "tagged-sha", notes)
+  stage_release_candidate(assets, sources, candidate, f"v{CURRENT_VERSION}", COMMIT, notes)
   return candidate
 
 
@@ -516,8 +516,7 @@ def test_each_npm_identity_is_classified_from_fresh_metadata_and_bytes(pair_cand
     }
   )
   assert (
-    registry_validation.classify_npm_candidate(pair_candidate, CURRENT_VERSION, "tagged-sha", package_name, session)
-    == state
+    registry_validation.classify_npm_candidate(pair_candidate, CURRENT_VERSION, COMMIT, package_name, session) == state
   )
   assert [url for url, _ in session.calls] == [version_url, file_url if state == "exact" else package_url]
 
@@ -557,7 +556,7 @@ def test_npm_classifier_never_treats_uncertainty_as_absence_or_exact(pair_candid
     routes[url] = Response(payload={"name": "wrong", "version": CURRENT_VERSION})
   session = Session(routes)
   with pytest.raises((RuntimeError, requests.HTTPError)):
-    registry_validation.classify_npm_candidate(pair_candidate, CURRENT_VERSION, "tagged-sha", package_name, session)
+    registry_validation.classify_npm_candidate(pair_candidate, CURRENT_VERSION, COMMIT, package_name, session)
   assert [called for called, _ in session.calls].count(url) == 1
 
 
@@ -570,7 +569,7 @@ def test_npm_retry_reclassifies_both_and_retains_primary_success(pair_candidate)
   session = Session(routes)
 
   def classify(name):
-    return registry_validation.classify_npm_candidate(pair_candidate, CURRENT_VERSION, "tagged-sha", name, session)
+    return registry_validation.classify_npm_candidate(pair_candidate, CURRENT_VERSION, COMMIT, name, session)
 
   assert [classify(name) for name in tarballs] == ["absent", "absent"]
   primary_url = f"https://registry.npmjs.org/{tarballs[NPM_PACKAGE].name}"
@@ -615,7 +614,7 @@ def test_pair_polling_retains_individual_success_and_names_partial_completion(pa
   monkeypatch.setattr(registry_validation, "npm_version_is_exact", npm)
   sleeps = []
   with pytest.raises(RuntimeError, match=r"after 3 attempts: npm-alias \(version is absent\)$"):
-    wait_for_candidate_registries(pair_candidate, CURRENT_VERSION, "tagged-sha", attempts=3, sleep=sleeps.append)
+    wait_for_candidate_registries(pair_candidate, CURRENT_VERSION, COMMIT, attempts=3, sleep=sleeps.append)
   assert calls == {"PyPI": 3, NPM_PACKAGE: 1, ALIAS_NAME: 3}
   assert sleeps == [10, 10]
 
@@ -653,12 +652,12 @@ def test_pair_polling_retries_only_transient_states(pair_candidate, monkeypatch,
   if failure in ("429", "invalid-json"):
     with pytest.raises(RuntimeError, match=registry_validation.NPM_LABELS[package_name]):
       wait_for_candidate_registries(
-        pair_candidate, CURRENT_VERSION, "tagged-sha", session=session, attempts=2, sleep=sleeps.append
+        pair_candidate, CURRENT_VERSION, COMMIT, session=session, attempts=2, sleep=sleeps.append
       )
     assert sleeps == []
   else:
     wait_for_candidate_registries(
-      pair_candidate, CURRENT_VERSION, "tagged-sha", session=session, attempts=2, sleep=sleeps.append
+      pair_candidate, CURRENT_VERSION, COMMIT, session=session, attempts=2, sleep=sleeps.append
     )
     assert sleeps == [10]
     other = ALIAS_NAME if package_name == NPM_PACKAGE else NPM_PACKAGE
@@ -686,9 +685,7 @@ def test_pypi_preparation_copies_only_proven_missing_frozen_bytes(pair_candidate
   session = pypi_candidate_session(pair_candidate, {name: existing})
   before = {p.relative_to(pair_candidate): p.read_bytes() for p in pair_candidate.rglob("*") if p.is_file()}
   upload = tmp_path / "upload"
-  state = registry_validation.prepare_pypi_candidate(
-    pair_candidate, CURRENT_VERSION, "tagged-sha", name, upload, session
-  )
+  state = registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, COMMIT, name, upload, session)
   assert state == ("absent" if not existing else "exact" if existing == len(groups[name]) else "partial")
   missing = groups[name][existing:]
   assert {p.name: p.read_bytes() for p in upload.iterdir()} == {p.name: p.read_bytes() for p in missing}
@@ -723,7 +720,7 @@ def test_pypi_uncertainty_never_authorizes_upload(pair_candidate, tmp_path, name
     session.routes[url] = Response(payload={"info": {"name": "wrong", "version": CURRENT_VERSION}, "urls": []})
   upload = tmp_path / "upload"
   with pytest.raises((RuntimeError, requests.HTTPError)):
-    registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, "tagged-sha", name, upload, session)
+    registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, COMMIT, name, upload, session)
   assert not upload.exists()
   assert sum(called == url for called, _ in session.calls) == 1
 
@@ -734,7 +731,7 @@ def test_partial_primary_must_verify_its_existing_bytes_before_missing_set(pair_
   session.routes[metadata["urls"][0]["url"]] = Response(content=b"wrong")
   with pytest.raises(RuntimeError, match="file bytes"):
     registry_validation.prepare_pypi_candidate(
-      pair_candidate, CURRENT_VERSION, "tagged-sha", PYPI_PACKAGE, tmp_path / "upload", session
+      pair_candidate, CURRENT_VERSION, COMMIT, PYPI_PACKAGE, tmp_path / "upload", session
     )
   assert not (tmp_path / "upload").exists()
 
@@ -771,7 +768,7 @@ def test_alias_preparation_requires_an_exact_primary(monkeypatch, pair_candidate
   monkeypatch.setattr(registry_validation, "wait_for_pypi", bounded_wait)
   upload = tmp_path / "upload"
   with pytest.raises(RuntimeError, match="did not become exact after 2 attempts"):
-    registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, "tagged-sha", name, upload, session)
+    registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, COMMIT, name, upload, session)
   assert not upload.exists()
   assert sum(url == primary_url for url, _ in session.calls) == 2
   assert not any(url == pypi_metadata_url(CURRENT_VERSION, name) for url, _ in session.calls)
@@ -783,7 +780,7 @@ def test_pypi_preparation_rejects_yanked_files(pair_candidate, tmp_path, name):
   session.routes[pypi_metadata_url(CURRENT_VERSION, name)].payload["urls"][0]["yanked"] = True
   upload = tmp_path / "upload"
   with pytest.raises(RuntimeError, match="Invalid PyPI file identity"):
-    registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, "tagged-sha", name, upload, session)
+    registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, COMMIT, name, upload, session)
   assert not upload.exists()
 
 
@@ -799,9 +796,7 @@ def test_pypi_upload_directory_cannot_overwrite_or_modify_the_candidate(pair_can
     upload = pair_candidate / "pypi" / "nested"
   session = Session({})
   with pytest.raises(FileExistsError, match="Refusing to overwrite or modify"):
-    registry_validation.prepare_pypi_candidate(
-      pair_candidate, CURRENT_VERSION, "tagged-sha", PYPI_PACKAGE, upload, session
-    )
+    registry_validation.prepare_pypi_candidate(pair_candidate, CURRENT_VERSION, COMMIT, PYPI_PACKAGE, upload, session)
   assert session.calls == []
   assert {p.relative_to(pair_candidate): p.read_bytes() for p in pair_candidate.rglob("*") if p.is_file()} == before
 
@@ -837,6 +832,6 @@ def test_pypi_registry_labels_do_not_collide_with_the_npm_homonym(pair_candidate
   monkeypatch.setattr(registry_validation, "pypi_version_is_exact", lambda *_args: False)
   monkeypatch.setattr(registry_validation, "npm_version_is_exact", lambda *_args: True)
   with pytest.raises(RuntimeError) as error:
-    wait_for_candidate_registries(pair_candidate, CURRENT_VERSION, "tagged-sha", attempts=1)
+    wait_for_candidate_registries(pair_candidate, CURRENT_VERSION, COMMIT, attempts=1)
   assert all(f"PyPI {name} (version is absent)" in str(error.value) for name in PYPI_PACKAGES)
   assert "npm-alias" not in str(error.value)

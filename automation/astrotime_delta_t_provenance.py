@@ -35,20 +35,23 @@ ASTROTIME_RECORD_URL: Final[str] = (
   f"https://github.com/0xf3cd/AstroTime-Analysis/blob/{ASTROTIME_RECORD_COMMIT}/DeltaT/algo4/record.json"
 )
 ALGO4_FUNCTION_SHA256: Final[str] = "3954c8f2dd6179e8be08515ee3dfb184d48c459c2ed7e30238e47b8a25d5ddbb"
-ASTROTIME_ALGO5_RECORD_COMMIT: Final[str] = "ed1cdc2fd6c5122b391a82289aa2cc060340552d"
-ASTROTIME_ALGO5_GENERATION_COMMIT: Final[str] = "a1e95811b47c084f44b4b4bb7444560dd5b863bc"
-ASTROTIME_ALGO5_DATA_COMMIT: Final[str] = "ddf3be1972e405ed02233837394cd3377226b65c"
+ASTROTIME_ALGO5_RECORD_COMMIT: Final[str] = "5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814"
+ASTROTIME_ALGO5_GENERATION_COMMIT: Final[str] = "6eac175124da704f08e0bfb1520cca4c3049825d"
+ASTROTIME_ALGO5_DATA_COMMIT: Final[str] = "e7823a0d323088c56e803f80540e53df589d732e"
+ASTROTIME_ALGO5_PREVIOUS_ROOT_RELATIVE: Final[Path] = Path(
+  "src/test/provenance/astrotime-analysis/ed1cdc2fd6c5122b391a82289aa2cc060340552d"
+)
 ASTROTIME_ALGO5_ROOT_RELATIVE: Final[Path] = (
   Path("src") / "test" / "provenance" / "astrotime-analysis" / ASTROTIME_ALGO5_RECORD_COMMIT
 )
 ASTROTIME_ALGO5_ROOT: Final[Path] = REPO_ROOT / ASTROTIME_ALGO5_ROOT_RELATIVE
-ASTROTIME_ALGO5_GRANT_SHA256: Final[str] = "f87240e7cbc4c0a21457ca0cf026dd848e619e1257737dab9307e3d1e73443f7"
-ASTROTIME_ALGO5_RECORD_SHA256: Final[str] = "77fa6748fc19954073ee3c013731ac0200f4730efcb483f9f08fe8c921666455"
-ASTROTIME_ALGO5_GRANT_NORMALIZED_SHA256: Final[str] = "63fbad6abcbf10a91f0561e675e1ae040401d54739d89c6d804598dd3b0cf447"
+ASTROTIME_ALGO5_GRANT_SHA256: Final[str] = "addf8b1317c961223027d0365a5aeb0c4a6ba1b585141592a64671b00480e436"
+ASTROTIME_ALGO5_RECORD_SHA256: Final[str] = "e8f1982d816b35bf853b30e94539328ff44e4e9c49e8afded8cad08e3e4c2895"
+ASTROTIME_ALGO5_GRANT_NORMALIZED_SHA256: Final[str] = "e1a20850fceda35553ae00c0c53b7d358d52f563bdc03fcb7c0dc106f41f0e3e"
 ASTROTIME_ALGO5_RECORD_URL: Final[str] = (
   f"https://github.com/0xf3cd/AstroTime-Analysis/blob/{ASTROTIME_ALGO5_RECORD_COMMIT}/DeltaT/algo5/record.json"
 )
-ALGO5_FUNCTION_SHA256: Final[str] = "44ef6c75688b7036892e8cd6ba528822ae97664ec67732db5f208fe467960d4b"
+ALGO5_FUNCTION_SHA256: Final[str] = "0a189f75ee0cb2d66be18e14b4a4dc950509d29fb163e9b72a9843e9e14d2208"
 DEFAULT_FUNCTION_SHA256: Final[str] = "883c5e0652ec79f72d15bf125af88c7eceedb510d95f6936478e0c4fd37d1be8"
 
 
@@ -65,6 +68,17 @@ def _verify_algo5(
   function_sha256: str,
   default_function_sha256: str,
 ) -> None:
+  previous_root = repo_root / ASTROTIME_ALGO5_PREVIOUS_ROOT_RELATIVE
+  _require(
+    sorted(path.name for path in previous_root.iterdir()) == ["GRANT.md", "record.json"],
+    "AstroTime previous algo5 retained record inventory differs",
+  )
+  for filename, digest in {
+    "GRANT.md": "f87240e7cbc4c0a21457ca0cf026dd848e619e1257737dab9307e3d1e73443f7",
+    "record.json": "77fa6748fc19954073ee3c013731ac0200f4730efcb483f9f08fe8c921666455",
+  }.items():
+    _read_pinned(previous_root / filename, digest, f"AstroTime previous algo5 {filename}")
+
   _require(algo5_root.name == ASTROTIME_ALGO5_RECORD_COMMIT, "AstroTime algo5 record commit path differs")
   inventory = sorted(path.name for path in algo5_root.iterdir())
   _require(inventory == ["GRANT.md", "record.json"], "AstroTime algo5 retained record inventory differs")
@@ -103,8 +117,8 @@ def _verify_algo5(
   for required in (
     "as project-authored material",
     "the eight observed-segment coefficients and the basis `u = year - 1990`",
-    "`LAST_OBSERVATION_YEAR = 2026.4135844748857`",
-    "`C = -150.64706473230285`",
+    "`LAST_OBSERVATION_YEAR = 2026.7479452054795`",
+    "`C = -150.635787765945`",
     "GPL-3.0-or-later",
     "planned MIT licence",
     "no separate attribution, notice, or other condition",
@@ -141,7 +155,7 @@ def _verify_algo5(
     historical["repository"] == "https://github.com/0xf3cd/AstroTime-Analysis"
     and historical["commit"] == ASTROTIME_ALGO5_GENERATION_COMMIT
     and historical["parent_data_commit"] == ASTROTIME_ALGO5_DATA_COMMIT
-    and historical["commit_date"] == "2026-07-26T21:50:31-07:00",
+    and historical["commit_date"] == "2026-11-06T13:01:28-08:00",
     "AstroTime algo5 historical generation identity differs",
   )
   _require(
@@ -167,21 +181,21 @@ def _verify_algo5(
     == {
       "iers_bulletin_a": {
         "source": "https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html",
-        "raw_tree_sha1": "23574b254efe669d792dc2881dd133ea931cfaab",
-        "raw_file_count": 1124,
+        "raw_tree_sha1": "8b349ffa24a59afef3cced1123ff92f08c5bfa76",
+        "raw_file_count": 1139,
         "header_csv": {
           "path": "DeltaT/cvs/bulletin_a_header.csv",
-          "git_blob_sha1": "0a8a7301dd0ad7a1b4b09ab58d6a4d11fba27a66",
-          "sha256": "5ab36a79166111ef47210f558e44eccd32bbe0d1160365a8ae1105e5415c44d5",
-          "data_rows": 1124,
+          "git_blob_sha1": "60ff52e592bde42692486c14b1e5275c2babe415",
+          "sha256": "072a5ff50442912bff7599cff0f5635dd4d362c332e9ee8316fbeff6bc892ed7",
+          "data_rows": 1139,
         },
         "final_values_csv": {
           "path": "DeltaT/cvs/bulletin_a_final_values.csv",
-          "git_blob_sha1": "37f7c65d757bc1bdeb56e929400755f8af6c15ef",
-          "sha256": "bee082ca1a5d302603af7d07146c25dc07d7b700e4b8f502493672db3b3798d6",
-          "data_rows": 7848,
-          "mjd_range": [53315, 61192],
-          "date_range": ["2004-11-06", "2026-06-01"],
+          "git_blob_sha1": "8cfb81c3029f0058fd0aeb5dcd1bb9b6b57078b3",
+          "sha256": "b9a385af4593e88066e7cfb7afb2323712afec11cbf7d3f36a4662ddb5e44964",
+          "data_rows": 7970,
+          "mjd_range": [53315, 61314],
+          "date_range": ["2004-11-06", "2026-10-01"],
         },
       }
     },
@@ -193,7 +207,7 @@ def _verify_algo5(
       "Parse TAI-UTC effective dates from Bulletin A headers",
       "Discard (33.0, 1999-01-01) as the explicit historical project decision in algo5.py",
       "Parse final UT1-UTC rows and convert MJD from the 1858-11-17 epoch",
-      "Compute decimal year with naive datetime.timestamp()",
+      "Compute decimal year with naive datetime.timestamp() under TZ=UTC",
       "Compute Delta T as TAI-UTC minus UT1-UTC plus 32.184 seconds",
       "Remove observations beyond two standard deviations of a degree-3 polynomial residual",
       "Fit the eight-term observed segment by constrained least squares at 2005.0 and the last observation",
@@ -204,8 +218,8 @@ def _verify_algo5(
   _require(
     historical["observed_input"]
     == {
-      "deduplicated_rows": 7848,
-      "decimal_year_range": ["2004.8469945355191", "2026.4135844748857"],
+      "deduplicated_rows": 7970,
+      "decimal_year_range": ["2004.8469945355191", "2026.7479452054795"],
       "left_anchor": {
         "year": "2005.0",
         "window": "absolute decimal-year distance at most 30 / 365.25",
@@ -213,10 +227,10 @@ def _verify_algo5(
         "median_delta_t_seconds": "64.697075",
       },
       "right_anchor": {
-        "year": "2026.4135844748857",
+        "year": "2026.7479452054795",
         "window": "last 60 observations",
         "observations": 60,
-        "median_delta_t_seconds": "69.15163",
+        "median_delta_t_seconds": "69.181895",
       },
     },
     "AstroTime algo5 observed input differs",
@@ -224,15 +238,59 @@ def _verify_algo5(
   _require(
     historical["environment"]
     == {
-      "recorded": {},
-      "unrecovered": [
-        "Python version",
-        "NumPy version",
-        "BLAS implementation",
-        "operating system and architecture",
-        "timezone",
-        "script invocation",
-      ],
+      "recorded": {
+        "python": "3.14.9",
+        "implementation": "CPython",
+        "numpy": "2.4.2",
+        "system": "Linux",
+        "architecture": "x86_64",
+        "timezone": ["UTC", "UTC"],
+        "blas": {
+          "name": "scipy-openblas",
+          "version": "0.3.31.dev",
+          "openblas configuration": (
+            "OpenBLAS 0.3.31.dev  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64"
+          ),
+        },
+        "thread_environment": {"OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"},
+        "input_commit": ASTROTIME_ALGO5_DATA_COMMIT,
+        "invocation": (
+          "TZ=UTC LC_ALL=C PYTHONDONTWRITEBYTECODE=1 OPENBLAS_NUM_THREADS=1 "
+          "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python DeltaT/algo5.py"
+        ),
+        "locale": "C",
+        "repeat_stdout_byte_identical": True,
+        "generation_started_utc": "2026-11-06T20:54:59.652512+00:00",
+        "generation_finished_utc": "2026-11-06T20:55:00.102563+00:00",
+        "analyzer_invocation": "TZ=UTC LC_ALL=C PYTHONDONTWRITEBYTECODE=1 python DeltaT/analyzer.py",
+        "artifacts": {
+          "generation.txt": {
+            "path": "DeltaT/algo5/generation.txt",
+            "sha256": "96da6670f95d80adad48d0d89df93cbecbaaa9392b9f9611c6e05a7c7648fb80",
+          },
+          "environment.json": {
+            "path": "DeltaT/algo5/environment.json",
+            "sha256": "06c1d2b2c12c36d7587a085f057a2ae07195a18e36a5c37e6e1e1f0100f863ec",
+          },
+          "requirements.txt": {
+            "path": "DeltaT/algo5/requirements.txt",
+            "sha256": "db4c2565897dbba2a481dfc9bbab87ad9d214d1341f296e6de2abce970742be0",
+          },
+          "comparison.json": {
+            "path": "DeltaT/algo5/comparison.json",
+            "sha256": "ca0adcb5a7182b901e24bda82d33df5dfef386c8302a5ebca017fe702df455ff",
+          },
+          "downloads.json": {
+            "path": "DeltaT/algo5/downloads.json",
+            "sha256": "80d0c6e84dd77305b289ebfa8a69382fd1860dc1986fe44739e18933662a9b71",
+          },
+          "admitted-series.json": {
+            "path": "DeltaT/algo5/admitted-series.json",
+            "sha256": "1ec956c35c7b9e4b6532dbf9604e9694bb07c1089315a712405b34ef7e2f7165",
+          },
+        },
+      },
+      "unrecovered": [],
     },
     "AstroTime algo5 environment boundary differs",
   )
@@ -252,29 +310,29 @@ def _verify_algo5(
 
   expected_outputs = {
     "observed_segment": {
-      "consumer_interval": "2005.0 <= year <= 2026.4135844748857",
+      "consumer_interval": "2005.0 <= year <= 2026.7479452054795",
       "fit_basis": "u = year - 1990",
       "consumer_basis": "u = year - 1990",
       "model": "a + b / u + c * u + d * u^2 + e * u^3 + f * u^4 + g * u^5 + h * u^6",
       "coefficients": [
-        "-9963.526300002133",
-        "33695.46874239917",
-        "1251.8488008787037",
-        "-84.95374332215921",
-        "3.383624734734596",
-        "-0.079054553776811",
-        "0.0010034123781420099",
-        "-5.341580725291782e-06",
+        "-10202.434877796037",
+        "34469.54162338588",
+        "1282.9448070843766",
+        "-87.1663776984486",
+        "3.4765919929384914",
+        "-0.08136170238837674",
+        "0.0010347362811410302",
+        "-5.521142968454219e-06",
       ],
     },
-    "last_observation_year": "2026.4135844748857",
-    "fitted_integration_constant": "-150.64706473230285",
+    "last_observation_year": "2026.7479452054795",
+    "fitted_integration_constant": "-150.635787765945",
   }
   _require(record["outputs"] == expected_outputs, "AstroTime algo5 generated outputs differ")
 
   expected_v25 = {
     "source_commit": ASTROTIME_ALGO5_DATA_COMMIT,
-    "source_tree": "23574b254efe669d792dc2881dd133ea931cfaab",
+    "source_tree": "8b349ffa24a59afef3cced1123ff92f08c5bfa76",
     "repository_path": "src/test/astro/delta_t_test_helper.hpp",
     "procedure": [
       (
@@ -340,10 +398,11 @@ def _verify_algo5(
     record["reproducibility"]
     == {
       "historical_input_output_identity": "pinned",
-      "bit_for_bit_regeneration_environment": "unrecovered",
+      "bit_for_bit_regeneration_environment": "recorded",
       "claim": (
-        "This record identifies the historical inputs, procedure and stored outputs. It does not claim bit-for-bit "
-        "regeneration of the unrecovered 2026 numerical environment."
+        "This record pins the inputs, procedure and stored outputs of the 2026-11 refresh, with its numerical "
+        "environment and commands recorded. It does not reconstruct the earlier generation environment or guarantee "
+        "identical floating-point outputs on different numerical backends."
       ),
     },
     "AstroTime algo5 reproducibility boundary differs",

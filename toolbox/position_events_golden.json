@@ -1,0 +1,1608 @@
+{
+  "schema": "celestial-calendar/position-events-golden@1",
+  "source_commit": "814bd1d30543d6d953b01d58696773c18d4f284f",
+  "library_sha256": "896b101d8a186b58a4bd60ce364a4780c7322e82673a053e25779450f0668600",
+  "cases": [
+    {
+      "name": "position.ecliptic/all",
+      "operation": "position.ecliptic",
+      "targets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 14,
+      "records": [
+        {
+          "target_code": 0,
+          "present_fields": 3,
+          "longitude_deg": "0x407185e3fd190b2b",
+          "latitude_deg": "0x3f2f70b25c6cf86b",
+          "distance_au": "0x3fef776b9d61d574",
+          "source_code": 1
+        },
+        {
+          "target_code": 1,
+          "present_fields": 3,
+          "longitude_deg": "0x406bea13328226e8",
+          "latitude_deg": "0x4014af640b09e27e",
+          "distance_au": "0x3f6609b5ffed3ae0",
+          "source_code": 2
+        },
+        {
+          "target_code": 2,
+          "present_fields": 3,
+          "longitude_deg": "0x4070fe35c8f03676",
+          "latitude_deg": "0xbfefd4f41484b956",
+          "distance_au": "0x3ff6a5bfcc1025b0",
+          "source_code": 3
+        },
+        {
+          "target_code": 3,
+          "present_fields": 3,
+          "longitude_deg": "0x406e32139d7b87b2",
+          "latitude_deg": "0x400087f04be41e68",
+          "distance_au": "0x3ff233814b457386",
+          "source_code": 3
+        },
+        {
+          "target_code": 4,
+          "present_fields": 3,
+          "longitude_deg": "0x40747f6754713885",
+          "latitude_deg": "0xbff1159fab91884c",
+          "distance_au": "0x3ffd984e20cb20c4",
+          "source_code": 3
+        },
+        {
+          "target_code": 5,
+          "present_fields": 3,
+          "longitude_deg": "0x403940cb2341e0dc",
+          "latitude_deg": "0xbff431d76cd1072f",
+          "distance_au": "0x40127c1233f6ccdc",
+          "source_code": 3
+        },
+        {
+          "target_code": 6,
+          "present_fields": 3,
+          "longitude_deg": "0x404432a5537e5efb",
+          "latitude_deg": "0xc0038f13bb69c7f5",
+          "distance_au": "0x40214e3a0849ac33",
+          "source_code": 3
+        },
+        {
+          "target_code": 7,
+          "present_fields": 3,
+          "longitude_deg": "0x4073acf283ea4e22",
+          "latitude_deg": "0xbfe510df7df8dd73",
+          "distance_au": "0x4034ba28ea41f621",
+          "source_code": 3
+        },
+        {
+          "target_code": 8,
+          "present_fields": 3,
+          "longitude_deg": "0x4072f3172c9d17c1",
+          "latitude_deg": "0x3fce14da30cbeca8",
+          "distance_au": "0x403f06421a9cd941",
+          "source_code": 3
+        },
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "longitude_deg": "0x406f6e8d740034af",
+          "latitude_deg": "0x4025b5e1e35fb7a7",
+          "distance_au": "0x403f10795ced4327",
+          "source_code": 4
+        },
+        {
+          "target_code": 10,
+          "present_fields": 1,
+          "longitude_deg": "0x405f429a8183e877",
+          "latitude_deg": "0x0000000000000000",
+          "distance_au": null,
+          "source_code": 5
+        },
+        {
+          "target_code": 11,
+          "present_fields": 1,
+          "longitude_deg": "0x407310a6a060fa1e",
+          "latitude_deg": "0x0000000000000000",
+          "distance_au": null,
+          "source_code": 5
+        },
+        {
+          "target_code": 12,
+          "present_fields": 1,
+          "longitude_deg": "0x405efb07065af318",
+          "latitude_deg": "0x0000000000000000",
+          "distance_au": null,
+          "source_code": 6
+        },
+        {
+          "target_code": 13,
+          "present_fields": 1,
+          "longitude_deg": "0x4072fec1c196bcc6",
+          "latitude_deg": "0x0000000000000000",
+          "distance_au": null,
+          "source_code": 6
+        }
+      ],
+      "written": 14
+    },
+    {
+      "name": "position.ecliptic/caller-order",
+      "operation": "position.ecliptic",
+      "targets": [
+        9,
+        4,
+        13,
+        0,
+        1
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 5,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "longitude_deg": "0x406f6e8d740034af",
+          "latitude_deg": "0x4025b5e1e35fb7a7",
+          "distance_au": "0x403f10795ced4327",
+          "source_code": 4
+        },
+        {
+          "target_code": 4,
+          "present_fields": 3,
+          "longitude_deg": "0x40747f6754713885",
+          "latitude_deg": "0xbff1159fab91884c",
+          "distance_au": "0x3ffd984e20cb20c4",
+          "source_code": 3
+        },
+        {
+          "target_code": 13,
+          "present_fields": 1,
+          "longitude_deg": "0x4072fec1c196bcc6",
+          "latitude_deg": "0x0000000000000000",
+          "distance_au": null,
+          "source_code": 6
+        },
+        {
+          "target_code": 0,
+          "present_fields": 3,
+          "longitude_deg": "0x407185e3fd190b2b",
+          "latitude_deg": "0x3f2f70b25c6cf86b",
+          "distance_au": "0x3fef776b9d61d574",
+          "source_code": 1
+        },
+        {
+          "target_code": 1,
+          "present_fields": 3,
+          "longitude_deg": "0x406bea13328226e8",
+          "latitude_deg": "0x4014af640b09e27e",
+          "distance_au": "0x3f6609b5ffed3ae0",
+          "source_code": 2
+        }
+      ],
+      "written": 5
+    },
+    {
+      "name": "position.ecliptic/no-chart-window",
+      "operation": "position.ecliptic",
+      "targets": [
+        0,
+        1,
+        4
+      ],
+      "jde_tt": 2350000.0,
+      "error": 0,
+      "count": 3,
+      "records": [
+        {
+          "target_code": 0,
+          "present_fields": 3,
+          "longitude_deg": "0x40710b9147ecf265",
+          "latitude_deg": "0xbf1fa7304be32445",
+          "distance_au": "0x3fef76b31eb3134c",
+          "source_code": 1
+        },
+        {
+          "target_code": 1,
+          "present_fields": 3,
+          "longitude_deg": "0x4075be2a620f43e0",
+          "latitude_deg": "0xc0135dc235d7391a",
+          "distance_au": "0x3f64808f4eb7b2dc",
+          "source_code": 2
+        },
+        {
+          "target_code": 4,
+          "present_fields": 3,
+          "longitude_deg": "0x4042af4825a8be16",
+          "latitude_deg": "0x3ff6cbb540451d70",
+          "distance_au": "0x3fe7b6771e1b810f",
+          "source_code": 3
+        }
+      ],
+      "written": 3
+    },
+    {
+      "name": "position.ecliptic/excluded-pluto-window",
+      "operation": "position.ecliptic",
+      "targets": [
+        0,
+        9
+      ],
+      "jde_tt": 2350000.0,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.ecliptic/empty",
+      "operation": "position.ecliptic",
+      "targets": [],
+      "jde_tt": 2451545.0,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.ecliptic/duplicate",
+      "operation": "position.ecliptic",
+      "targets": [
+        0,
+        0
+      ],
+      "jde_tt": 2451545.0,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.ecliptic/unknown",
+      "operation": "position.ecliptic",
+      "targets": [
+        4294967295
+      ],
+      "jde_tt": 2451545.0,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.ecliptic/target-0",
+      "operation": "position.ecliptic",
+      "targets": [
+        0
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 0,
+          "present_fields": 3,
+          "longitude_deg": "0x407185e3fd190b2b",
+          "latitude_deg": "0x3f2f70b25c6cf86b",
+          "distance_au": "0x3fef776b9d61d574",
+          "source_code": 1
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-1",
+      "operation": "position.ecliptic",
+      "targets": [
+        1
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 1,
+          "present_fields": 3,
+          "longitude_deg": "0x406bea13328226e8",
+          "latitude_deg": "0x4014af640b09e27e",
+          "distance_au": "0x3f6609b5ffed3ae0",
+          "source_code": 2
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-2",
+      "operation": "position.ecliptic",
+      "targets": [
+        2
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 2,
+          "present_fields": 3,
+          "longitude_deg": "0x4070fe35c8f03676",
+          "latitude_deg": "0xbfefd4f41484b956",
+          "distance_au": "0x3ff6a5bfcc1025b0",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-3",
+      "operation": "position.ecliptic",
+      "targets": [
+        3
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 3,
+          "present_fields": 3,
+          "longitude_deg": "0x406e32139d7b87b2",
+          "latitude_deg": "0x400087f04be41e68",
+          "distance_au": "0x3ff233814b457386",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-4",
+      "operation": "position.ecliptic",
+      "targets": [
+        4
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 4,
+          "present_fields": 3,
+          "longitude_deg": "0x40747f6754713885",
+          "latitude_deg": "0xbff1159fab91884c",
+          "distance_au": "0x3ffd984e20cb20c4",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-5",
+      "operation": "position.ecliptic",
+      "targets": [
+        5
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 5,
+          "present_fields": 3,
+          "longitude_deg": "0x403940cb2341e0dc",
+          "latitude_deg": "0xbff431d76cd1072f",
+          "distance_au": "0x40127c1233f6ccdc",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-6",
+      "operation": "position.ecliptic",
+      "targets": [
+        6
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 6,
+          "present_fields": 3,
+          "longitude_deg": "0x404432a5537e5efb",
+          "latitude_deg": "0xc0038f13bb69c7f5",
+          "distance_au": "0x40214e3a0849ac33",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-7",
+      "operation": "position.ecliptic",
+      "targets": [
+        7
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 7,
+          "present_fields": 3,
+          "longitude_deg": "0x4073acf283ea4e22",
+          "latitude_deg": "0xbfe510df7df8dd73",
+          "distance_au": "0x4034ba28ea41f621",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-8",
+      "operation": "position.ecliptic",
+      "targets": [
+        8
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 8,
+          "present_fields": 3,
+          "longitude_deg": "0x4072f3172c9d17c1",
+          "latitude_deg": "0x3fce14da30cbeca8",
+          "distance_au": "0x403f06421a9cd941",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-9",
+      "operation": "position.ecliptic",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "longitude_deg": "0x406f6e8d740034af",
+          "latitude_deg": "0x4025b5e1e35fb7a7",
+          "distance_au": "0x403f10795ced4327",
+          "source_code": 4
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-10",
+      "operation": "position.ecliptic",
+      "targets": [
+        10
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 10,
+          "present_fields": 1,
+          "longitude_deg": "0x405f429a8183e877",
+          "latitude_deg": "0x0000000000000000",
+          "distance_au": null,
+          "source_code": 5
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-11",
+      "operation": "position.ecliptic",
+      "targets": [
+        11
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 11,
+          "present_fields": 1,
+          "longitude_deg": "0x407310a6a060fa1e",
+          "latitude_deg": "0x0000000000000000",
+          "distance_au": null,
+          "source_code": 5
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-12",
+      "operation": "position.ecliptic",
+      "targets": [
+        12
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 12,
+          "present_fields": 1,
+          "longitude_deg": "0x405efb07065af318",
+          "latitude_deg": "0x0000000000000000",
+          "distance_au": null,
+          "source_code": 6
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/target-13",
+      "operation": "position.ecliptic",
+      "targets": [
+        13
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 13,
+          "present_fields": 1,
+          "longitude_deg": "0x4072fec1c196bcc6",
+          "latitude_deg": "0x0000000000000000",
+          "distance_au": null,
+          "source_code": 6
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/pluto-edge-0",
+      "operation": "position.ecliptic",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2409543.4999999995,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.ecliptic/pluto-edge-1",
+      "operation": "position.ecliptic",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2409543.5,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "longitude_deg": "0x404e3f03ee2e01fd",
+          "latitude_deg": "0xc02a0558f0027740",
+          "distance_au": "0x4047ec2835932c60",
+          "source_code": 4
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/pluto-edge-2",
+      "operation": "position.ecliptic",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2409543.75,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "longitude_deg": "0x404e3e9544705567",
+          "latitude_deg": "0xc02a04e2ba069200",
+          "distance_au": "0x4047ec828f35f354",
+          "source_code": 4
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/pluto-edge-3",
+      "operation": "position.ecliptic",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2488069.25,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "longitude_deg": "0x404033e11d264969",
+          "latitude_deg": "0xc030ec3064826da3",
+          "distance_au": "0x40484906a339da7f",
+          "source_code": 4
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/pluto-edge-4",
+      "operation": "position.ecliptic",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2488069.4999999995,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "longitude_deg": "0x404033b45074e988",
+          "latitude_deg": "0xc030ebd30915e6e8",
+          "distance_au": "0x40484986b743b759",
+          "source_code": 4
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.ecliptic/pluto-edge-5",
+      "operation": "position.ecliptic",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2488069.5,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.equatorial/all",
+      "operation": "position.equatorial",
+      "targets": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 14,
+      "records": [
+        {
+          "target_code": 0,
+          "present_fields": 3,
+          "right_ascension_deg": "0x40719470e7e7dc8d",
+          "declination_deg": "0xc037085114b421f5",
+          "distance_au": "0x3fef776b9d61d574",
+          "source_code": 1
+        },
+        {
+          "target_code": 1,
+          "present_fields": 3,
+          "right_ascension_deg": "0x406bce32c0242c53",
+          "declination_deg": "0xc025cb8729ee658d",
+          "distance_au": "0x3f6609b5ffed3ae0",
+          "source_code": 2
+        },
+        {
+          "target_code": 2,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4071012c96bab637",
+          "declination_deg": "0xc0386b396e494497",
+          "distance_au": "0x3ff6a5bfcc1025b0",
+          "source_code": 3
+        },
+        {
+          "target_code": 3,
+          "present_fields": 3,
+          "right_ascension_deg": "0x406dfc8a09ca22f2",
+          "declination_deg": "0xc03272df74a64b00",
+          "distance_au": "0x3ff233814b457386",
+          "source_code": 3
+        },
+        {
+          "target_code": 4,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4074a842965dd9c8",
+          "declination_deg": "0xc02a5d885e31d76c",
+          "distance_au": "0x3ffd984e20cb20c4",
+          "source_code": 3
+        },
+        {
+          "target_code": 5,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4037de2c0360b3e4",
+          "declination_deg": "0x40213046e24012b9",
+          "distance_au": "0x40127c1233f6ccdc",
+          "source_code": 3
+        },
+        {
+          "target_code": 6,
+          "present_fields": 3,
+          "right_ascension_deg": "0x404361f955fc5ad1",
+          "declination_deg": "0x40293ac2a62d7256",
+          "distance_au": "0x40214e3a0849ac33",
+          "source_code": 3
+        },
+        {
+          "target_code": 7,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4073d798f8a97066",
+          "declination_deg": "0xc0310532bdd18783",
+          "distance_au": "0x4034ba28ea41f621",
+          "source_code": 3
+        },
+        {
+          "target_code": 8,
+          "present_fields": 3,
+          "right_ascension_deg": "0x407316ed88f02143",
+          "declination_deg": "0xc03336941056bf1e",
+          "distance_au": "0x403f06421a9cd941",
+          "source_code": 3
+        },
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "right_ascension_deg": "0x406f6d69d6e44932",
+          "declination_deg": "0xc026c9e13a9c17c5",
+          "distance_au": "0x403f10795ced4327",
+          "source_code": 4
+        },
+        {
+          "target_code": 10,
+          "present_fields": 1,
+          "right_ascension_deg": "0x405fd911c4cdcaf3",
+          "declination_deg": "0x40330160519a05ac",
+          "distance_au": null,
+          "source_code": 5
+        },
+        {
+          "target_code": 11,
+          "present_fields": 1,
+          "right_ascension_deg": "0x40733644713372bd",
+          "declination_deg": "0xc0330160519a05ac",
+          "distance_au": null,
+          "source_code": 5
+        },
+        {
+          "target_code": 12,
+          "present_fields": 1,
+          "right_ascension_deg": "0x405f8f7d35ee80e7",
+          "declination_deg": "0x4033459e376b7e58",
+          "distance_au": null,
+          "source_code": 6
+        },
+        {
+          "target_code": 13,
+          "present_fields": 1,
+          "right_ascension_deg": "0x407323df4d7ba039",
+          "declination_deg": "0xc033459e376b7e59",
+          "distance_au": null,
+          "source_code": 6
+        }
+      ],
+      "written": 14
+    },
+    {
+      "name": "position.equatorial/caller-order",
+      "operation": "position.equatorial",
+      "targets": [
+        9,
+        4,
+        13,
+        0,
+        1
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 5,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "right_ascension_deg": "0x406f6d69d6e44932",
+          "declination_deg": "0xc026c9e13a9c17c5",
+          "distance_au": "0x403f10795ced4327",
+          "source_code": 4
+        },
+        {
+          "target_code": 4,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4074a842965dd9c8",
+          "declination_deg": "0xc02a5d885e31d76c",
+          "distance_au": "0x3ffd984e20cb20c4",
+          "source_code": 3
+        },
+        {
+          "target_code": 13,
+          "present_fields": 1,
+          "right_ascension_deg": "0x407323df4d7ba039",
+          "declination_deg": "0xc033459e376b7e59",
+          "distance_au": null,
+          "source_code": 6
+        },
+        {
+          "target_code": 0,
+          "present_fields": 3,
+          "right_ascension_deg": "0x40719470e7e7dc8d",
+          "declination_deg": "0xc037085114b421f5",
+          "distance_au": "0x3fef776b9d61d574",
+          "source_code": 1
+        },
+        {
+          "target_code": 1,
+          "present_fields": 3,
+          "right_ascension_deg": "0x406bce32c0242c53",
+          "declination_deg": "0xc025cb8729ee658d",
+          "distance_au": "0x3f6609b5ffed3ae0",
+          "source_code": 2
+        }
+      ],
+      "written": 5
+    },
+    {
+      "name": "position.equatorial/no-chart-window",
+      "operation": "position.equatorial",
+      "targets": [
+        0,
+        1,
+        4
+      ],
+      "jde_tt": 2350000.0,
+      "error": 0,
+      "count": 3,
+      "records": [
+        {
+          "target_code": 0,
+          "present_fields": 3,
+          "right_ascension_deg": "0x40710f7df48901e2",
+          "declination_deg": "0xc0377261c21c9609",
+          "distance_au": "0x3fef76b31eb3134c",
+          "source_code": 1
+        },
+        {
+          "target_code": 1,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4075ec6f2d06f3f0",
+          "declination_deg": "0xc0227f3eb2e65beb",
+          "distance_au": "0x3f64808f4eb7b2dc",
+          "source_code": 2
+        },
+        {
+          "target_code": 4,
+          "present_fields": 3,
+          "right_ascension_deg": "0x404143c3d911308c",
+          "declination_deg": "0x402eace4a06a3d50",
+          "distance_au": "0x3fe7b6771e1b810f",
+          "source_code": 3
+        }
+      ],
+      "written": 3
+    },
+    {
+      "name": "position.equatorial/excluded-pluto-window",
+      "operation": "position.equatorial",
+      "targets": [
+        0,
+        9
+      ],
+      "jde_tt": 2350000.0,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.equatorial/empty",
+      "operation": "position.equatorial",
+      "targets": [],
+      "jde_tt": 2451545.0,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.equatorial/duplicate",
+      "operation": "position.equatorial",
+      "targets": [
+        0,
+        0
+      ],
+      "jde_tt": 2451545.0,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.equatorial/unknown",
+      "operation": "position.equatorial",
+      "targets": [
+        4294967295
+      ],
+      "jde_tt": 2451545.0,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.equatorial/target-0",
+      "operation": "position.equatorial",
+      "targets": [
+        0
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 0,
+          "present_fields": 3,
+          "right_ascension_deg": "0x40719470e7e7dc8d",
+          "declination_deg": "0xc037085114b421f5",
+          "distance_au": "0x3fef776b9d61d574",
+          "source_code": 1
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-1",
+      "operation": "position.equatorial",
+      "targets": [
+        1
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 1,
+          "present_fields": 3,
+          "right_ascension_deg": "0x406bce32c0242c53",
+          "declination_deg": "0xc025cb8729ee658d",
+          "distance_au": "0x3f6609b5ffed3ae0",
+          "source_code": 2
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-2",
+      "operation": "position.equatorial",
+      "targets": [
+        2
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 2,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4071012c96bab637",
+          "declination_deg": "0xc0386b396e494497",
+          "distance_au": "0x3ff6a5bfcc1025b0",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-3",
+      "operation": "position.equatorial",
+      "targets": [
+        3
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 3,
+          "present_fields": 3,
+          "right_ascension_deg": "0x406dfc8a09ca22f2",
+          "declination_deg": "0xc03272df74a64b00",
+          "distance_au": "0x3ff233814b457386",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-4",
+      "operation": "position.equatorial",
+      "targets": [
+        4
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 4,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4074a842965dd9c8",
+          "declination_deg": "0xc02a5d885e31d76c",
+          "distance_au": "0x3ffd984e20cb20c4",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-5",
+      "operation": "position.equatorial",
+      "targets": [
+        5
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 5,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4037de2c0360b3e4",
+          "declination_deg": "0x40213046e24012b9",
+          "distance_au": "0x40127c1233f6ccdc",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-6",
+      "operation": "position.equatorial",
+      "targets": [
+        6
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 6,
+          "present_fields": 3,
+          "right_ascension_deg": "0x404361f955fc5ad1",
+          "declination_deg": "0x40293ac2a62d7256",
+          "distance_au": "0x40214e3a0849ac33",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-7",
+      "operation": "position.equatorial",
+      "targets": [
+        7
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 7,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4073d798f8a97066",
+          "declination_deg": "0xc0310532bdd18783",
+          "distance_au": "0x4034ba28ea41f621",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-8",
+      "operation": "position.equatorial",
+      "targets": [
+        8
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 8,
+          "present_fields": 3,
+          "right_ascension_deg": "0x407316ed88f02143",
+          "declination_deg": "0xc03336941056bf1e",
+          "distance_au": "0x403f06421a9cd941",
+          "source_code": 3
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-9",
+      "operation": "position.equatorial",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "right_ascension_deg": "0x406f6d69d6e44932",
+          "declination_deg": "0xc026c9e13a9c17c5",
+          "distance_au": "0x403f10795ced4327",
+          "source_code": 4
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-10",
+      "operation": "position.equatorial",
+      "targets": [
+        10
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 10,
+          "present_fields": 1,
+          "right_ascension_deg": "0x405fd911c4cdcaf3",
+          "declination_deg": "0x40330160519a05ac",
+          "distance_au": null,
+          "source_code": 5
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-11",
+      "operation": "position.equatorial",
+      "targets": [
+        11
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 11,
+          "present_fields": 1,
+          "right_ascension_deg": "0x40733644713372bd",
+          "declination_deg": "0xc0330160519a05ac",
+          "distance_au": null,
+          "source_code": 5
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-12",
+      "operation": "position.equatorial",
+      "targets": [
+        12
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 12,
+          "present_fields": 1,
+          "right_ascension_deg": "0x405f8f7d35ee80e7",
+          "declination_deg": "0x4033459e376b7e58",
+          "distance_au": null,
+          "source_code": 6
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/target-13",
+      "operation": "position.equatorial",
+      "targets": [
+        13
+      ],
+      "jde_tt": 2451545.0,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 13,
+          "present_fields": 1,
+          "right_ascension_deg": "0x407323df4d7ba039",
+          "declination_deg": "0xc033459e376b7e59",
+          "distance_au": null,
+          "source_code": 6
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/pluto-edge-0",
+      "operation": "position.equatorial",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2409543.4999999995,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "position.equatorial/pluto-edge-1",
+      "operation": "position.equatorial",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2409543.5,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "right_ascension_deg": "0x404e8641a2d764bf",
+          "declination_deg": "0x401e17cbc40e25e4",
+          "distance_au": "0x4047ec2835932c60",
+          "source_code": 4
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/pluto-edge-2",
+      "operation": "position.equatorial",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2409543.75,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "right_ascension_deg": "0x404e85d11fe4c0d6",
+          "declination_deg": "0x401e18099c5d6b5f",
+          "distance_au": "0x4047ec828f35f354",
+          "source_code": 4
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/pluto-edge-3",
+      "operation": "position.equatorial",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2488069.25,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4041fbf99e68dc54",
+          "declination_deg": "0xc00d005be339a58f",
+          "distance_au": "0x40484906a339da7f",
+          "source_code": 4
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/pluto-edge-4",
+      "operation": "position.equatorial",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2488069.4999999995,
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "target_code": 9,
+          "present_fields": 3,
+          "right_ascension_deg": "0x4041fbc172d32a20",
+          "declination_deg": "0xc00cfe822bb6b8c5",
+          "distance_au": "0x40484986b743b759",
+          "source_code": 4
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "position.equatorial/pluto-edge-5",
+      "operation": "position.equatorial",
+      "targets": [
+        9
+      ],
+      "jde_tt": 2488069.5,
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "events.longitudeCrossings/sun-zero",
+      "operation": "events.longitudeCrossings",
+      "arguments": [
+        0,
+        0.0,
+        2460735.5,
+        2460785.5
+      ],
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "jde_tt": "0x4142c629703b8710",
+          "longitude_deg": "0x40767fffffffe72c",
+          "longitude_rate_deg_per_tt_day": "0x3fefcad2c64ed6ef",
+          "direction_code": 0
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "events.longitudeCrossings/moon-fixed",
+      "operation": "events.longitudeCrossings",
+      "arguments": [
+        1,
+        137.5,
+        2460735.5,
+        2460785.5
+      ],
+      "error": 0,
+      "count": 2,
+      "records": [
+        {
+          "jde_tt": "0x4142c624ea56e72c",
+          "longitude_deg": "0x40613000000e9cfa",
+          "longitude_rate_deg_per_tt_day": "0x4029326d2a791c9c",
+          "direction_code": 0
+        },
+        {
+          "jde_tt": "0x4142c63288292dc4",
+          "longitude_deg": "0x40613000000f23b1",
+          "longitude_rate_deg_per_tt_day": "0x402917a4bff7e4d7",
+          "direction_code": 0
+        }
+      ],
+      "written": 2
+    },
+    {
+      "name": "events.longitudeCrossings/mercury-triple",
+      "operation": "events.longitudeCrossings",
+      "arguments": [
+        2,
+        0.0,
+        2460735.5,
+        2460785.5
+      ],
+      "error": 0,
+      "count": 3,
+      "records": [
+        {
+          "jde_tt": "0x4142c620f06d3844",
+          "longitude_deg": "0x3e43a9754e1e0000",
+          "longitude_rate_deg_per_tt_day": "0x3ff7a222eb3a8cab",
+          "direction_code": 0
+        },
+        {
+          "jde_tt": "0x4142c62e4c5ed170",
+          "longitude_deg": "0x40767fffffffd8ef",
+          "longitude_rate_deg_per_tt_day": "0xbfe7401b1015499a",
+          "direction_code": 1
+        },
+        {
+          "jde_tt": "0x4142c636e255d938",
+          "longitude_deg": "0x40767ffffffe1c3a",
+          "longitude_rate_deg_per_tt_day": "0x3fe5baf9540c3b77",
+          "direction_code": 0
+        }
+      ],
+      "written": 3
+    },
+    {
+      "name": "events.longitudeStations/mercury-stations",
+      "operation": "events.longitudeStations",
+      "arguments": [
+        2,
+        2460735.5,
+        2460785.5
+      ],
+      "error": 0,
+      "count": 2,
+      "records": [
+        {
+          "jde_tt": "0x4142c626e4332608",
+          "longitude_deg": "0x40232d88fcf0d4d2",
+          "longitude_rate_deg_per_tt_day": "0xbdc6fd7777777777",
+          "motion_before_code": 0,
+          "motion_after_code": 1
+        },
+        {
+          "jde_tt": "0x4142c6327b725494",
+          "longitude_deg": "0x40764d38c9b40060",
+          "longitude_rate_deg_per_tt_day": "0xbdebe2eeeeeeeeef",
+          "motion_before_code": 1,
+          "motion_after_code": 0
+        }
+      ],
+      "written": 2
+    },
+    {
+      "name": "events.longitudeDifferences/pair-minus-60",
+      "operation": "events.longitudeDifferences",
+      "arguments": [
+        1,
+        0,
+        -60.0,
+        2460676.5,
+        2460707.5
+      ],
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "jde_tt": "0x4142c60e0a625844",
+          "longitude_a_deg": "0x406e9a8c68ce091a",
+          "longitude_b_deg": "0x40730d46346840f1",
+          "longitude_rate_a_deg_per_tt_day": "0x4028a6480f38ff51",
+          "longitude_rate_b_deg_per_tt_day": "0x3ff04636a79aa2ab",
+          "signed_difference_deg": "0xc04e00000009e320",
+          "direction_code": 0
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "events.longitudeDifferences/pair-plus-60",
+      "operation": "events.longitudeDifferences",
+      "arguments": [
+        1,
+        0,
+        60.0,
+        2460676.5,
+        2460707.5
+      ],
+      "error": 0,
+      "count": 1,
+      "records": [
+        {
+          "jde_tt": "0x4142c604183dd7fc",
+          "longitude_a_deg": "0x40758930c209679a",
+          "longitude_b_deg": "0x4071c930c209c41c",
+          "longitude_rate_a_deg_per_tt_day": "0x402be0670478fb80",
+          "longitude_rate_b_deg_per_tt_day": "0x3ff04f99b340ec89",
+          "signed_difference_deg": "0x404dfffffffd1bf0",
+          "direction_code": 0
+        }
+      ],
+      "written": 1
+    },
+    {
+      "name": "events.longitudeStations/empty",
+      "operation": "events.longitudeStations",
+      "arguments": [
+        0,
+        2451545.0,
+        2451546.0
+      ],
+      "error": 0,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "events.longitudeCrossings/inverted",
+      "operation": "events.longitudeCrossings",
+      "arguments": [
+        0,
+        0.0,
+        2451546.0,
+        2451545.0
+      ],
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "events.longitudeStations/span",
+      "operation": "events.longitudeStations",
+      "arguments": [
+        2,
+        2451545.0,
+        2455206.0
+      ],
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "events.longitudeDifferences/self",
+      "operation": "events.longitudeDifferences",
+      "arguments": [
+        0,
+        0,
+        0.0,
+        2451545.0,
+        2451546.0
+      ],
+      "error": 1,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "events.longitudeDifferences/constant-mismatch",
+      "operation": "events.longitudeDifferences",
+      "arguments": [
+        10,
+        11,
+        90.0,
+        2451545.0,
+        2451546.0
+      ],
+      "error": 0,
+      "count": 0,
+      "records": []
+    },
+    {
+      "name": "events.longitudeDifferences/continuous",
+      "operation": "events.longitudeDifferences",
+      "arguments": [
+        10,
+        11,
+        180.0,
+        2451545.0,
+        2451546.0
+      ],
+      "error": 1,
+      "count": 0,
+      "records": []
+    }
+  ],
+  "provenance": {
+    "collected": "2026-11-18",
+    "source": "Existing C ABI at the recorded source commit, frozen before the JavaScript wrappers; fixed directed inputs, no random seed.",
+    "regenerate": "python3 toolbox/make_position_events_golden.py --output <candidate.json>",
+    "binary64": "0x-prefixed IEEE 754 bits; null for absent node distance storage, which is not read.",
+    "tolerance": "Binding parity caps reused from existing position/event consumers: 1e-9 degree/AU fields, 1e-8 TT days for event instants. These are cross-build binding comparisons, not astronomical accuracy claims."
+  }
+}

@@ -4,14 +4,15 @@ Astronomical calculations and Gregorian / Chinese Lunar date conversion, with Ji
 Sun/Moon positions, and sunrise/sunset. The core is a C++23 header-only library, also available through Python,
 JavaScript / TypeScript, and a C ABI.
 
-[中文](README_ZH.md) · [Documentation (development)](https://0xf3cd.github.io/celestial-calendar/) ·
+[中文](README_ZH.md) · [Documentation](https://0xf3cd.github.io/celestial-calendar/) ·
 [Python](#python) · [JavaScript / TypeScript](#javascript) ·
 [C++](#cpp) · [C / FFI](#c-abi) · [Features and algorithms](#features) ·
 [Building](docs/BUILDING.md) · [Validation](docs/VALIDATION.md) · [Design](docs/DESIGN.md)
 
-This guide describes the current source, including unreleased changes. See the
+This guide describes the accompanying source revision. See the
 [migration guide](docs/MIGRATING_1_0.md) when moving from 0.x. The install commands below get the latest published
-version on PyPI or npm; use its matching documentation. To build the current source yourself, use the
+version on PyPI or npm, which may differ from this source revision; use its matching documentation.
+To build a source checkout, use the
 [local Python wheel recipe](bindings/python/README.md#build-a-local-wheel) or the
 [WASM/npm recipe](docs/BUILDING.md#wasm).
 
@@ -128,21 +129,24 @@ int main() {
 ```
 
 Save it as `build/quickstart.cpp` (create `build/` if needed; Git ignores it) and run from the source root with a
-C++23-capable clang++ installation:
+C++23-capable clang++ installation.
+
+Use all three include roots. Nested headers keep their subdirectory, for example `"lunar/converter.hpp"`.
 
 ```sh
-# Headers include each other by basename; all three directories are needed.
 clang++ -std=c++23 -I src/astro -I src/calendar -I src/util \
   build/quickstart.cpp -o build/quickstart
 ./build/quickstart
 ```
 
+`moment.fraction()` is the elapsed fraction of that UT1 day: `0.0` is midnight and `0.5` is noon.
+
 The Jieqi API is in [`src/calendar/jieqi.hpp`](src/calendar/jieqi.hpp), including `jieqi_ut1_moment`, `jieqi_jde`,
 and `JieqiGenerator`. Other self-contained headers are organized under `src/astro/`, `src/calendar/`, and `src/util/`.
 The headers for lunar nodes, longitude rates, charts, planetary illumination and planetary events are described
 in the [C++ guide of the API reference](docs/API.md#cpp-guide). Of these, the chart snapshot is also available
-from C, Python and JavaScript, the interval longitude events from C and Python, and the operation capabilities
-and model identities from C and Python ([`capabilities`](bindings/python/README.md#capabilities)).
+from C, Python and JavaScript, as are the interval longitude events; the operation capabilities
+and model identities remain available from C and Python ([`capabilities`](bindings/python/README.md#capabilities)).
 
 [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp) adds C++ interval searches for a supplied longitude,
 stationary instants and directed longitude differences; see [Longitude events](docs/EPHEMERIS_EVENTS.md)
@@ -153,6 +157,13 @@ instant are available without a full snapshot, from C, Python and C++
 ([`positions` / `equatorial_positions` / `house_query`](bindings/python/README.md#independent-queries)).
 Position queries use each selected target's provider window; the civil house query uses the shared civil policy,
 without the snapshot's joint target/rate window. C and Python results record resolved model/source identities.
+JavaScript exposes the selected position operations as
+[`position.ecliptic/equatorial`](bindings/javascript/README.md#independent-positions).
+Each record includes a numeric `sourceCode` identifying its position provider.
+
+The [C++ header list](docs/API.md#cpp-headers) gives include spellings and separates query headers from
+physical types and lower-level support. A runnable [Next Jieqi example](docs/UTC_CONVERSIONS.md#next-jieqi-from-a-utc-input-displayed-at-utc8)
+uses `JieqiGenerator` directly in TT and `calendar::add_seconds()` for UTC+8 display.
 
 <a id="c-abi"></a>
 ### C and FFI
@@ -280,18 +291,24 @@ OS version floor is declared.
   nodes, in degrees per TT day, by a locally unwrapped seven-point central difference over the existing apparent
   position models. Near a station its sign can differ from the one-day retrograde marker; see `is_retrograde` in
   [`planet.hpp`](src/astro/planet.hpp).
+- [Topocentric observer queries](docs/OBSERVER.md) for the Sun, Moon and planets are available in C++, C, Python
+  and JavaScript.
+- [Interval altitude events, upper transits and observing windows](docs/ALTITUDE_EVENTS.md) are available
+  in C++, C, Python and JavaScript/TypeScript. These sampled searches can miss events without reporting an error.
+- [Apparent angular diameters](docs/APPARENT_DIAMETERS.md) for the Sun, Moon and planets, using geocentric or
+  topocentric distance, are available in C++, C, Python and JavaScript.
 - A chart snapshot at one instant: from an explicitly scaled UTC/UT1 civil input, a ΔT model and a site/house
   system, it returns positions and rates of fourteen bodies/points, the four axes and the twelve cusps. It is
   available as C++ [`chart.hpp`](src/astro/chart.hpp), C [`celestial_chart_snapshot`](docs/API.md#c-chart-snapshot),
   Python [`chart_snapshot`](bindings/python/README.md#chart-snapshot-example) and JavaScript
   [`chart.snapshot`](bindings/javascript/README.md#chart-snapshot). The C ABI and both packages still expose
-  instantaneous longitude-rate queries only through this snapshot; C and Python also provide interval events and
-  [independent position/house queries](bindings/python/README.md#independent-queries), which JavaScript does not expose.
+  instantaneous longitude-rate queries only through this snapshot. Independent positions and interval
+  longitude events are also available; independent house queries remain C/Python-only.
 - Interval longitude crossings, stations and directed two-body longitude differences: C++ provides
   [`ephemeris_events.hpp`](src/astro/ephemeris_events.hpp), C exposes `celestial_longitude_events` /
   `celestial_longitude_stations` / `celestial_longitude_difference_events`, and Python provides
   [`longitude_events` and related queries](bindings/python/README.md#interval-longitude-events).
-  See the [event guide](docs/EPHEMERIS_EVENTS.md); JavaScript exposes no event API.
+  JavaScript provides [`events.longitudeCrossings/longitudeStations/longitudeDifferences`](docs/EPHEMERIS_EVENTS.md#javascript).
 - Operation input bounds and model identities: C exposes `celestial_capabilities`, `celestial_house_capability`,
   `celestial_model_identities` and operation/model descriptions. Python provides
   [`capabilities` and related queries](bindings/python/README.md#capabilities); C++ provides
@@ -302,7 +319,8 @@ OS version floor is declared.
   `celestial_equatorial_positions` and `celestial_house_query`; Python provides
   [`positions`, `equatorial_positions` and `house_query`](bindings/python/README.md#independent-queries).
   Results carry resolved model/source identities. C++ provides `ephemeris::position`, `equatorial_position`
-  and the numeric operations in [`house.hpp`](src/astro/house.hpp). JavaScript exposes none of these queries.
+  and the numeric operations in [`house.hpp`](src/astro/house.hpp). JavaScript provides the two
+  [position queries](bindings/javascript/README.md#independent-positions), but not independent houses.
 - C++ yearly searches for planetary conjunction, opposition, quadrature, greatest elongation and exact stations
   return events ordered by JDE(TT). Events belong to `[Jan 1, next Jan 1)` UTC, with the library's UT1
   substitute before 1972. The `[1, 32766]` input year domain is not a guarantee of successful evaluation or modern
@@ -330,7 +348,8 @@ Algo1 to Algo4 only to compare with that earlier model. Sources and hard year do
 
 Keep time scales separate. JD UT1 and JDE TT are not interchangeable; Jieqi results are UT1, whereas
 `celestial_apparent_solar_time()` / Python `apparent_solar_time()` / JavaScript `sun.apparentSolarTime()` take civil UTC.
-The pure `/date` bridge supplies no UTC-to-UT1
+The JavaScript package's pure [`/date` bridge](bindings/javascript/README.md#date-bridge) selects civil dates at
+fixed offsets; it supplies no UTC-to-UT1
 or Date-to-JDE conversion. The library does not use observed DUT1 (UT1 − UTC), so a UT1 result is not a UTC time;
 [Time scales](docs/DESIGN.md#time-scales) describes the library's UTC model and how large the gap is in each era.
 

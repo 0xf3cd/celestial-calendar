@@ -28,6 +28,9 @@ from typing import Final
 
 
 PROJ_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJ_ROOT))
+from toolbox import package_docs  # noqa: E402
+
 PRIMARY_PACKAGE: Final[str] = "celestial-calendar"
 ALIAS_NAMES: Final[tuple[str, ...]] = ("cele", "wentian")
 ALIAS_ARTIFACT: Final[str] = "celestial-python-aliases"
@@ -41,11 +44,12 @@ def alias_wheel_name(name: str, version: str) -> str:
   return f"{name}-{version}-py3-none-any.whl"
 
 
-def alias_readme(name: str, root: Path = PROJ_ROOT) -> str:
-  return (root / "bindings/python-aliases/README.md.in").read_text(encoding="utf-8").replace("@NAME@", name)
+def alias_readme(name: str, version: str, root: Path = PROJ_ROOT, sha: str | None = None) -> str:
+  text = (root / "bindings/python-aliases/README.md.in").read_text(encoding="utf-8").replace("@NAME@", name)
+  return package_docs.render_readme(text, version, sha or package_docs.source_sha(root))
 
 
-def alias_configuration(name: str, version: str, root: Path = PROJ_ROOT) -> str:
+def alias_configuration(name: str, version: str, root: Path = PROJ_ROOT, sha: str | None = None) -> str:
   """Derive alias build metadata and the dependency pin from the primary package."""
   alias_wheel_name(name, version)
   source = tomllib.loads((root / "bindings/python/pyproject.toml").read_text(encoding="utf-8"))
@@ -71,7 +75,10 @@ def alias_configuration(name: str, version: str, root: Path = PROJ_ROOT) -> str:
     for author in project["authors"]
   ]
   lines.extend([f"authors = [{', '.join(authors)}]", "", "[project.urls]"])
-  lines.extend(f"{key} = {json.dumps(value)}" for key, value in project["urls"].items())
+  lines.extend(
+    f"{key} = {json.dumps(value)}"
+    for key, value in package_docs.python_urls(sha or package_docs.source_sha(root)).items()
+  )
   lines.extend(
     [
       "",
@@ -83,7 +90,7 @@ def alias_configuration(name: str, version: str, root: Path = PROJ_ROOT) -> str:
   return "\n".join(lines) + "\n"
 
 
-def validate_alias_wheel(wheel: Path, name: str, version: str, root: Path = PROJ_ROOT) -> None:
+def validate_alias_wheel(wheel: Path, name: str, version: str, root: Path = PROJ_ROOT, sha: str | None = None) -> None:
   """Verify an alias's complete payload, metadata, source bytes and RECORD."""
   if wheel.name != alias_wheel_name(name, version):
     raise RuntimeError(f"Unexpected Python alias wheel: {wheel.name}")
@@ -124,12 +131,14 @@ def validate_alias_wheel(wheel: Path, name: str, version: str, root: Path = PROJ
         raise RuntimeError(f"Python alias must require only {PRIMARY_PACKAGE}=={version}: {name}")
       if metadata.get_all("Provides-Extra") or metadata.get_all("License-File") != ["LICENSE"]:
         raise RuntimeError(f"Python alias extras/license metadata mismatch: {name}")
-      urls = [f"{label}, {url}" for label, url in project["urls"].items()]
+      urls = [
+        f"{label}, {url}" for label, url in package_docs.python_urls(sha or package_docs.source_sha(root)).items()
+      ]
       if sorted(metadata.get_all("Project-URL") or []) != sorted(urls):
         raise RuntimeError(f"Python alias project URLs mismatch: {name}")
       if sorted(metadata.get_all("Classifier") or []) != sorted(project["classifiers"]):
         raise RuntimeError(f"Python alias classifiers mismatch: {name}")
-      if metadata.get_payload() != alias_readme(name, root):
+      if metadata.get_payload(decode=True).decode("utf-8") != alias_readme(name, version, root, sha):
         raise RuntimeError(f"Python alias README mismatch: {name}")
 
       wheel_metadata = BytesParser().parsebytes(archive.read(f"{dist_info}/WHEEL"))
@@ -162,6 +171,7 @@ def build(out_dir: Path, root: Path = PROJ_ROOT) -> tuple[Path, ...]:
   version = subprocess.run(
     [sys.executable, str(root / "project.py"), "--version"], check=True, capture_output=True, text=True
   ).stdout.strip()
+  sha = package_docs.source_sha(root)
   artifact = out_dir / "artifact"
   artifact.mkdir(parents=True)
   wheels = []
@@ -172,14 +182,16 @@ def build(out_dir: Path, root: Path = PROJ_ROOT) -> tuple[Path, ...]:
     (package / "__init__.py").write_bytes((root / "bindings/python-aliases/__init__.py").read_bytes())
     (package / "py.typed").write_bytes((root / "bindings/python-aliases/py.typed").read_bytes())
     (source / "LICENSE").write_bytes((root / "LICENSE").read_bytes())
-    (source / "README.md").write_text(alias_readme(name, root), encoding="utf-8", newline="\n")
-    (source / "pyproject.toml").write_text(alias_configuration(name, version, root), encoding="utf-8", newline="\n")
+    (source / "README.md").write_text(alias_readme(name, version, root, sha), encoding="utf-8", newline="\n")
+    (source / "pyproject.toml").write_text(
+      alias_configuration(name, version, root, sha), encoding="utf-8", newline="\n"
+    )
     subprocess.run(
       [sys.executable, "-m", "build", "--wheel", "--no-isolation", "--outdir", str(artifact), str(source)],
       check=True,
     )
     wheel = artifact / alias_wheel_name(name, version)
-    validate_alias_wheel(wheel, name, version, root)
+    validate_alias_wheel(wheel, name, version, root, sha)
     digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
     wheel.with_name(f"{wheel.name}.sha256").write_text(f"{digest}  {wheel.name}\n", encoding="ascii", newline="\n")
     wheels.append(wheel)

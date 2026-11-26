@@ -26,6 +26,7 @@ from automation.astrotime_delta_t_provenance import (
   ASTROTIME_ALGO5_RECORD_URL,
   ASTROTIME_ALGO5_ROOT,
   ASTROTIME_ALGO5_ROOT_RELATIVE,
+  ASTROTIME_ALGO5_PREVIOUS_ROOT_RELATIVE,
   ASTROTIME_RECORD_COMMIT,
   ASTROTIME_RECORD_URL,
   ASTROTIME_ROOT,
@@ -45,6 +46,10 @@ def materialize_inputs(destination: Path) -> Path:
   algo5_root.mkdir(parents=True)
   for source in ASTROTIME_ALGO5_ROOT.iterdir():
     copy2(source, algo5_root / source.name)
+  previous_root = destination / ASTROTIME_ALGO5_PREVIOUS_ROOT_RELATIVE
+  previous_root.mkdir(parents=True)
+  for source in (REPO_ROOT / ASTROTIME_ALGO5_PREVIOUS_ROOT_RELATIVE).iterdir():
+    copy2(source, previous_root / source.name)
   delta_t = destination / "src" / "astro" / "delta_t.hpp"
   delta_t.parent.mkdir(parents=True)
   copy2(REPO_ROOT / "src" / "astro" / "delta_t.hpp", delta_t)
@@ -131,12 +136,12 @@ def test_astrotime_record_is_pinned():
     "https://github.com/0xf3cd/AstroTime-Analysis/blob/"
     "55115f4bf59cbdc47970b7f2d69a9715a467a3e9/DeltaT/algo4/record.json"
   )
-  assert ASTROTIME_ALGO5_RECORD_COMMIT == "ed1cdc2fd6c5122b391a82289aa2cc060340552d"
-  assert ASTROTIME_ALGO5_GENERATION_COMMIT == "a1e95811b47c084f44b4b4bb7444560dd5b863bc"
-  assert ASTROTIME_ALGO5_DATA_COMMIT == "ddf3be1972e405ed02233837394cd3377226b65c"
+  assert ASTROTIME_ALGO5_RECORD_COMMIT == "5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814"
+  assert ASTROTIME_ALGO5_GENERATION_COMMIT == "6eac175124da704f08e0bfb1520cca4c3049825d"
+  assert ASTROTIME_ALGO5_DATA_COMMIT == "e7823a0d323088c56e803f80540e53df589d732e"
   assert ASTROTIME_ALGO5_RECORD_URL == (
     "https://github.com/0xf3cd/AstroTime-Analysis/blob/"
-    "ed1cdc2fd6c5122b391a82289aa2cc060340552d/DeltaT/algo5/record.json"
+    "5e44dbccc7bb2f1a5344bc141e4a4ba39f3c2814/DeltaT/algo5/record.json"
   )
   assert verify_astrotime_delta_t_provenance() is None
 
@@ -458,6 +463,36 @@ def test_algo5_retained_bytes_are_pinned(tmp_path, relative):
     verify_astrotime_delta_t_provenance(repo_root=tmp_path)
 
 
+@pytest.mark.parametrize("relative", ["GRANT.md", "record.json"])
+def test_previous_algo5_retained_bytes_remain_pinned(tmp_path, relative):
+  materialize_inputs(tmp_path)
+  path = tmp_path / ASTROTIME_ALGO5_PREVIOUS_ROOT_RELATIVE / relative
+  path.write_bytes(path.read_bytes() + b"\n")
+
+  with pytest.raises(RuntimeError, match="AstroTime previous algo5 .* hash mismatch"):
+    verify_astrotime_delta_t_provenance(repo_root=tmp_path)
+
+
+@pytest.mark.parametrize(
+  ("key", "value"),
+  [
+    ("timezone", ["America/Los_Angeles", "America/Los_Angeles"]),
+    ("numpy", "2.4.1"),
+    ("repeat_stdout_byte_identical", False),
+  ],
+)
+def test_algo5_generation_environment_survives_repin(tmp_path, key, value):
+  materialize_inputs(tmp_path)
+  record = tmp_path / ASTROTIME_ALGO5_ROOT_RELATIVE / "record.json"
+  digest = mutate_record(
+    record,
+    lambda payload: payload["historical_generation"]["environment"]["recorded"].update({key: value}),
+  )
+
+  with pytest.raises(RuntimeError, match="environment boundary differs"):
+    verify_astrotime_delta_t_provenance(repo_root=tmp_path, algo5_record_sha256=digest)
+
+
 @pytest.mark.parametrize(
   ("mutation", "message"),
   [
@@ -606,14 +641,14 @@ def test_algo5_grant_scope_is_pinned_after_rehash(tmp_path, old, new, message):
 @pytest.mark.parametrize(
   ("old", "new"),
   [
-    ("-9963.526300002133", "-9963.526300002134"),
+    ("-10202.434877796037", "-10202.434877796038"),
     ("year <= LAST_OBSERVATION_YEAR", "year < LAST_OBSERVATION_YEAR"),
     ("return algo2::compute(year);", "return algo3::compute(year);"),
-    ("-150.64706473230285", "-150.64706473230284"),
+    ("-150.635787765945", "-150.635787765944"),
     ("year - 1825.0", "year - 1826.0"),
     (
-      "+ (1251.8488008787037 * u)\n         - (84.95374332215921 * std::pow(u, 2))",
-      "- (84.95374332215921 * std::pow(u, 2))\n         + (1251.8488008787037 * u)",
+      "+ (1282.9448070843766 * u)\n         - (87.1663776984486 * std::pow(u, 2))",
+      "- (87.1663776984486 * std::pow(u, 2))\n         + (1282.9448070843766 * u)",
     ),
   ],
   ids=["coefficient", "boundary", "delegation", "integration-constant", "lod-epoch", "expression-order"],
@@ -632,8 +667,8 @@ def test_algo5_function_is_pinned(tmp_path, old, new):
   [
     ("year <= LAST_OBSERVATION_YEAR", "year < LAST_OBSERVATION_YEAR", "consumer contract differs"),
     (
-      "+ (1251.8488008787037 * u)\n         - (84.95374332215921 * std::pow(u, 2))",
-      "- (84.95374332215921 * std::pow(u, 2))\n         + (1251.8488008787037 * u)",
+      "+ (1282.9448070843766 * u)\n         - (87.1663776984486 * std::pow(u, 2))",
+      "- (87.1663776984486 * std::pow(u, 2))\n         + (1282.9448070843766 * u)",
       "observed expression differs",
     ),
   ],

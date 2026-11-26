@@ -22,12 +22,13 @@ from types import SimpleNamespace
 import pytest
 
 from toolbox import build_python_aliases as aliases
+from toolbox import package_docs
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def alias_members(name, version):
+def alias_members(name, version, sha=None):
   project = tomllib.loads((ROOT / "bindings/python/pyproject.toml").read_text())["project"]
   metadata = [
     "Metadata-Version: 2.4",
@@ -40,9 +41,12 @@ def alias_members(name, version):
     f"Requires-Dist: celestial-calendar=={version}",
     "Description-Content-Type: text/markdown",
     *(f"Classifier: {value}" for value in project["classifiers"]),
-    *(f"Project-URL: {label}, {url}" for label, url in project["urls"].items()),
+    *(
+      f"Project-URL: {label}, {url}"
+      for label, url in package_docs.python_urls(sha or package_docs.source_sha(ROOT)).items()
+    ),
     "",
-    aliases.alias_readme(name),
+    aliases.alias_readme(name, version=version, sha=sha),
   ]
   info = f"{name}-{version}.dist-info"
   return {
@@ -54,8 +58,8 @@ def alias_members(name, version):
   }
 
 
-def alias_wheel_bytes(name, version, mutation=None):
-  members = alias_members(name, version)
+def alias_wheel_bytes(name, version, mutation=None, sha=None):
+  members = alias_members(name, version, sha)
   if mutation is not None:
     mutation(members)
   record = f"{name}-{version}.dist-info/RECORD"
@@ -74,9 +78,9 @@ def alias_wheel_bytes(name, version, mutation=None):
   return output.getvalue()
 
 
-def write_alias_wheel(directory, name, version, mutation=None):
+def write_alias_wheel(directory, name, version, mutation=None, sha=None):
   wheel = directory / f"{name}-{version}-py3-none-any.whl"
-  wheel.write_bytes(alias_wheel_bytes(name, version, mutation))
+  wheel.write_bytes(alias_wheel_bytes(name, version, mutation, sha))
   sidecar = wheel.with_name(f"{wheel.name}.sha256")
   sidecar.write_text(f"{hashlib.sha256(wheel.read_bytes()).hexdigest()}  {wheel.name}\n")
   return wheel, sidecar
@@ -101,8 +105,9 @@ def test_staged_alias_version_dependency_and_backend_derive_together(name):
   assert actual["project"]["version"] == "9.8.7"
   assert actual["project"]["dependencies"] == ["celestial-calendar==9.8.7"]
   assert actual["project"]["license-files"] == ["LICENSE"]
-  for field in ("urls", "authors", "requires-python", "classifiers", "keywords", "license", "description"):
+  for field in ("authors", "requires-python", "classifiers", "keywords", "license", "description"):
     assert actual["project"][field] == primary["project"][field]
+  assert actual["project"]["urls"] == package_docs.python_urls(package_docs.source_sha(ROOT))
   assert actual["tool"]["scikit-build"] == {"wheel": {"cmake": False, "packages": [f"src/{name}"]}}
   assert "dynamic" not in actual["project"]
 
@@ -175,6 +180,7 @@ def test_alias_record_hash_duplicate_and_self_hash_are_rejected(tmp_path):
 
 
 def test_builder_uses_one_version_and_builds_each_alias_once(monkeypatch, tmp_path):
+  monkeypatch.setattr(package_docs, "source_sha", lambda root: None)
   calls = []
 
   def run(command, **kwargs):

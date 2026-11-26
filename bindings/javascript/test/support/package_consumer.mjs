@@ -64,12 +64,21 @@ export async function runPackageConsumer({ dependencies, packageName, expectedVe
     if (aliasInstalled) await verifyAlias();
 
     await writeFile(join(consumer, "chart_replay.mjs"), await readFile(new URL("./chart_replay.mjs", import.meta.url), "utf8"));
+    await writeFile(join(consumer, "observer_api.mjs"), await readFile(new URL("./observer_api.mjs", import.meta.url), "utf8"));
+    await writeFile(join(consumer, "diameter_api.mjs"), await readFile(new URL("./diameter_api.mjs", import.meta.url), "utf8"));
+    await writeFile(join(consumer, "altitude_api.mjs"), await readFile(new URL("./altitude_api.mjs", import.meta.url), "utf8"));
+    await writeFile(join(consumer, "position_events_api.mjs"), await readFile(new URL("./position_events_api.mjs", import.meta.url), "utf8"));
+    const positionEventsGolden = JSON.parse(await readFile(new URL("../../../../toolbox/position_events_golden.json", import.meta.url), "utf8"));
     const chartExample = JSON.parse(await readFile(new URL("../../../../docs/examples/chart_snapshot/data.json", import.meta.url), "utf8"));
 
     await writeFile(
       join(consumer, "consumer.mjs"),
       `import assert from "node:assert/strict";
 import { runChartAcceptance } from "./chart_replay.mjs";
+import { runObserverAcceptance } from "./observer_api.mjs";
+import { runDiameterAcceptance } from "./diameter_api.mjs";
+import { runAltitudeAcceptance } from "./altitude_api.mjs";
+import { runPositionEventsAcceptance } from "./position_events_api.mjs";
 import * as celestial from "${packageName}";
 import {
   dateToCivilUtc, civilUtcToDate, dateToCivilAtOffset, civilAtOffsetToDate,
@@ -100,6 +109,10 @@ assert.deepEqual(local, {
 assert.equal(civilAtOffsetToDate(local, 480).getTime(), date.getTime());
 
 await celestial.init();
+assert.deepEqual(runObserverAcceptance(celestial), { targets: 10, exactPoles: 2, refractionStates: 2 });
+assert.deepEqual(runDiameterAcceptance(celestial), { targets: 10, exactPoles: 2 });
+assert.deepEqual(runAltitudeAcceptance(celestial), { targets: 10, refractionModels: 2, unresolved: 2 });
+assert.equal(runPositionEventsAcceptance(celestial, ${JSON.stringify(positionEventsGolden)}).cases, 66);
 assert.equal("config" in celestial, false);
 const sun = celestial.sun.apparentGeocentricCoordinate(2451545.0);
 assert(Number.isFinite(sun.distanceAu));

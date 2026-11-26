@@ -158,6 +158,97 @@ export interface BodyState {
   longitudeRateDegPerTtDay: number;
 }
 
+/** Apparent geocentric position in the true ecliptic of date; angles in degrees. */
+export interface Position {
+  readonly target: ChartTarget;
+  readonly longitudeDeg: number;
+  readonly latitudeDeg: number;
+  /** AU for physical bodies; null for mathematical nodes. */
+  readonly distanceAu: number | null;
+  /** Existing C position-source code identifying the provider, not an accuracy bound. */
+  readonly sourceCode: number;
+}
+
+/** Apparent geocentric equatorial position of date; angles in degrees. */
+export interface EquatorialPosition {
+  readonly target: ChartTarget;
+  readonly rightAscensionDeg: number;
+  readonly declinationDeg: number;
+  readonly distanceAu: number | null;
+  /** Existing C position-source code identifying the provider, not an accuracy bound. */
+  readonly sourceCode: number;
+}
+
+export const position: Readonly<{
+  /**
+   * Owned frozen records in caller order at one JDE(TT); longitude in [0,360).
+   * Each selected provider's position domain applies, without the chart's joint window.
+   * These queries do not calculate houses, convert civil time or sample longitude rates.
+   * @throws {TypeError} For non-array selections, non-string targets or nonnumeric times.
+   * @throws {RangeError} For empty/duplicate/unknown selections, nonfinite times or native input rejection.
+   * @throws {CelestialError} Before init, for allocation/evaluation failures or malformed native success.
+   */
+  ecliptic(targets: readonly ChartTarget[], jdeTt: number): readonly Position[];
+  /** Same selection, time, ownership and errors as ecliptic; right ascension in [0,360). */
+  equatorial(targets: readonly ChartTarget[], jdeTt: number): readonly EquatorialPosition[];
+}>;
+
+export type StationMotion = "direct" | "retrograde";
+
+/**
+ * longitudeDeg is the native longitude in degrees, not wrapped into [0,360).
+ * longitudeRateDegPerTtDay is the native rate in degrees per TT day.
+ */
+export interface LongitudeEvent {
+  readonly jdeTt: number;
+  readonly longitudeDeg: number;
+  readonly longitudeRateDegPerTtDay: number;
+  readonly direction: EventDirection;
+}
+
+/**
+ * longitudeRateDegPerTtDay is the rate used by the search and is not guaranteed to be zero at a station.
+ * See the [longitude-event guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/EPHEMERIS_EVENTS.md).
+ */
+export interface StationEvent {
+  readonly jdeTt: number;
+  readonly longitudeDeg: number;
+  readonly longitudeRateDegPerTtDay: number;
+  readonly motionBefore: StationMotion;
+  readonly motionAfter: StationMotion;
+}
+
+/** Directed first-minus-second difference in (-180,180]; both component longitudes stay raw. */
+export interface LongitudeDifferenceEvent {
+  readonly jdeTt: number;
+  readonly longitudeADeg: number;
+  readonly longitudeBDeg: number;
+  readonly longitudeRateADegPerTtDay: number;
+  readonly longitudeRateBDegPerTtDay: number;
+  readonly signedDifferenceDeg: number;
+  readonly direction: EventDirection;
+}
+
+/**
+ * Geocentric longitude searches on [startJdeTt,endJdeTt), returning owned frozen records in time order.
+ * Native target domains, span and work limits apply; valid empty results are frozen empty arrays.
+ * These are distinct from observer.altitudeEvents local centre-altitude crossings and apparent-disk contacts.
+ * @throws {TypeError} For non-string targets or nonnumeric arguments.
+ * @throws {RangeError} For unknown targets, nonfinite inputs, invalid intervals or native domain/selection rejection.
+ * @throws {CelestialError} Before init, for resource/evaluation failures or malformed native success.
+ */
+export const events: Readonly<{
+  /** Includes exact numerical tangent contacts; any finite longitude is accepted modulo whole turns by native code. */
+  longitudeCrossings(target: ChartTarget, longitudeDeg: number, startJdeTt: number, endJdeTt: number): readonly LongitudeEvent[];
+  longitudeStations(target: ChartTarget, startJdeTt: number, endJdeTt: number): readonly StationEvent[];
+  /**
+   * A target paired with itself is rejected.
+   * A difference satisfied throughout the interval is rejected.
+   * A difference this pair can never reach returns an empty array.
+   */
+  longitudeDifferences(first: ChartTarget, second: ChartTarget, differenceDeg: number, startJdeTt: number, endJdeTt: number): readonly LongitudeDifferenceEvent[];
+}>;
+
 export interface ChartHouses {
   ascendantDeg: number;
   midheavenDeg: number;
@@ -184,6 +275,222 @@ export interface ChartSnapshotOptions {
   model?: DeltaTModel | undefined;
 }
 
+/** A fixed WGS84 geodetic site. elevationM is ellipsoidal height, not geoid height. */
+export interface Observer {
+  latitudeDeg: number;
+  longitudeDeg: number;
+  elevationM: number;
+}
+
+export interface RefractionOptions {
+  model: "bennett" | "saemundsson";
+  /** Default 15 C. Position/altitude support [-90,60]; lunar rise/set requires > -273. */
+  temperatureC?: number | undefined;
+  /** Default 1013.25 hPa. Position/altitude support [300,1100]; lunar rise/set requires positive pressure. */
+  pressureHpa?: number | undefined;
+}
+
+export type PhysicalTarget = Exclude<ChartTarget, "meanAscending" | "meanDescending" | "trueAscending" | "trueDescending">;
+
+export interface DiameterOptions {
+  scale: CivilScale;
+  observer?: Observer;
+  model?: DeltaTModel;
+}
+
+/** Full spherical disk; solar nominal, lunar mean, planetary equatorial radii. Saturn excludes rings. */
+export interface ApparentDiameter {
+  readonly target: PhysicalTarget;
+  readonly centre: "geocentric" | "topocentric";
+  readonly sourceCode: number;
+  readonly radiusDefinitionCode: number;
+  readonly radiusKm: number;
+  readonly distanceAu: number;
+  readonly diameterArcsec: number;
+  readonly times: Readonly<{ jdUt1: number; jdeTt: number }>;
+  readonly deltaTModel: Exclude<DeltaTModel, "default">;
+}
+
+export const diameter: Readonly<{
+  /**
+   * Frozen full disk in arcseconds using existing provider distance and optional WGS84 observer translation.
+   * Provider and Delta T guards apply without a chart/rate window; no new observer light-time solve.
+   * @throws {TypeError} For wrong types, missing own scale, inherited options or unknown option keys.
+   * @throws {RangeError} For malformed input, provider rejection or a resolved inside-target observer.
+   * @throws {CelestialError} Before init, for failed evaluation or malformed native success.
+   */
+  query(target: PhysicalTarget, civil: CivilDateTime, options: DiameterOptions): ApparentDiameter;
+}>;
+
+export interface ObserverPositionOptions {
+  scale: CivilScale;
+  observer: Observer;
+  model?: DeltaTModel | undefined;
+  /** Omitted or undefined disables refraction. */
+  refraction?: RefractionOptions | undefined;
+}
+
+/** Centre direction in fixed IAU1980 axes; distance is observer-to-body AU. */
+export interface TopocentricPosition {
+  target: PhysicalTarget;
+  /** Resolved CELESTIAL_POSITION_SOURCE_* integer identity. */
+  sourceCode: number;
+  deltaTModel: Exclude<DeltaTModel, "default">;
+  times: ChartTimes;
+  /** Null when the equatorial projection is unresolved. */
+  rightAscensionDeg: number | null;
+  declinationDeg: number;
+  distanceAu: number;
+  altitudeDeg: number;
+  /** North-zero/east-positive; null at exact geographic poles or unresolved horizontal projection. */
+  azimuthDeg: number | null;
+  /** Separate refraction result; null if disabled or outside the model's supported altitude. */
+  apparentAltitudeDeg: number | null;
+}
+
+export interface GeometricLevel {
+  readonly kind: "geometric";
+  /** Geometric centre altitude, strictly inside (-90,90) degrees. */
+  readonly altitudeDeg: number;
+  readonly refraction?: never;
+}
+
+export interface RefractedLevel {
+  readonly kind: "refracted";
+  /** Apparent centre altitude, in degrees. */
+  readonly altitudeDeg: number;
+  readonly refraction: Readonly<RefractionOptions>;
+}
+
+export type AltitudeSense = "above" | "below";
+export type EventDirection = "increasing" | "decreasing" | "tangent";
+
+export interface AltitudeCondition {
+  readonly target: PhysicalTarget;
+  readonly level: GeometricLevel | RefractedLevel;
+  readonly sense: AltitudeSense;
+}
+
+export interface AltitudeConditionState {
+  readonly condition: AltitudeCondition;
+  readonly sourceCode: number;
+  readonly deltaTModel: "algo5";
+  readonly geometricLevelDeg: number;
+  /** Truth immediately after replay of any event at the inclusive start. */
+  readonly initiallySatisfied: boolean;
+}
+
+export interface AltitudeEvent {
+  readonly jdeTt: number;
+  readonly conditionIndex: number;
+  readonly direction: EventDirection;
+}
+
+export interface AltitudeEvents {
+  readonly condition: AltitudeConditionState;
+  readonly events: readonly AltitudeEvent[];
+}
+
+export interface ObservingWindow {
+  readonly startJdeTt: number;
+  readonly endJdeTt: number;
+}
+
+export interface ObservingWindows {
+  readonly conditions: readonly AltitudeConditionState[];
+  readonly events: readonly AltitudeEvent[];
+  readonly windows: readonly ObservingWindow[];
+}
+
+export interface UpperTransit {
+  readonly jdeTt: number;
+  readonly target: PhysicalTarget;
+  readonly sourceCode: number;
+  readonly deltaTModel: "algo5";
+}
+
+export type PolarTopology = "none" | "day" | "night";
+export type PlanetTarget = Exclude<PhysicalTarget, "sun" | "moon">;
+
+/** TT instants around the UT1 date's local solar transit; rise/set can lie outside that date. */
+export interface SolarRiseSet {
+  readonly target: "sun";
+  readonly sourceCode: number;
+  readonly deltaTModel: "algo5";
+  readonly nutationModel: "iau1980";
+  readonly polar: PolarTopology;
+  readonly riseJdeTt: number | null;
+  readonly transitJdeTt: number;
+  readonly setJdeTt: number | null;
+  readonly h0Deg: number;
+}
+
+/** Representative TT instants in [0h,24h) UT1; a missing transit does not mean polar day or night. */
+export interface LunarRiseSet {
+  readonly target: "moon";
+  readonly sourceCode: number;
+  readonly deltaTModel: "algo5";
+  readonly nutationModel: "iau1980";
+  readonly polar: PolarTopology;
+  readonly riseJdeTt: number | null;
+  readonly transitJdeTt: number | null;
+  readonly setJdeTt: number | null;
+  readonly refraction: Readonly<{ model: RefractionOptions["model"]; temperatureC: number; pressureHpa: number }>;
+}
+
+/** Representative TT instants in a UT1 day, using an airless topocentric centre altitude. */
+export interface PlanetRiseSet {
+  readonly target: PlanetTarget;
+  readonly sourceCode: number;
+  readonly deltaTModel: "algo5";
+  readonly nutationModel: "iau1980";
+  readonly polar: PolarTopology;
+  readonly riseJdeTt: number | null;
+  readonly transitJdeTt: number | null;
+  readonly setJdeTt: number | null;
+  readonly h0Deg: number;
+}
+
+/** Results are owned/frozen. Wrong argument types throw TypeError; invalid values
+ * throw RangeError; computation/resource failures and inconsistent native results throw CelestialError. */
+export const riseSet: Readonly<{
+  /** Standard h0 is -50/60 deg; -6/-12/-18 give twilight. Takes h0Deg, not weather parameters.
+   * Longitude ±180 can select transits a day apart. */
+  solar(dateUt1: GregorianDate, location: GeoLocation & { elevationM?: never }, options?: { h0Deg?: number | undefined }): SolarRiseSet;
+  /** Geocentric threshold uses midday parallax and horizon atmosphere (default Bennett).
+   * Of two rises or sets, returns the later; of two transits, the earlier.
+   * A rise or set exactly at 0h UT1 is returned for neither neighbouring day. */
+  lunar(dateUt1: GregorianDate, location: GeoLocation & { elevationM?: never }, options?: { refraction?: RefractionOptions | undefined }): LunarRiseSet;
+  /** Topocentric coordinates already include parallax; standard h0 is -34/60 deg.
+   * Every provider sample must fit its TT domain, including estimates outside the day.
+   * The daily-query guide describes provider limits; JavaScript has no capability-query API. */
+  planet(target: PlanetTarget, dateUt1: GregorianDate, site: Observer, options?: { h0Deg?: number | undefined }): PlanetRiseSet;
+}>;
+
+export const observer: Readonly<{
+  /** UTC from 1972, or explicit UT1. Provider/Delta T guards apply without a chart/rate window. */
+  position(target: PhysicalTarget, civil: CivilDateTime, options: ObserverPositionOptions): TopocentricPosition;
+  /**
+   * Detected centre-altitude crossings in [startJdeTt,endJdeTt), with fixed ALGO5/IAU1980.
+   * Start events are included and already reflected in initiallySatisfied; end events are excluded.
+   * Sampling can miss events without an error; no tangent events are returned.
+   * @throws {RangeError} For invalid inputs, including weather outside [-90,60] C or [300,1100] hPa.
+   * @throws {CelestialError} For detected near contacts, failed refinement, exhausted work or malformed success.
+   * No failure returns a partial result. The returned graph is frozen and owns its values.
+   */
+  altitudeEvents(site: Observer, condition: AltitudeCondition, startJdeTt: number, endJdeTt: number): AltitudeEvents;
+  /** Detected upper meridian passages in [start,end) JDE(TT), with altitudeEvents' sampling limits.
+   * At a pole use the supplied longitude's meridian. */
+  upperTransits(site: Observer, target: PhysicalTarget, startJdeTt: number, endJdeTt: number): readonly UpperTransit[];
+  /**
+   * Intersect conditions and retain their states and companion events, in JDE(TT).
+   * Windows are maximal positive-duration operational spans, not strict point sets at isolated equalities.
+   * Windows are reconstructed from detected crossings; altitudeEvents' sampling limits apply.
+   * An empty conjunction returns the whole interval; failure in any condition fails the whole query.
+   */
+  observingWindows(site: Observer, conditions: readonly AltitudeCondition[], startJdeTt: number, endJdeTt: number): ObservingWindows;
+}>;
+
 /** An unavailable module, computation, resource or protocol failure; invalid native input throws RangeError.
  * recorded is true when native reported a recognized error kind, even with an empty message.
  * Caller-owned WASM output buffers are limited to 16 MiB by this binding.
@@ -203,14 +510,24 @@ export class CelestialError extends Error {
 export function init(): Promise<void>;
 
 export const time: Readonly<{
-  /** Convert a UT1 civil moment to JD (UT1). */
+  /**
+   * Convert a UT1 civil moment to JD (UT1).
+   * At the end of year 32767 rounding can reach JD 13689325.5. The C++ jd_to_ut1()
+   * inverse rejects that rounded value, so a civil roundtrip is not guaranteed.
+   */
   ut1ToJd(ut1: CivilDateTime): number;
-  /** Convert a UT1 civil moment to JDE (TT). */
+  /**
+   * Convert UT1 to JDE(TT) using the fixed ΔT model Algo5.
+   * Input years [1, 32767]; shifted TT must stay representable.
+   */
   ut1ToJde(ut1: CivilDateTime): number;
-  /** Convert a TT-based JDE to a UT1 civil moment. */
+  /**
+   * Convert finite JDE(TT) in [1867522.5, 13689325.5) to UT1 using the fixed ΔT model Algo5.
+   * The lower endpoint returns 400-12-31; time.ut1ToJde() may return a JDE outside this inverse's input window.
+   */
   jdeToUt1(jde: number): CivilDateTimeResult;
   /**
-   * Convert UTC civil fields to JDE(TT); before 1972 uses the UT1 substitute with fixed Algo5.
+   * Convert UTC civil fields to JDE(TT); before 1972 uses the UT1 substitute with the fixed ΔT model Algo5.
    * Input years are in [1, 32767], and the shifted TT instant must stay representable.
    * Uses the fixed leap-second table and retains its final offset after the last entry.
    * Leap seconds and the 1972 model seam are not generally invertible.
@@ -218,7 +535,7 @@ export const time: Readonly<{
   utcToJde(utc: CivilDateTime): number;
   /**
    * Convert finite JDE(TT) in [1867522.5, 13689325.5) to UTC civil fields; year 400 is possible.
-   * Before 1972 uses the UT1 substitute with fixed Algo5; retains the final offset after the last leap-table entry.
+   * Before 1972 uses the UT1 substitute with the fixed ΔT model Algo5; retains the final leap-table offset afterward.
    * Leap seconds, leap-step midnight round-off and the 1972 seam do not promise an exact inverse.
    */
   jdeToUtc(jde: number): CivilDateTimeResult;
@@ -232,7 +549,7 @@ export const time: Readonly<{
   /**
    * Delta T (TT - UT1), in seconds, for a finite decimal Gregorian year.
    * Default/algo5 is the current project model: algo2 before 2005, an IERS Bulletin A fit
-   * through about 2026.41, then anchored Morrison et al. long-term extrapolation.
+   * through about 2026.75, then anchored Morrison et al. long-term extrapolation.
    * Algo1 (Xu Jianwei 2008), algo2 (Espenak and Meeus 2006), algo3 (Espenak 2014), and
    * algo4 (IERS Bulletin A / USNO predictions) are frozen comparison models. Algo2 also
    * remains the live pre-2005 branch of algo3, algo4, and algo5.
@@ -252,7 +569,13 @@ export const sun: Readonly<{
   longitudeCrossings(year: number, longitudeDeg: number): number[];
   /** Equation of time in degrees of hour angle; multiply by 240 for seconds. */
   equationOfTime(jde: number): number;
-  /** Convert civil UTC to local apparent solar time; geographic longitude is east-positive in [-180, 180] degrees. */
+  /**
+   * Convert civil UTC to local apparent solar time; geographic longitude is east-positive in [-180, 180] degrees.
+   * Input years are [1, 32767]; before 1972 UTC fields use the UT1 substitute.
+   * The returned clock differs from UT1-based apparent solar time by UTC minus UT1.
+   * After the last leap-table step, UT1 minus UTC is 69.184 seconds minus Delta T;
+   * its magnitude is no longer bounded by 0.9 seconds.
+   */
   apparentSolarTime(utc: CivilDateTime, longitudeDeg: number): CivilDateTimeResult;
 }>;
 
@@ -273,7 +596,8 @@ export const moon: Readonly<{
 export const jieqi: Readonly<{
   /**
    * UT1 civil moment for a Gregorian year in [401, 32766].
-   * Not an east-eight wall date or UTC: establish the time-scale conversion before displaying either.
+   * Not an east-eight wall date or UTC: pass momentUt1 through time.ut1ToJde(), then time.jdeToUtc(),
+   * before applying a display offset.
    * The returned UT1 year can differ from the requested year.
    * @throws {RangeError} For inputs outside the native domain.
    * @throws {CelestialError} If the calculation fails or native success is malformed.

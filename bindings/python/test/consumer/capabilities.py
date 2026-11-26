@@ -80,6 +80,9 @@ def main() -> None:
     celestial.CapabilityOperation.HOUSES,
     celestial.CapabilityOperation.CHART,
     celestial.CapabilityOperation.DELTA_T,
+    celestial.CapabilityOperation.TOPOCENTRIC,
+    celestial.CapabilityOperation.APPARENT_DIAMETER,
+    celestial.CapabilityOperation.RISE_SET,
   ):
     assert "default" in celestial.capability_text(operation).lower()
     raises(ValueError, lambda operation=operation: celestial.capabilities(operation))

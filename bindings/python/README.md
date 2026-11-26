@@ -6,8 +6,12 @@ library, so using it requires no compiler or separate CelestialCalendar installa
 
 [中文](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/python/README_ZH.md)
 
-This guide describes the current source, including unreleased changes. The install command gets the latest published
-version; use its matching documentation. To run current-source examples, [build a local wheel](#build-a-local-wheel).
+<!-- package-context -->
+This guide describes the accompanying source revision. The install command gets the latest published version,
+which may differ from this source revision; use its matching documentation.
+<!-- /package-context -->
+
+To run examples from a source checkout, [build a local wheel](#build-a-local-wheel).
 For upgrades from 0.x, see [Migrating to 1.0](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/MIGRATING_1_0.md).
 
 <a id="install"></a>
@@ -30,11 +34,45 @@ environment. Apart from this package, the examples use only the Python standard 
 <a id="examples"></a>
 ## Examples
 
+For interval altitude events, upper transits and intersections such as
+“Mars above 20° while the Sun is below −18°”, see [altitude events and observing windows](../../docs/ALTITUDE_EVENTS.md).
+The queries take explicit JDE(TT) intervals. Sampled searches can miss events without reporting an error.
+
+For daily Sun, Moon and planet summaries, use `solar_rise_set`, `lunar_rise_set`
+and `planet_rise_set`. The [rise/set guide](../../docs/RISE_SET.md) explains their
+UT1-date selection, missing events, and conversion from TT to clock times.
+
+For full scalar disk sizes in arcseconds, use `apparent_diameter` with an optional
+WGS84 observer. See [apparent diameters](../../docs/APPARENT_DIAMETERS.md) for radius
+conventions, supported targets and a minimal call.
+
+### Local sky from a WGS84 observer
+
+Latitude/longitude are degrees (east-positive longitude); elevation is ellipsoidal
+height in metres. Azimuth is north-zero/east-positive and can be absent at a pole or
+zenith/nadir. See the [observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md)
+for time/model guards, optional refraction and coordinate limits.
+
+```python
+from celestial_calendar import CivilDateTime, CivilScale, Observer, Target, topocentric_position
+
+sky = topocentric_position(
+  Target.MOON,
+  CivilDateTime(2026, 11, 7, 0.0),
+  CivilScale.UTC,
+  Observer(-33.85, 151.2, 50.0),
+)
+assert sky.distance_au > 0.0
+assert sky.apparent_altitude_deg is None
+print(sky.altitude_deg, sky.azimuth_deg)
+```
+
 <a id="todays-lunar-date"></a>
 ### Today's lunar date
 
 Choose today's civil date at a fixed UTC+8 offset first, then convert that date label with `ALGO3`. "Today" therefore
-does not depend on the host timezone. This does not involve UT1, and the clock's UTC is not treated as UT1.
+does not depend on the host timezone. This converts a date label without a UT1 (Universal Time 1,
+based on Earth's rotation) calculation; the clock's UTC is not treated as UT1.
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -62,7 +100,7 @@ invertible. After the leap table's last entry, these conversions retain its fina
 ```python
 import celestial_calendar as celestial
 
-utc = celestial.CivilDateTime(2026, 10, 28, (19 * 3600 + 35 * 60 + 37) / 86400)
+utc = celestial.CivilDateTime(2026, 10, 28, (19 * 3600 + 35 * 60 + 37) / 86400)  # 19:35:37 UTC
 jde_tt = celestial.utc_to_jde(utc)
 print(celestial.jde_to_utc(jde_tt))
 ```
@@ -93,11 +131,15 @@ remaining_days = celestial.ut1_to_jd(upcoming.moment_ut1) - cutoff_jd
 print(celestial.jieqi_name(upcoming.jieqi))
 print("UT1:", upcoming.moment_ut1)
 print("Remaining UT1 days:", remaining_days)
+upcoming_jde_tt = celestial.ut1_to_jde(upcoming.moment_ut1)
+print("UTC:", celestial.jde_to_utc(upcoming_jde_tt))
 ```
 
 The difference between two UT1 Julian Days retains fractional days; subtracting calendar dates would lose the
-time of day. This is a fixed contemporary query across one year boundary, not a search algorithm for the entire
-API domain. The Jieqi year domain and failure rules are under [API contract](#api-contract).
+time of day. `cutoff_jd` and the event values are JD(UT1), not JDE(TT); do not pass them to `jde_to_utc()`.
+For UTC display, first convert the selected event with `celestial.ut1_to_jde(upcoming.moment_ut1)`, then pass
+that JDE to `celestial.jde_to_utc()`. This is a fixed contemporary query across one year boundary, not a search
+algorithm for the entire API domain. The Jieqi year domain and failure rules are under [API contract](#api-contract).
 
 In the UT1 examples above, `CivilDateTime` is explicitly UT1, and its last field is the day fraction: `0.5` means half a
 day. `ut1_to_jde()` converts the same UT1 input to a TT-based JDE. `moment_ut1` is not UTC or a UTC+8 wall clock.

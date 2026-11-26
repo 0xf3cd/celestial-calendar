@@ -76,7 +76,9 @@ gh workflow run release.yml --ref vMAJOR.MINOR.PATCH \
 ```
 
 Preparation validates the protected tag, main ancestry, producer runs, artifact API digests, archive contents,
-and documentation. It then stages one candidate and classifies both npm identities:
+and documentation. Package validators compare README bytes with the checked-out release guides and documentation
+URLs with the independently selected release commit. Preparation then stages one candidate and classifies both
+npm identities:
 
 - an absent version in an existing, correctly identified package requires OIDC publication;
 - an absent version whose package also returns 404 records `bootstrap_required`;
@@ -116,6 +118,9 @@ candidate, primary first and alias second. Exact bytes are a verified no-op; con
 and transport failures stop rather than authorizing publication. Verification alone polls indexing and transient
 transport states to a fixed ceiling and reports which npm or Python distribution is still pending.
 
+<a id="registry-verification"></a>
+### Registry verification
+
 After success, inspect the immutable GitHub Release, asset inventory and `verify_registries` results.
 Do not repeat those installations manually on the same bytes merely to obtain another green result:
 
@@ -129,6 +134,25 @@ Do not repeat those installations manually on the same bytes merely to obtain an
 
 An exceptional recovery that cannot reach `verify_registries` must perform its missing checks against the
 original frozen candidate, as described below. A no-op publication proves byte identity, not a live OIDC publish.
+
+Installed-package checks compare the documentation consumers receive with the selected release commit.
+
+<a id="release-documentation"></a>
+### Release documentation
+
+After `verify_registries` succeeds, obtain separate documentation-deployment authorization and dispatch
+`docs-publish.yml` from the protected default branch with `release_tag=vMAJOR.MINOR.PATCH`.
+Keep the [Pages environment approval](MAINTAINING.md#docs-publishing) separate from package
+publication. The publisher resolves the published immutable tag; a newer default-branch workflow must still
+build that release's exact source and version.
+
+Retain the same-run Pages artifact ID and schema-2 manifest. On the deployed site, check the release version and
+full source SHA on guide and API pages, plus desktop/mobile navigation. Separately, open the published PyPI/npm
+project pages and check documentation URLs and README links for all five package names (Python
+`celestial-calendar`, `cele`, `wentian`; npm `@0xf3cd/celestial`,
+`celestial-calendar`): they must open the matching SHA-pinned guides on GitHub, not the hosted site. Historical
+packages therefore keep their source guides when the hosted site changes. Code/build checks alone do not
+complete live-site acceptance.
 
 ## Recovery
 
@@ -175,21 +199,27 @@ the example below shows one interpreter. `RUN_ID` is the release workflow run, n
 ```
 
 Rehearse environment self-approval and same-run failed-job artifact recovery after workflow changes and before the
-final release tag. The instrument is `.github/workflows/release-rehearsal.yml`: push a disposable `vX.Y.Z-rehearsal`
-tag — never a plain `vX.Y.Z`, which is release identity — (the tag rulesets cover it: create via the Admin bypass,
-remove afterwards via the ruleset recovery path recorded in #215), dispatch the workflow on that tag, approve both
+final release tag. The instrument is `.github/workflows/release-rehearsal.yml`: create an immutable `vX.Y.Z-rehearsal`
+tag through the tag-creation Admin bypass, then dispatch the workflow on it. Retain the tag after the rehearsal;
+the `v*` immutability rules prohibit moving or deleting it, just like formal release tags. Never use a plain
+`vX.Y.Z` for a rehearsal: it is release identity. The rehearsal spelling matches the environments' `v*.*.*`
+deployment-tag policy. Approve both
 environment gates against the staged manifest, then confirm the dependent `gate_pypi_second` job waits for a
 separate `pypi` approval. Record the actual behaviour rather than assuming an approval is requested again.
 Then rerun the deliberately failed job with
 `gh run rerun RUN_ID --failed` and confirm it recovers the same-run artifact. The v0.6.0 npm no-op cannot rehearse a
 live OIDC publish.
 
+For another source commit, choose an unused `vX.Y.Z-rehearsal` name; never move an existing tag.
+Workflow reruns on the same tag keep the same source commit.
+
 <a id="one-time-setup"></a>
 ## One-Time Setup
 
 Before creating a release tag:
 
-1. Add an active tag ruleset for `v*`. Test `github.ref_protected` with a disposable matching tag, then remove it.
+1. Add active creation and immutability rulesets for `v*`. Test `github.ref_protected` with an unused
+   `vX.Y.Z-rehearsal` tag and retain it; do not weaken update or deletion protection for cleanup.
 2. Create `pypi` and `npm` environments. The maintainer is the required reviewer and may self-approve after reading
    the candidate manifest; disable self-review prevention and admin bypass. Restrict deployment tags to `v*.*.*`.
 3. Register the primary PyPI Trusted Publisher with owner `0xf3cd`, repository `celestial-calendar`, workflow

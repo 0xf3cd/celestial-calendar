@@ -17,8 +17,8 @@
 
 [English](README.md)
 
-本文描述当前源码，含尚未发布的改动。以下安装命令取得 npm 上的最新已发布版本，请使用与所装版本匹配的文档。
-日志接口移除、太阳距离字段改名和错误类别变化见[迁移指南（英文）](../../docs/MIGRATING_1_0.md)。
+本文对应其所在的源码版本。以下安装命令取得 npm 上的最新已发布版本，可能与这份源码不同，请使用与所装版本匹配的文档。
+命名空间别名、日志接口移除、太阳距离字段改名和错误类别变化见[迁移指南（英文）](../../docs/MIGRATING_1_0.md)。
 
 <a id="install"></a>
 ## 安装
@@ -40,6 +40,70 @@ npm install @0xf3cd/celestial
 <a id="examples"></a>
 ## 示例
 
+只查询所选天体的地心位置、不计算全盘时，用
+[`position.ecliptic` 和 `position.equatorial`](#independent-positions)。
+搜索黄经穿越、留站和两天体的有向黄经差时，用
+[`events`](../../docs/EPHEMERIS_EVENTS.md#javascript)。
+
+按 UT1 日期查询升起、上中天和落下，用 `riseSet.solar/lunar/planet`。
+太阳查询围绕所选当地中天，月球和行星查询取该 UT1 日内的事件；返回时刻均为 TT。
+缺失事件的处理和钟表时间显示见[每日升落指南（英文）](../../docs/RISE_SET.md)。
+
+用区间高度查询查找高度事件、上中天，或“火星高于 20° 且太阳低于 −18°”的交集时段。
+接口接受显式 JDE(TT) 区间；采样搜索可能漏检事件，成功返回不保证已找到全部事件。
+用法和限制见[高度事件与观测窗口指南（英文）](../../docs/ALTITUDE_EVENTS.md)。
+
+用 `diameter.query` 查询完整球面视角直径，单位为角秒，可选传入 WGS84 观测者。
+半径约定、支持的天体和浏览器缩放示例见[视角直径指南（英文）](../../docs/APPARENT_DIAMETERS.md)。
+
+### WGS84 观测者
+
+经纬度以度为单位，经度东正西负；椭球高以米为单位。方位角以正北为零点、向东为正。
+关于角度字段的缺失情形、严格 UTC 规则和大气折射，见
+[观测者指南](../../docs/OBSERVER.md)。
+
+```js
+import { init, observer } from "@0xf3cd/celestial";
+
+await init();
+const sky = observer.position("moon", { year: 2026, month: 11, day: 7, fraction: 0 }, {
+  scale: "utc", observer: { latitudeDeg: -33.85, longitudeDeg: 151.2, elevationM: 50 },
+});
+if (!(sky.distanceAu > 0) || sky.apparentAltitudeDeg !== null) throw new Error("observer result");
+console.log(sky.altitudeDeg, sky.azimuthDeg);
+```
+
+<a id="independent-positions"></a>
+### 按需查询地心位置
+
+```js
+import { init, position } from "@0xf3cd/celestial";
+
+await init();
+const bodies = position.ecliptic(["moon", "trueAscending"], 2451545.0);
+console.log(bodies[0].longitudeDeg, bodies[0].distanceAu);
+console.log(bodies[1].distanceAu); // null：交点没有距离
+const equatorial = position.equatorial(["mars"], 2451545.0);
+console.log(equatorial[0].rightAscensionDeg, equatorial[0].declinationDeg);
+```
+
+传入 JDE(TT) 后，结果按目标顺序返回，数组和记录均冻结。经纬度、赤经和赤纬以度为单位；
+距离为 AU（月球也一样），交点距离为 `null`。空选和重复目标会失败；
+只检查所选目标各自的位置模型域，不计算速率、宫位或民用时间转换。
+后续查询和 WASM 内存增长不会改变已经取得的结果。
+
+`sourceCode` 是既有 C 位置来源编号：
+
+- 1：太阳／VSOP87D
+- 2：月球／截断 ELP2000-82B
+- 3：行星／VSOP87D
+- 4：冥王星／Pluto95
+- 5：平均交点
+- 6：Meeus 五项真交点
+
+编号只标明提供者，不是精度界。冥王星位置接受 `[2409543.5, 2488069.5)` JDE(TT)。
+投影使用固定的 IAU 1980 章动和真黄赤交角。
+
 <a id="chart-snapshot"></a>
 ### 固定时刻的星盘快照
 
@@ -53,7 +117,6 @@ const snapshot = chart.snapshot(
     scale: "utc",
     location: { latitudeDeg: 51.5, longitudeDeg: 0 },
     system: "placidus",
-    model: "default",
   },
 );
 console.log(snapshot.times); // { jdUt1, jdeTt }
@@ -118,7 +181,7 @@ console.log(gregorian, lunar);
 import { init, time } from "@0xf3cd/celestial";
 
 await init();
-const utc = { year: 2026, month: 10, day: 28, fraction: (19 * 3600 + 35 * 60 + 37) / 86400 };
+const utc = { year: 2026, month: 10, day: 28, fraction: (19 * 3600 + 35 * 60 + 37) / 86400 }; // 19:35:37 UTC
 const jdeTt = time.utcToJde(utc);
 console.log(time.jdeToUtc(jdeTt));
 ```
@@ -151,9 +214,13 @@ if (upcoming === undefined) throw new Error("No later Jieqi in the queried years
 console.log(celestial.jieqi.name(upcoming.jieqi));
 console.log("UT1:", upcoming.momentUt1);
 console.log("Remaining UT1 days:", upcoming.jdUt1 - cutoffJd);
+const upcomingJdeTt = celestial.time.ut1ToJde(upcoming.momentUt1);
+console.log("UTC:", celestial.time.jdeToUtc(upcomingJdeTt));
 ```
 
 这里遍历全部枚举值，按时刻而非编号选取下一项，并保留剩余天数的小数部分。
+`jdUt1` 和 `cutoffJd` 是 JD(UT1)，不是 JDE(TT)，不能传给 `time.jdeToUtc()`；
+显示 UTC 前先用 `celestial.time.ut1ToJde(upcoming.momentUt1)` 转为 TT，再传给 `celestial.time.jdeToUtc()`。
 `momentUt1` 是 UT1，不是 UTC 或东八区时间。此例只演示这次跨年查询，不是覆盖整个 API 年域的通用搜索；
 `jieqi.moment()` 的查询年域与失败条件见 [API 契约](#api-contract)。
 
@@ -197,10 +264,19 @@ console.log(celestial.lunar.toGregorian("algo3", result));
 <a id="api-contract"></a>
 ## API 契约
 
-根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart` 命名空间，并随包提供 TypeScript 声明。
-包只提供 `jieqi` / `lunar` 这一套正式命名，不另设 `solarTerms` / `lunarCalendar` 别名。
-模型和月相选项使用字符串联合类型，如 `"full"`、`"algo3"`。不再提供日志配置或 `init` 配置参数。
-独立位置、赤道位置、宫位、事件、能力与模型文本查询均不是公开 JavaScript API。
+根入口提供 `time`、`sun`、`moon`、`jieqi`、`lunar`、`chart`、`position`、`events`、
+`observer`、`diameter` 和 `riseSet` 命名空间，并随包提供 TypeScript 声明。
+模型和月相选项使用字符串联合类型，如 `"full"`、`"algo3"`。
+现有的 `sun`／`moon` 地心辅助查询、`observer.position()` 和 `diameter.query()` 均为公开 API。
+`position.ecliptic(targets, jdeTt)` 和 `position.equatorial(targets, jdeTt)` 提供独立地心位置，
+按所选目标顺序返回冻结记录；时间为 JDE(TT)，距离为 AU（月球也一样），交点距离为 `null`。
+空选、重复目标和任一目标超出自身模型域会失败，不套全盘联合窗口，也不计算速率。
+来源编号见[按需查询地心位置](#independent-positions)。
+冥王星位置接受 `[2409543.5, 2488069.5)` JDE(TT)。
+投影使用固定的 IAU 1980 章动和真黄赤交角。
+`events.longitudeCrossings`、`longitudeStations`、`longitudeDifferences` 搜索半开 TT 区间，
+保留原生切触／方向语义；见[黄经事件指南（英文）](../../docs/EPHEMERIS_EVENTS.md#javascript)。
+独立宫位、能力与模型文本查询仍只提供 C／Python 接口。
 `Jieqi` 是冻结对象，包含 24 个具名常量，从 `Jieqi.LICHUN = 0` 到 `Jieqi.DAHAN = 23`，拼写与 Python 包一致。
 TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `number` 变量须先收窄类型，
 才能传给 `jieqi.moment()` 或 `jieqi.name()`。`jieqi.name()` 返回中文名，如 `Jieqi.LICHUN` 对应 `"立春"`。
@@ -263,7 +339,7 @@ TypeScript 类型 `Jieqi` 是相应的 `0 | 1 | ... | 23` 联合；一般的 `nu
 
 原生 `GregorianDate` 和 `CivilDateTimeResult` 结果使用 `[-32767, 32767]` 内的天文纪年，0 年表示公元前 1 年。
 `CivilDateTimeResult` 在 `CivilDateTime` 上增加整数 `hour`、`minute` 及可带小数的 `second`。
-`time.jdeToUt1()`、`sun.apparentSolarTime()` 和 `JieqiMoment.momentUt1` 使用这种输出。
+`time.jdeToUt1()`、`time.jdeToUtc()`、`sun.apparentSolarTime()` 和 `JieqiMoment.momentUt1` 使用这种输出。
 这些字段从日小数推导，不舍入到毫秒；`second` 的单位是秒，不是毫秒计数。
 结果符合所调用操作的输入窗口时，仍可作为民用时刻输入。函数读取 `fraction`，而非派生的时分秒字段。
 时间尺度由操作命名区分，不编码在这个共用记录类型中。

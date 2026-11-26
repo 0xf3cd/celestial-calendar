@@ -21,6 +21,7 @@ env:
   NODE_CURRENT: "24.19.0"
   NODE_FLOOR: "22.0.0"
   NPM_VERSION: "11.17.0"
+  CELESTIAL_DOCS_SOURCE_SHA: ${{ github.sha }}
 
 jobs:
   wasm:
@@ -34,9 +35,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      # The unpacked SDK is ~2 GB; caching it turns the toolchain step into seconds.
-      # Activation state lives inside the directory, so a cache hit is ready to use.
+      # PRs may restore/save the SDK; dispatched producers always install it fresh.
       - name: Cache emsdk
+        if: github.event_name == 'pull_request'
         id: emsdk-cache
         uses: actions/cache@v6
         with:

@@ -253,7 +253,8 @@ def test_unversioned_library_is_preferred_to_accumulated_versions(tmp_path):
     ("win32", "celestial_calendar.dll", "libcelestial_calendar.dylib"),
   ],
 )
-def test_golden_generator_uses_the_shared_platform_finder(tmp_path, monkeypatch, platform, name, foreign):
+@pytest.mark.parametrize("generate", [make_bindings_golden.generate, make_bindings_golden.generate_rise_set])
+def test_golden_generator_uses_the_shared_platform_finder(tmp_path, monkeypatch, platform, name, foreign, generate):
   library = tmp_path / name
   library.write_bytes(b"selected library")
   (tmp_path / foreign).write_bytes(b"foreign library")
@@ -273,8 +274,33 @@ def test_golden_generator_uses_the_shared_platform_finder(tmp_path, monkeypatch,
   monkeypatch.setattr(make_bindings_golden, "verify_library", verify)
   monkeypatch.setattr(make_bindings_golden.ctypes, "CDLL", load)
   with pytest.raises(RuntimeError, match="stopped before loading"):
-    make_bindings_golden.generate()
+    generate()
   assert loaded == ["verified", str(library)]
+
+
+@pytest.mark.parametrize("rise_set", [False, True])
+@pytest.mark.parametrize("explicit", [False, True])
+def test_golden_cli_routes_dataset_and_destination(tmp_path, monkeypatch, rise_set, explicit):
+  default = tmp_path / "bindings_golden.json"
+  output = tmp_path / "custom.json"
+  general = {"sections": {"sample": {"entries": [1, 2]}}}
+  daily = {"entries": [3]}
+  monkeypatch.setattr(make_bindings_golden, "OUT_PATH", default)
+  monkeypatch.setattr(make_bindings_golden, "generate", lambda: general)
+  monkeypatch.setattr(make_bindings_golden, "generate_rise_set", lambda: daily)
+  monkeypatch.setattr(
+    sys,
+    "argv",
+    [
+      "make_bindings_golden.py",
+      *(["--rise-set"] if rise_set else []),
+      *(["--out-path", str(output)] if explicit else []),
+    ],
+  )
+  make_bindings_golden.main()
+  destination = output if explicit else default.with_name("rise_set_golden.json") if rise_set else default
+  assert json.loads(destination.read_text()) == (daily if rise_set else general)
+  assert list(tmp_path.iterdir()) == [destination]
 
 
 @pytest.mark.parametrize("failure", ["missing", "artifact", "source"])

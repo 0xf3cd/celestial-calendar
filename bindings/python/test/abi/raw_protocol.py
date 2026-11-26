@@ -32,9 +32,72 @@ def happy_celestial_last_error() -> None:
   assert _binding.last_error_text() == ""
 
 
+def happy_celestial_topocentric_position() -> None:
+  result = call("topocentric_position", 1, 2026, 11, 7, 0.0, 0, 0, -33.85, 151.2, 50.0, 0, NAN, NAN)
+  assert result.valid and result.target_code == 1 and result.source_code == 2
+  assert result.delta_t_identity_code == 5 and result.present_fields == 12
+  assert result.distance_au > 0 and -90 <= result.altitude_deg <= 90
+
+
+def edge_celestial_topocentric_position() -> None:
+  result = call("topocentric_position", 0, 2026, 11, 7, 0.0, 0, 0, 90.0, 0.0, 0.0, 0, NAN, NAN)
+  assert result.valid and result.present_fields & 8 == 0 and math.isfinite(result.altitude_deg)
+  assert not call("topocentric_position", 10, 2026, 11, 7, 0.0, 0, 0, 0.0, 0.0, 0.0, 0, 0.0, 0.0).valid
+  assert _binding.last_error_kind() == 1
+
+
+def happy_celestial_apparent_diameter() -> None:
+  result = call("apparent_diameter", 1, 2026, 11, 7, 0.0, 0, 0, 0, NAN, NAN, NAN)
+  assert result.valid and result.target_code == 1 and result.centre_code == 0
+  assert result.source_code == 2 and result.radius_definition_code == 2 and result.delta_t_identity_code == 5
+  assert result.radius_km == 1737.4 and result.distance_au > 0 and 0 < result.diameter_arcsec < 648000
+
+
+def edge_celestial_apparent_diameter() -> None:
+  assert call("apparent_diameter", 1, 2026, 11, 7, 0.0, 0, 0, 1, 90.0, 0.0, 0.0).valid
+  assert _binding.last_error_kind() == 0
+  assert not call("apparent_diameter", 10, 2026, 11, 7, 0.0, 0, 0, 0, NAN, NAN, NAN).valid
+  assert _binding.last_error_kind() == 1
+
+
 def happy_celestial_ut1_to_jd() -> None:
   result = call("ut1_to_jd", 2024, 6, 1, 0.5)
   assert result.valid and abs(result.value - 2460463.0) < 1e-6
+
+
+def happy_celestial_solar_rise_set() -> None:
+  result = call("solar_rise_set", 2025, 1, 1, 40.0, 0.0, -50.0 / 60)
+  assert result.valid and result.source_code == 1 and result.present_fields == 224 and result.polar_code == 0
+  assert result.rise_jde_tt < result.transit_jde_tt < result.set_jde_tt
+  assert result.delta_t_identity_code == 5 and result.nutation_identity_code == 2
+
+
+def edge_celestial_solar_rise_set() -> None:
+  assert not call("solar_rise_set", 2025, 257, 1, 40.0, 0.0, 0.0).valid
+  assert _binding.last_error_kind() == 1
+
+
+def happy_celestial_lunar_rise_set() -> None:
+  result = call("lunar_rise_set", 2025, 1, 1, 40.0, 0.0, 1, -100.0, 200.0)
+  assert result.valid and result.source_code == 2 and result.refraction_code == 1
+  assert result.temperature_c == -100 and result.pressure_hpa == 200
+  assert result.delta_t_identity_code == 5 and result.nutation_identity_code == 2
+
+
+def edge_celestial_lunar_rise_set() -> None:
+  assert not call("lunar_rise_set", 2025, 1, 1, 40.0, 0.0, 257, 15.0, 1013.25).valid
+  assert _binding.last_error_kind() == 1
+
+
+def happy_celestial_planet_rise_set() -> None:
+  result = call("planet_rise_set", 4, 2025, 1, 1, 40.0, 0.0, 1000.0, -34.0 / 60)
+  assert result.valid and result.target_code == 4 and result.source_code == 3
+  assert result.delta_t_identity_code == 5 and result.nutation_identity_code == 2
+
+
+def edge_celestial_planet_rise_set() -> None:
+  assert not call("planet_rise_set", 258, 2025, 1, 1, 40.0, 0.0, 0.0, 0.0).valid
+  assert _binding.last_error_kind() == 1
 
 
 def happy_celestial_ut1_to_jde() -> None:
@@ -224,6 +287,12 @@ def edge_celestial_ut1_to_jd() -> None:
 
 
 def edge_celestial_ut1_to_jde() -> None:
+  for fraction in (0.0, 0.9, 0.999, math.nextafter(1.0, 0.0)):
+    assert not call("ut1_to_jde", 0, 12, 31, fraction).valid
+    assert call("last_error_kind") == 1
+    assert _binding.last_error_text() == "Year 0 is out of range [1, 32767]."
+  assert call("ut1_to_jde", 1, 1, 1, 0.0).valid
+  assert call("last_error_kind") == 0
   assert not call("ut1_to_jde", 2024, 13, 1, 0.5).valid and _binding.last_error_text()
 
 
@@ -293,6 +362,13 @@ def edge_celestial_equation_of_time() -> None:
 
 
 def edge_celestial_apparent_solar_time() -> None:
+  for fraction in (0.0, 0.9, 0.999, math.nextafter(1.0, 0.0)):
+    assert not call("apparent_solar_time", 0, 12, 31, fraction, 0.0).valid
+    assert call("last_error_kind") == 1
+    assert _binding.last_error_text() == "Year 0 is out of range [1, 32767]."
+  previous = call("apparent_solar_time", 1, 1, 1, 0.0, -180.0)
+  assert previous.valid and (previous.year, previous.month, previous.day) == (0, 12, 31)
+  assert call("last_error_kind") == 0
   assert not call("apparent_solar_time", 2024, 6, 1, 0.5, 200.0).valid
 
 
@@ -607,6 +683,14 @@ def edge_celestial_capability_text() -> None:
 
 
 EXPORT_LABELS = (
+  "solar_rise_set",
+  "lunar_rise_set",
+  "planet_rise_set",
+  "altitude_events",
+  "upper_transits",
+  "observing_windows",
+  "apparent_diameter",
+  "topocentric_position",
   "last_error",
   "last_error_kind",
   "ut1_to_jd",
@@ -831,6 +915,84 @@ def edge_celestial_house_capability() -> None:
     assert not call("house_capability", model).valid and call("last_error_kind") == 1
 
 
+def altitude_stream(name: str, prefix: tuple) -> tuple[_abi.CelestialAltitudeRecord, ...]:
+  """Verify every exact prefix and untouched tail against one complete final-name C stream."""
+  total = ctypes.c_uint32(99)
+  args = (*prefix, 0.0, -77.0, 0.0, 2451545.0, 2451546.0)
+  assert call(name, *args, ctypes.byref(total), None, 0) == 0 and call("last_error_kind") == 0
+  expected_total = total.value
+  full = (_abi.CelestialAltitudeRecord * expected_total)()
+  assert call(name, *args, ctypes.byref(total), full, expected_total) == expected_total
+  assert call("last_error_kind") == 0 and total.value == expected_total
+  stride = ctypes.sizeof(_abi.CelestialAltitudeRecord)
+  assert stride == 88 and ctypes.sizeof(_abi.CelestialAltitudeCondition) == 40
+  for capacity in range(expected_total + 2):
+    slots = (_abi.CelestialAltitudeRecord * (expected_total + 2))()
+    ctypes.memset(slots, 0xA5, ctypes.sizeof(slots))
+    before = bytes(slots)
+    count = ctypes.c_uint32(99)
+    written = call(name, *args, ctypes.byref(count), slots, capacity)
+    assert call("last_error_kind") == 0 and count.value == expected_total and written == min(expected_total, capacity)
+    assert bytes(slots)[: written * stride] == bytes(full)[: written * stride]
+    assert bytes(slots)[written * stride :] == before[written * stride :]
+  return tuple(full)
+
+
+def happy_celestial_altitude_events() -> None:
+  condition = _abi.CelestialAltitudeCondition(0, 1, 0, 0, 0.0, 0.0, 0.0)
+  records = altitude_stream("altitude_events", (ctypes.byref(condition),))
+  assert [record.tag for record in records] == [0, 1, 1]
+  state = records[0]
+  assert (state.target_code, state.position_source_code, state.delta_t_model_code) == (0, 1, 5)
+  assert (state.refraction_code, state.sense_code, state.initially_satisfied) == (0, 1, 1)
+  assert [record.direction_code for record in records[1:]] == [1, 0]
+
+
+def happy_celestial_upper_transits() -> None:
+  records = altitude_stream("upper_transits", (4,))
+  assert len(records) == 1 and records[0].tag == 3
+  assert (records[0].target_code, records[0].position_source_code, records[0].delta_t_model_code) == (4, 3, 5)
+
+
+def happy_celestial_observing_windows() -> None:
+  conditions = (_abi.CelestialAltitudeCondition * 2)(
+    _abi.CelestialAltitudeCondition(0, 1, 0, 0, 0.0, 0.0, 0.0),
+    _abi.CelestialAltitudeCondition(0, 1, 0, 0, -6.0, 0.0, 0.0),
+  )
+  records = altitude_stream("observing_windows", (conditions, 2))
+  assert [record.tag for record in records] == [0, 0, 1, 1, 1, 1, 2, 2]
+  assert [record.condition_index for record in records[:2]] == [0, 1]
+  assert all(record.jde_tt < record.end_jde_tt for record in records[-2:])
+
+
+def altitude_failure(name: str, prefix: tuple, kind: int, site: tuple = (0.0, -77.0, 0.0)) -> None:
+  slots = (_abi.CelestialAltitudeRecord * 16)()
+  ctypes.memset(slots, 0xA5, ctypes.sizeof(slots))
+  before = bytes(slots)
+  count = ctypes.c_uint32(99)
+  assert call(name, *prefix, *site, 2451545.0, 2451545.25, ctypes.byref(count), slots, 16) == 0
+  assert count.value == 0 and call("last_error_kind") == kind and bytes(slots) == before
+
+
+def edge_celestial_altitude_events() -> None:
+  condition = _abi.CelestialAltitudeCondition(0, 1, 0, 1, 0.0, 0.0, 0.0)
+  altitude_failure("altitude_events", (ctypes.byref(condition),), 1)
+  condition = _abi.CelestialAltitudeCondition(9, 1, 0, 0, 48.605252016244656, 0.0, 0.0)
+  altitude_failure("altitude_events", (ctypes.byref(condition),), 2, (30.0, -77.0, 0.0))
+
+
+def edge_celestial_upper_transits() -> None:
+  altitude_failure("upper_transits", (10,), 1)
+
+
+def edge_celestial_observing_windows() -> None:
+  conditions = (_abi.CelestialAltitudeCondition * 2)(
+    _abi.CelestialAltitudeCondition(0, 1, 0, 0, -89.0, 0.0, 0.0),
+    _abi.CelestialAltitudeCondition(9, 1, 0, 0, 48.605252016244656, 0.0, 0.0),
+  )
+  altitude_failure("observing_windows", (conditions, 2), 2, (30.0, -77.0, 0.0))
+
+
 def protocol_test(prefix: str, label: str):
   return globals()[f"{prefix}_celestial_{label}"]
 
@@ -862,7 +1024,7 @@ def run_group(label: str, tests: dict[str, object]) -> tuple[int, int]:
 
 def main() -> None:
   """Require both fixed-denominator groups to pass in full."""
-  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 38
+  assert len(HAPPY_TESTS) == len(EDGE_TESTS) == 46
   assert set(HAPPY_TESTS) == set(EDGE_TESTS) == set(_binding.BINDING_SPECS)
   happy = run_group("HAPPY", HAPPY_TESTS)
   edge = run_group("EDGE", EDGE_TESTS)

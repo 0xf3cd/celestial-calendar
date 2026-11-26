@@ -238,6 +238,46 @@ auto operation_model_text(const uint32_t operation) -> std::string {
   switch (operation) {
     case CELESTIAL_OPERATION_DELTA_T:
       return std::format("Delta T: selectable model; DEFAULT resolves to {}. The result records the resolved identity. TT - UT1 is in seconds; model guards apply at the decimal-year evaluation instant. Model sources/status: celestial_model_identity_text; validation: delta_t_test.cpp.", delta_t);
+    case CELESTIAL_OPERATION_TOPOCENTRIC:
+      return std::format(
+        "Topocentric physical-target centre coordinates from a fixed WGS84 geodetic site: ellipsoidal height in metres, "
+        "east-positive longitude, north-zero/east-positive azimuth, observer distance in AU. "
+        "Fixed IAU1980 axes. Delta T DEFAULT resolves to {}; UTC begins at 1972-01-01 and derived UT1 is modelled. "
+        "Use EQUATORIAL provider domains for physical targets; no chart/rate window applies, nodes are rejected. "
+        "RA/azimuth may be unresolved; exact geographic-pole azimuth is absent. "
+        "Refraction is optional: T [-90,60] C / P [300,1100] hPa; unsupported altitude leaves its result absent. "
+        "No added diurnal aberration, polar motion or observer light-time solve. "
+        "Validation: observer_test.cpp; model identities: celestial_model_identity_text.",
+        delta_t
+      );
+    case CELESTIAL_OPERATION_APPARENT_DIAMETER:
+      return std::format(
+        "Full spherical disk diameter, 2 asin(R/d), in arcseconds: geocentric by default, "
+        "or existing WGS84 observer translation when explicitly selected. "
+        "Sun uses IAU2015 nominal radius, Moon JPL SSD mean radius, planets JPL SSD equatorial radii; "
+        "Saturn excludes rings. The result records radius definition, actual distance and position source. "
+        "Use POSITION/EQUATORIAL provider domains; nodes are rejected, no chart/rate window applies. "
+        "Delta T DEFAULT resolves to {}; UTC begins at 1972-01-01 and derived UT1 is modelled. "
+        "No new observer light-time or limb/refraction correction. "
+        "Resolved inside-target observers are invalid input; unresolved geometry is a computation error. "
+        "Validation: apparent_diameter_test.cpp.",
+        delta_t
+      );
+    case CELESTIAL_OPERATION_RISE_SET:
+      return std::format(
+        "Solar rise/set is transit-centred on a UT1 date: events can lie outside that date. "
+        "Lunar and planetary queries use [0h,24h) UT1: of two rises or sets, return the later; "
+        "of two transits, the earlier. A rise or set exactly at 0h UT1 belongs to neither neighbouring day. "
+        "Missing events are independent of polar topology; returned times are TT. "
+        "Sun/Moon use geocentric coordinates; solar h0 defaults to -50/60 degrees in the bindings, "
+        "lunar h0 uses midday parallax and supplied horizon atmosphere. "
+        "Planets use WGS84 topocentric airless coordinates and h0 defaults to -34/60 degrees. "
+        "Use EQUATORIAL provider domains for the ten physical targets. Every internal sample must fit, "
+        "including estimates/derivatives outside the day. The TT equivalent of the input date's 0h UT1 can be "
+        "in Pluto's range while other samples are not; an out-of-domain sample is invalid input. "
+        "Fixed IAU1980 and Delta T {}. Validation: rise_set_cabi_test.cpp.",
+        delta_t
+      );
     case CELESTIAL_OPERATION_HOUSES:
     case CELESTIAL_OPERATION_CHART:
       return std::format(
@@ -256,7 +296,9 @@ auto operation_model_text(const uint32_t operation) -> std::string {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): Operation precedes its subject in the published lookup pair.
 auto capability_text(const uint32_t operation_code, const uint32_t subject) -> std::string {
   const bool no_target = operation_code == CELESTIAL_OPERATION_HOUSES or operation_code == CELESTIAL_OPERATION_CHART
-    or operation_code == CELESTIAL_OPERATION_DELTA_T;
+    or operation_code == CELESTIAL_OPERATION_DELTA_T or operation_code == CELESTIAL_OPERATION_TOPOCENTRIC
+    or operation_code == CELESTIAL_OPERATION_APPARENT_DIAMETER
+    or operation_code == CELESTIAL_OPERATION_RISE_SET;
   if (no_target) {
     if (subject != CELESTIAL_TARGET_ALL) {
       throw std::invalid_argument { "This operation requires CELESTIAL_TARGET_ALL because it has no target" };

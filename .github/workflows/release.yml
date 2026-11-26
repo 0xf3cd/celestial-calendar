@@ -49,6 +49,8 @@ jobs:
           import os
           import re
           import subprocess
+          from pathlib import Path
+          from toolbox.release_validation import validate_release_source
 
           ref_name = os.environ["REF_NAME"]
           if os.environ["REF_TYPE"] != "tag" or re.fullmatch(r"v\d+\.\d+\.\d+", ref_name) is None:
@@ -58,10 +60,11 @@ jobs:
           expected = subprocess.run(
             ["./project.py", "--version"], check=True, capture_output=True, text=True
           ).stdout.strip()
-          if ref_name != f"v{expected}":
-            raise SystemExit(f"Release tag {ref_name} does not match project version {expected}")
+          commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+          ).stdout.strip()
+          validate_release_source(Path.cwd(), ref_name, commit, expected)
           PY
-          git merge-base --is-ancestor HEAD origin/main
           python3 -c \
             'import os; from toolbox.release_validation import validate_release_document_versions; validate_release_document_versions(os.environ["REF_NAME"])'
 

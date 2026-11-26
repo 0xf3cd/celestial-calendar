@@ -1,8 +1,8 @@
 # API Reference
 
-This reference covers C++ declarations and the C interface in `celestial.h`.
-Bulk coefficient data and source listings are omitted.
-Browse **Namespaces**, **Classes**, or **Files**, or search for a function name.
+This guide covers C++ headers and the C interface in `celestial.h`.
+In the generated HTML reference, browse **Namespaces**, **Classes**, or **Files**, or search for a function name;
+bulk coefficient data and source listings are omitted there.
 The lunar headers retain their English and Chinese descriptions; the rest is primarily English.
 
 Read each function's units, time scale and supported range before using it. A civil date is not
@@ -20,10 +20,49 @@ Project-authored material uses MIT. The generated directory includes `LICENSE` a
 
 The README's [C++ quickstart](https://github.com/0xf3cd/celestial-calendar#cpp) shows how to compile against the
 headers. This section covers the headers beyond the Jieqi API. The chart snapshot is also available from C
-(described below), Python and JavaScript; the interval longitude events, the capabilities and model identities,
-and the independent ecliptic/equatorial position and house queries are also available from C and Python.
+(described below), Python and JavaScript. Interval longitude events and independent ecliptic/equatorial
+positions are also exposed by all three; capabilities, model identities and independent house queries
+remain C/Python-only.
 For changes from 0.x, see
 [Migrating to 1.0](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/MIGRATING_1_0.md).
+
+<a id="cpp-headers"></a>
+### Header include spellings
+
+Use all three include roots, `src/astro`, `src/calendar` and `src/util`. These spellings are relative to those
+roots, including the subdirectory for nested headers. Include the headers your code uses directly.
+
+| Task | Include spelling |
+|---|---|
+| Civil date/time and date labels | `"datetime.hpp"`, `"ymd.hpp"` |
+| Jieqi moments and generator | `"jieqi.hpp"` |
+| Gregorian/lunar conversion | `"lunar/converter.hpp"`, `"lunar/common.hpp"`, selected `"lunar/algo1.hpp"`, `"lunar/algo2.hpp"` or `"lunar/algo3.hpp"` |
+| Time scales and Earth rotation | `"julian_day.hpp"`, `"delta_t.hpp"`, `"leap_second.hpp"`, `"sidereal_time.hpp"`, `"solar_time.hpp"` |
+| Physical types and observer location | `"toolbox.hpp"` (`AngleDeg`, `AngleRad`, `Distance`, coordinate types), `"geolocation.hpp"` (`GeoLocation`) |
+| Sun, Moon and lunar phases | `"sun.hpp"`, `"moon.hpp"`, `"moon_phase.hpp"` |
+| Planets, lunar nodes and illumination | `"planet.hpp"`, `"lunar_node.hpp"`, `"illumination.hpp"`, `"planet_phenomena.hpp"` |
+| Independent positions, rates and input capabilities | `"ephemeris.hpp"`, `"capability.hpp"` |
+| Topocentric observer coordinates | `"observer.hpp"`; [observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md) |
+| Interval altitude events and observing windows | `"altitude_events.hpp"`; [altitude guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/ALTITUDE_EVENTS.md) |
+| Apparent disk diameters | `"apparent_diameter.hpp"`; [diameter guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/APPARENT_DIAMETERS.md) |
+| Interval longitude events | `"ephemeris_events.hpp"` |
+| Houses and complete chart | `"house.hpp"`, `"chart.hpp"` |
+| Rise/set, coordinates and Earth corrections | `"rise_set.hpp"`, `"planet_rise_set.hpp"`, `"coord_transform.hpp"`, `"earth.hpp"`, `"earth/precession.hpp"`, `"earth/refraction.hpp"` |
+| Daily rise/transit/set (C++, C, Python, JavaScript) | [Daily query guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/RISE_SET.md); solar transit-centred, lunar/planetary UT1-day summaries |
+| Low-level ephemeris series | `"elp2000_82b.hpp"`, `"vsop87d/vsop87d.hpp"`, `"vsop87d/defines.hpp"` |
+| Common astronomy umbrella | `"astro.hpp"`; add `"capability.hpp"` and `"ephemeris_events.hpp"` separately when needed |
+
+`toolbox.hpp` contains public physical types as well as numerical helpers. `vsop87d/defines.hpp` defines the
+coefficient/span types and table evaluators used directly by `earth.hpp`; `vsop87d/*_coeff.hpp` hold the tables.
+`lunar/common.hpp` supplies algorithm metadata and traditional/positional month conversion.
+The `Converter`'s lunar `year_month_day` uses positional month indices, with a leap month occupying its own index;
+use those conversion helpers when working with traditional month numbers and a leap flag.
+
+The support utilities `"cache.hpp"` and `"hash.hpp"` supply the cache used by Jieqi and lunar Algo2 and its tuple
+hashing. They are not needed for ordinary query calls. By contrast, `event_search.hpp`, `ephemeris_event_bounds.hpp`,
+`ephemeris_event_facts.hpp` and `pluto.hpp` implement the higher-level queries; symbols in `detail` are implementation
+helpers, not consumer entry points. `src/shared_lib/lib*.hpp`, test helpers and benchmark headers are outside the
+C++ consumer interface. The C/FFI interface uses `"celestial.h"` from its separate include directory.
 
 The [`illumination.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/illumination.hpp),
 [`planet.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/planet.hpp), and
@@ -73,7 +112,7 @@ Other rate inputs are `[-1200954.625, 6104044.625)`.
 The optional [`ephemeris_events.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/ephemeris_events.hpp)
 adds `longitude_events`, `stations` and `longitude_difference_events` for explicit half-open TT intervals inside
 those domains. The [event guide](EPHEMERIS_EVENTS.md) covers signed target orientation, exact numerical contacts,
-bounded work and the conditional floating-point contract. C and Python expose the same searches below.
+bounded work and the conditional floating-point contract. C, Python and JavaScript expose the same searches.
 
 The [`chart.hpp`](https://github.com/0xf3cd/celestial-calendar/blob/main/src/astro/chart.hpp) composes
 geocentric positions, longitude rates and house geometry at one explicitly scaled civil instant:
@@ -152,7 +191,11 @@ int main(void) {
 ```
 
 Compile this as C and link a native library of the same version, from a release archive or built from the same
-checkout. On failure read only `valid`
+checkout. Select `EQUAL` for 30-degree houses starting at the Ascendant, `WHOLE_SIGN` for 30-degree houses
+starting at the boundary of the Ascendant's sign, or `PLACIDUS` for semi-arc division. The example selects
+Placidus; it can fail in polar geometry and never falls back to another system. The four axes are independent
+of that choice, and the selected system determines the cusps.
+On failure read only `valid`
 and the two error readers: invalid payload and padding bytes have no contract. Presence bits identify available fields;
 absent storage is not a zero or NaN sentinel. Node latitude is present and zero, while node distance is absent.
 Every distance here is in AU, the Moon's included; the standalone `CelestialMoonCoordinate` result gives kilometres.
@@ -167,6 +210,14 @@ Sized UTF-8 calls (`celestial_get_jieqi_name`, `celestial_capability_text`, `cel
 required bytes including NUL. A null buffer with zero capacity queries the size. Positive capacity writes at most
 capacity minus one payload bytes and a terminating NUL, truncating if necessary; zero return signals failure.
 Query the size instead of assuming a fixed Jieqi-name buffer.
+
+<a id="c-observer-queries"></a>
+## C Observer Queries
+
+`celestial_topocentric_position` returns a `CelestialTopocentricPosition` by value for
+the Sun, Moon or a planet at a fixed WGS84 site. The
+[observer guide](https://github.com/0xf3cd/celestial-calendar/blob/main/docs/OBSERVER.md)
+covers the C call, units, explicit UTC/UT1 input, optional fields and failure handling.
 
 <a id="c-longitude-events"></a>
 ## C Interval Longitude Events
@@ -191,6 +242,10 @@ int main(void) {
   );
   if (celestial_last_error_kind() != CELESTIAL_ERROR_NONE) {
     fprintf(stderr, "%s\n", celestial_last_error());
+    return 1;
+  }
+  if (written != total) {
+    fprintf(stderr, "Longitude event output truncated: %u of %u records\n", written, total);
     return 1;
   }
   for (uint32_t i = 0; i < written; ++i) {
@@ -234,6 +289,7 @@ The C++ `capability::domain_record` / `domain_records` facade composes typed ope
 values with optional intervals/span limits. Raw NaN/code encoding and runtime model/text registries belong to
 `shared_lib`, not the core facade. All these domains describe admission rules, not accuracy guarantees.
 
+<a id="c-independent-position-and-house-queries"></a>
 ## C Independent Position and House Queries
 
 `celestial_positions` evaluates the caller's selected targets at one finite JDE(TT) under the
@@ -250,6 +306,9 @@ the AU distance the nodes never carry.
 `CelestialEquatorialPositionRecord` values: right ascension/declination in degrees, optional AU distance and
 resolved source. It projects all fourteen targets with fixed IAU 1980 longitude nutation and true obliquity;
 mathematical nodes have no distance. Neither query evaluates rates, houses or civil conversion.
+JavaScript exposes these operations as
+[`position.ecliptic` and `position.equatorial`](https://github.com/0xf3cd/celestial-calendar/blob/main/bindings/javascript/README.md#independent-positions),
+with frozen records, nullable AU distances and the same numeric source identities.
 
 `celestial_house_query` returns `CelestialHouseQueryResult` by value using the public
 `astro::chart::resolve_civil_times` composer and numeric `astro::house::calculate`. It follows the shared civil

@@ -15,6 +15,8 @@ import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { testAltitudeFakeNative } from "./altitude_fake.mjs";
+import { testPositionEventsFakeNative } from "./position_events_fake.mjs";
 
 export async function testFakeNative(entryUrl) {
   const { BINDINGS, C_DECLARATIONS, LAYOUTS, PROTOCOLS } = await import(new URL("./bindings.mjs", entryUrl));
@@ -65,7 +67,7 @@ export async function testFakeNative(entryUrl) {
   const called = (name, args, pass = "sret") => {
     control.calls.push([name, ...args]);
     if (control.grow) {
-      views(M.HEAPU8.buffer.transfer(M.HEAPU8.byteLength * 2));
+      views(M.HEAPU8.buffer.transfer(M.HEAPU8.byteLength + 65_536));
       control.grow = false;
     }
     if (control.failPass === pass) {
@@ -147,6 +149,14 @@ export async function testFakeNative(entryUrl) {
     await writeFile(resolve(directory, "mock-module.mjs"), "export default () => globalThis.__celestialFakeFactory();\n");
     const fixture = await import(pathToFileURL(entry));
     assert.deepEqual(control.calls, [], "import does not query native domains");
+    for (const action of [() => fixture.riseSet.solar(null, null), () => fixture.riseSet.lunar(null, null),
+      () => fixture.riseSet.planet(null, null, null), () => fixture.observer.altitudeEvents(null, null, NaN, NaN),
+       () => fixture.observer.upperTransits(null, null, NaN, NaN), () => fixture.observer.observingWindows(null, [], NaN, NaN),
+       () => fixture.position.ecliptic(null, NaN), () => fixture.position.equatorial(null, NaN),
+       () => fixture.events.longitudeCrossings(null, NaN, NaN, NaN), () => fixture.events.longitudeStations(null, NaN, NaN),
+       () => fixture.events.longitudeDifferences(null, null, NaN, NaN, NaN)]) {
+      assert.throws(action, { name: "CelestialError", recorded: false });
+    }
     let previous;
     for (const rejection of [new Error("original loader failure"), { loaderFailure: true }]) {
       let rejectLoad;
@@ -171,7 +181,7 @@ export async function testFakeNative(entryUrl) {
       decodedJieqi.momentUt1.day, decodedJieqi.momentUt1.fraction], [7, 2024, 3, 7, 0.123456789],
     "Jieqi public decoder preserves distinct native fields");
     reset();
-    assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "init", "jieqi", "lunar", "moon", "sun", "time"]);
+    assert.deepEqual(Object.keys(fixture).sort(), ["CelestialError", "Jieqi", "chart", "diameter", "events", "init", "jieqi", "lunar", "moon", "observer", "position", "riseSet", "sun", "time"]);
     assert.deepEqual(fixture.sun.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceAu: 2 });
     assert.deepEqual(fixture.moon.apparentGeocentricCoordinate(2451545), { longitudeDeg: 120, latitudeDeg: 1, distanceKm: 2 });
 
@@ -183,6 +193,108 @@ export async function testFakeNative(entryUrl) {
       assert.equal(control.live.size, 0, "failure leaked WASM memory");
     };
     const civil = { year: 2024, month: 1, day: 1, fraction: 0.5 };
+    const observerOptions = { scale: "utc", observer: { latitudeDeg: 33, longitudeDeg: -116, elevationM: 1706 } };
+    const observe = (options = observerOptions) => fixture.observer.position("moon", civil, options);
+    const payload = {
+      valid: 1, target_code: 1, source_code: 2, delta_t_identity_code: 5, present_fields: 0,
+      jd_ut1: 2461351.5, jde_tt: 2461351.501, right_ascension_deg: NaN, declination_deg: -10,
+      distance_au: 0.0025, altitude_deg: 10, azimuth_deg: NaN, apparent_altitude_deg: NaN,
+    };
+    reset({ sretPayload: payload, grow: true });
+    const ownedObservation = observe();
+    assert.equal(ownedObservation.rightAscensionDeg, null);
+    assert.equal(ownedObservation.azimuthDeg, null);
+    assert.equal(ownedObservation.apparentAltitudeDeg, null);
+    assert.deepEqual(ownedObservation.times, { jdUt1: 2461351.5, jdeTt: 2461351.501 });
+    assert.equal(control.live.size, 0);
+    reset({ sretPayload: { ...payload, altitude_deg: 30 } });
+    assert.equal(observe().altitudeDeg, 30);
+    assert.equal(ownedObservation.altitudeDeg, 10, "results own their values after storage is freed/reused");
+    for (const changes of [
+      { valid: 0 }, { valid: 2 }, { target_code: 0 }, { source_code: 99 },
+      { delta_t_identity_code: 0 }, { delta_t_identity_code: 99 }, { present_fields: 32 },
+      { jd_ut1: NaN }, { jde_tt: Infinity }, { declination_deg: 91 }, { distance_au: 0 }, { altitude_deg: -91 },
+      { present_fields: 4, right_ascension_deg: NaN }, { present_fields: 4, right_ascension_deg: 360 },
+      { present_fields: 8, azimuth_deg: Infinity }, { present_fields: 8, azimuth_deg: -1 },
+      { present_fields: 16, apparent_altitude_deg: 10 },
+    ]) {
+      reset({ sretPayload: { ...payload, ...changes } }); libraryError(observe);
+    }
+    reset({ sretPayload: { ...payload, delta_t_identity_code: 1 } });
+    libraryError(() => observe({ ...observerOptions, model: "algo5" }));
+    for (const pole of [-90, 90]) {
+      const options = { ...observerOptions, observer: { ...observerOptions.observer, latitudeDeg: pole } };
+      reset({ sretPayload: payload }); assert.equal(observe(options).azimuthDeg, null);
+      reset({ sretPayload: { ...payload, present_fields: 8, azimuth_deg: 0 } });
+      libraryError(() => observe(options));
+    }
+    const refractedOptions = { ...observerOptions, refraction: { model: "saemundsson" } };
+    for (const apparent of [NaN, -1.01e-9, 90.001]) {
+      reset({ sretPayload: { ...payload, present_fields: 16, apparent_altitude_deg: apparent } });
+      libraryError(() => observe(refractedOptions));
+    }
+    reset({ sretPayload: { ...payload, present_fields: 16, apparent_altitude_deg: -1e-10 } });
+    assert.equal(observe(refractedOptions).apparentAltitudeDeg, -1e-10);
+    assert.deepEqual(control.calls[0].slice(-3), [2, 15, 1013.25]);
+    for (const options of [null, {}, { ...observerOptions, model: null },
+      { ...observerOptions, refraction: null }, { ...observerOptions, extra: true },
+      { ...observerOptions, observer: { ...observerOptions.observer, elevationM: NaN } }]) {
+      reset(); assert.throws(() => observe(options)); assert.equal(control.live.size, 0);
+    }
+    reset({ failAllocation: 1 }); libraryError(observe);
+    reset({ failPass: "sret", errorKind: 2 }); libraryError(observe, true);
+    reset({ failPass: "sret", errorKind: 1 }); assert.throws(observe, RangeError); assert.equal(control.live.size, 0);
+    const disk = (options = { scale: "utc" }) => fixture.diameter.query("moon", civil, options);
+    const diskPayload = {
+      valid: 1, target_code: 1, centre_code: 0, source_code: 2, radius_definition_code: 2,
+      delta_t_identity_code: 5, jd_ut1: 2461351.5, jde_tt: 2461351.501,
+      radius_km: 1737.4, distance_au: 0.0025, diameter_arcsec: 1900,
+    };
+    reset({ sretPayload: diskPayload, grow: true });
+    const ownedDisk = disk();
+    assert(Object.isFrozen(ownedDisk) && Object.isFrozen(ownedDisk.times));
+    assert.deepEqual(control.calls, [["celestial_apparent_diameter", 1, 2024, 1, 1, 0.5, 0, 0, 0, 0, 0, 0]]);
+    reset({ sretPayload: { ...diskPayload, centre_code: 1, delta_t_identity_code: 2 } });
+    assert.equal(disk({ ...observerOptions, scale: "ut1", model: "algo2" }).deltaTModel, "algo2");
+    assert.deepEqual(control.calls, [["celestial_apparent_diameter", 1, 2024, 1, 1, 0.5, 1, 2, 1, 33, -116, 1706]]);
+    assert.equal(ownedDisk.diameterArcsec, 1900, "disk result owns freed/reused storage");
+    const diskCorruptions = [
+      { valid: 0 }, { valid: 2 }, { target_code: 0 }, { centre_code: 1 }, { centre_code: 99 },
+      { source_code: 0 }, { source_code: 99 }, { radius_definition_code: 0 }, { radius_definition_code: 99 },
+      { delta_t_identity_code: 0 }, { delta_t_identity_code: 99 }, { radius_km: 0 }, { radius_km: -1 },
+      { distance_au: 0 }, { distance_au: -1 }, { distance_au: 1737.4 / 149597870.7 },
+      { diameter_arcsec: 0 }, { diameter_arcsec: -1 }, { diameter_arcsec: 648000 },
+      ...["jd_ut1", "jde_tt", "radius_km", "distance_au", "diameter_arcsec"].flatMap((field) =>
+        [NaN, Infinity, -Infinity].map((value) => ({ [field]: value }))),
+    ];
+    for (const changes of diskCorruptions) {
+      reset({ sretPayload: { ...diskPayload, ...changes } }); libraryError(disk);
+    }
+    // These synthetic SUN records test code recognition, not native per-body metadata correctness.
+    for (const [sourceCode, radiusDefinitionCode] of [[4, 1], [1, 3]]) {
+      reset({ sretPayload: { ...diskPayload, target_code: 0, source_code: sourceCode, radius_definition_code: radiusDefinitionCode } });
+      const reported = fixture.diameter.query("sun", civil, { scale: "utc" });
+      assert.equal(reported.target, "sun");
+      assert.deepEqual([reported.sourceCode, reported.radiusDefinitionCode], [sourceCode, radiusDefinitionCode]);
+      assert.deepEqual(control.calls, [["celestial_apparent_diameter", 0, 2024, 1, 1, 0.5, 0, 0, 0, 0, 0, 0]]);
+    }
+    console.log("PASS diameter recognized source/definition passthrough for synthetic SUN records");
+    reset({ sretPayload: { ...diskPayload, delta_t_identity_code: 2 } });
+    libraryError(() => disk({ scale: "utc", model: "algo5" }));
+    reset({ sretPayload: { ...diskPayload, diameter_arcsec: 1e-300 } });
+    assert(disk().diameterArcsec > 0, "tiny positive disks remain admitted");
+    for (const options of [null, {}, { scale: "utc", model: null }, { scale: "utc", observer: null },
+      { scale: "utc", extra: true }, Object.assign(Object.create({ model: "algo2" }), { scale: "utc" }),
+      Object.assign(Object.create({ observer: observerOptions.observer }), { scale: "utc" }),
+      Object.assign(Object.create({ scale: "utc" }), {}),
+      { scale: "utc", observer: { ...observerOptions.observer, elevationM: NaN } }]) {
+      reset(); assert.throws(() => disk(options)); assert.equal(control.calls.length, 0);
+    }
+    reset({ failAllocation: 1 }); libraryError(disk);
+    reset({ failPass: "sret", errorKind: 2 }); libraryError(disk, true);
+    reset({ failPass: "sret", errorKind: 1 }); assert.throws(disk, RangeError);
+    reset({ sretPayload: diskPayload }); assert.equal(disk().diameterArcsec, 1900);
+    console.log(`PASS diameter ${diskCorruptions.length} fake-native corruptions, forwarding, options, frozen ownership and recovery`);
     for (const [action, yearField, resultYear] of [
       [() => fixture.time.jdeToUt1(2451545), "year", (value) => value.year],
       [() => fixture.time.jdeToUtc(2451545), "year", (value) => value.year],
@@ -305,7 +417,7 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
       [() => fixture.sun.longitudeCrossings(2024, 0), 1],
       [() => fixture.sun.longitudeCrossings(2024, 0), 2],
       [() => fixture.moon.newMoonsAfter(2451545, 2), 1],
-      [name, 1], [() => fixture.chart.snapshot(civil, options), 1],
+      [name, 1], [() => fixture.chart.snapshot(civil, options), 1], [observe, 1],
     ];
     for (const [action, failAllocation] of allocations) {
       reset({ failAllocation }); libraryError(action);
@@ -411,6 +523,62 @@ export const PROTOCOLS = ${variant === "missing-map" ? "undefined"
     }
     reset({ sretPayload: { year: 400, month: 12, day: 31, fraction: 0.9 } });
     assert.equal(fixture.time.jdeToUtc(1867522.5).year, 400);
+    for (const kind of ["solar", "lunar", "planet"]) {
+      const date = { year: 2025, month: 1, day: 1 };
+      const location = { latitudeDeg: 40, longitudeDeg: 0 };
+      const query = () => kind === "planet" ? fixture.riseSet.planet("mars", date, { ...location, elevationM: 1000 })
+        : fixture.riseSet[kind](date, location);
+      const payload = {
+        valid: 1, target_code: 4, source_code: kind === "planet" ? 3 : kind === "solar" ? 1 : 2,
+        delta_t_identity_code: 5, nutation_identity_code: 2, present_fields: 224, polar_code: 0,
+        rise_jde_tt: 2460000.1, transit_jde_tt: 2460000.5, set_jde_tt: 2460000.9,
+        h0_deg: kind === "solar" ? -50 / 60 : -34 / 60,
+        refraction_code: 1, temperature_c: 15, pressure_hpa: 1013.25,
+      };
+      reset({ sretPayload: payload, grow: true });
+      const owned = query();
+      const args = kind === "planet" ? [4, 2025, 1, 1, 40, 0, 1000, -34 / 60]
+        : kind === "solar" ? [2025, 1, 1, 40, 0, -50 / 60] : [2025, 1, 1, 40, 0, 1, 15, 1013.25];
+      assert.deepEqual(control.calls, [[`celestial_${kind}_rise_set`, ...args]]);
+      assert.equal(control.live.size, 0);
+      assert(Object.isFrozen(owned));
+      if (kind === "lunar") assert(Object.isFrozen(owned.refraction));
+      const corruptions = [
+        { valid: 0 }, { valid: 2 }, { source_code: 99 }, { source_code: 4 },
+        { delta_t_identity_code: 0 }, { delta_t_identity_code: 2 },
+        { nutation_identity_code: 0 }, { nutation_identity_code: 1 },
+        { present_fields: 225 }, { polar_code: 3 }, { polar_code: 1 },
+        { present_fields: 96, set_jde_tt: 1 },
+        ...["rise_jde_tt", "transit_jde_tt", "set_jde_tt"].flatMap((field) =>
+          [NaN, Infinity].map((value) => ({ [field]: value }))),
+      ];
+      if (kind === "solar") corruptions.push({ present_fields: 160 }, { h0_deg: 0 });
+      if (kind === "planet") corruptions.push({ target_code: 0 }, { h0_deg: 0 });
+      if (kind === "lunar") corruptions.push({ refraction_code: 2 }, { temperature_c: 16 }, { pressure_hpa: NaN });
+      for (const changes of corruptions) {
+        reset({ sretPayload: { ...payload, ...changes } }); libraryError(query);
+        assert.equal(control.live.size, 0);
+      }
+      for (const mask of kind === "solar" ? [64] : [0, 32, 64, 96, 128, 160, 192, 224]) {
+        const clean = { ...payload, present_fields: mask };
+        for (const [field, bit] of [["rise_jde_tt", 32], ["transit_jde_tt", 64], ["set_jde_tt", 128]]) {
+          if (!(mask & bit)) clean[field] = 0;
+        }
+        reset({ sretPayload: clean });
+        assert.equal(query().transitJdeTt === null, !(mask & 64));
+      }
+      for (const errorKind of [1, 2, 3, 4]) {
+        reset({ failPass: "sret", errorKind, message: "" });
+        assert.throws(query, errorKind === 1 ? RangeError : fixture.CelestialError);
+        assert.equal(control.live.size, 0);
+      }
+      reset({ failAllocation: 1 }); libraryError(query);
+      reset({ sretPayload: { ...payload, transit_jde_tt: 2460001 } }); query();
+      assert.equal(owned.transitJdeTt, 2460000.5, "daily values survive freed/reused storage and growth");
+    }
+    testAltitudeFakeNative(fixture, M, control, reset, called, LAYOUTS);
+    testPositionEventsFakeNative(fixture, M, control, reset, called, LAYOUTS);
+    assert(M.HEAPU8.byteLength <= 4_194_304, "fake-native heap growth must stay within 4 MiB");
     console.log("PASS fake native: loader retry; error kinds/empty messages; count/fill errors/totals; 10 allocation-failure paths; sized UTF-8; malformed successes; FFI widths/resource caps; UTC decoders");
   } finally {
     delete globalThis.__celestialFakeFactory;

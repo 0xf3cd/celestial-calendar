@@ -31,6 +31,107 @@ const phase: MoonPhase = "full";
 const deltaTModel: DeltaTModel = "algo5";
 const lunarAlgorithm: LunarAlgorithm = "algo3";
 const civil: CivilDateTime = { year: 2024, month: 6, day: 1, fraction: 0.5 };
+const disk: celestial.ApparentDiameter = celestial.diameter.query("moon", civil, { scale: "utc" });
+const diskCentre: "geocentric" | "topocentric" = disk.centre;
+void diskCentre;
+// @ts-expect-error Disk results are immutable.
+disk.diameterArcsec = 0;
+// @ts-expect-error Lunar nodes have no disk.
+celestial.diameter.query("meanAscending", civil, { scale: "utc" });
+// @ts-expect-error Explicit time scale is required.
+celestial.diameter.query("moon", civil, {});
+const observed: celestial.TopocentricPosition = celestial.observer.position("moon", civil, {
+  scale: "utc", observer: { latitudeDeg: 33, longitudeDeg: -116, elevationM: 1706 },
+  refraction: { model: "bennett" },
+});
+const optionalAzimuth: number | null = observed.azimuthDeg;
+const optionalRa: number | null = observed.rightAscensionDeg;
+const site: celestial.Observer = { latitudeDeg: 0, longitudeDeg: -77, elevationM: 0 };
+const selectedTargets = ["sun", "trueAscending"] as const;
+const selected: readonly celestial.Position[] = celestial.position.ecliptic(selectedTargets, 2451545);
+const equatorial: readonly celestial.EquatorialPosition[] = celestial.position.equatorial(selectedTargets, 2451545);
+const crossingEvents: readonly celestial.LongitudeEvent[] = celestial.events.longitudeCrossings("mars", 360, 2451545, 2451555);
+const stationEvents: readonly celestial.StationEvent[] = celestial.events.longitudeStations("mercury", 2451545, 2451555);
+const differenceEvents: readonly celestial.LongitudeDifferenceEvent[] = celestial.events.longitudeDifferences("moon", "sun", -60, 2451545, 2451555);
+const stationMotion: celestial.StationMotion = stationEvents[0].motionAfter;
+const eventDirection: celestial.EventDirection = crossingEvents[0].direction;
+const selectedDistance: number | null = equatorial[0].distanceAu;
+void [stationMotion, eventDirection, selectedDistance, differenceEvents];
+// @ts-expect-error Position results have no instantaneous longitude rate.
+const selectedRate: number = selected[0].longitudeRateDegPerTtDay;
+// @ts-expect-error The selection is an array, not one target.
+celestial.position.ecliptic("sun", 2451545);
+// @ts-expect-error Civil timestamps are not JDE(TT) instants.
+celestial.position.equatorial(["sun"], civil);
+// @ts-expect-error Target spelling is checked statically.
+celestial.events.longitudeStations("earth", 2451545, 2451555);
+// @ts-expect-error Directed difference requires an explicit second target.
+celestial.events.longitudeDifferences("moon", 60, 2451545, 2451555);
+// @ts-expect-error Selected position records are frozen.
+selected[0].longitudeDeg = 0;
+// @ts-expect-error Selected position arrays are frozen.
+selected.push(selected[0]);
+// @ts-expect-error Event records are frozen.
+crossingEvents[0].direction = "increasing";
+// @ts-expect-error Node distance can be absent.
+const mandatoryDistance: number = selected[1].distanceAu;
+void [selectedRate, mandatoryDistance];
+const dayUt1 = { year: 2025, month: 1, day: 1 };
+const dailyLocation = { latitudeDeg: 0, longitudeDeg: -77 };
+const solarDaily: celestial.SolarRiseSet = celestial.riseSet.solar(dayUt1, dailyLocation, { h0Deg: -6 });
+const lunarDaily: celestial.LunarRiseSet = celestial.riseSet.lunar(dayUt1, dailyLocation);
+const planetDaily: celestial.PlanetRiseSet = celestial.riseSet.planet("mars", dayUt1, site);
+const solarTransit: number = solarDaily.transitJdeTt;
+const lunarTransit: number | null = lunarDaily.transitJdeTt;
+const polar: celestial.PolarTopology = planetDaily.polar;
+void [solarTransit, lunarTransit, polar];
+// @ts-expect-error Lunar transits can be absent.
+const mandatoryLunarTransit: number = lunarDaily.transitJdeTt;
+// @ts-expect-error Sun is not a planet query target.
+celestial.riseSet.planet("sun", dayUt1, site);
+// @ts-expect-error Solar queries accept an altitude, not weather.
+celestial.riseSet.solar(dayUt1, dailyLocation, { refraction: { model: "bennett" } });
+// @ts-expect-error Lunar queries derive their own altitude convention.
+celestial.riseSet.lunar(dayUt1, dailyLocation, { h0Deg: 0 });
+// @ts-expect-error Geocentric solar/lunar queries do not consume observer elevation.
+celestial.riseSet.lunar(dayUt1, site);
+// @ts-expect-error Returned atmosphere is immutable.
+lunarDaily.refraction.pressureHpa = 1000;
+void mandatoryLunarTransit;
+const condition: celestial.AltitudeCondition = { target: "sun", level: { kind: "geometric", altitudeDeg: 0 }, sense: "above" };
+const altitudeEvents: celestial.AltitudeEvents = celestial.observer.altitudeEvents(site, condition, 2451545, 2451546);
+const altitudeDirection: celestial.EventDirection = altitudeEvents.events[0].direction;
+const altitudeWindows: celestial.ObservingWindows = celestial.observer.observingWindows(site, [condition], 2451545, 2451546);
+const transits: readonly celestial.UpperTransit[] = celestial.observer.upperTransits(site, "mars", 2451545, 2451546);
+celestial.observer.altitudeEvents(site, { ...condition, level: {
+  kind: "refracted", altitudeDeg: 10, refraction: { model: "bennett" },
+} }, 2451545, 2451546);
+void [altitudeDirection, altitudeWindows, transits];
+// @ts-expect-error A geometric level has no weather.
+const mixedLevel: celestial.GeometricLevel = { kind: "geometric", altitudeDeg: 0, refraction: { model: "bennett" } };
+// @ts-expect-error Refracted levels require weather and a model.
+const missingWeather: celestial.RefractedLevel = { kind: "refracted", altitudeDeg: 10 };
+// @ts-expect-error Single-condition queries do not accept condition arrays.
+celestial.observer.altitudeEvents(site, [condition], 2451545, 2451546);
+// @ts-expect-error Transit queries take a physical target, not a condition.
+celestial.observer.upperTransits(site, condition, 2451545, 2451546);
+// @ts-expect-error Window queries take condition arrays.
+celestial.observer.observingWindows(site, condition, 2451545, 2451546);
+// @ts-expect-error Mathematical nodes are not physical transit targets.
+celestial.observer.upperTransits(site, "meanAscending", 2451545, 2451546);
+// @ts-expect-error Result states are immutable.
+altitudeEvents.condition.initiallySatisfied = false;
+// @ts-expect-error Companion collections are immutable.
+altitudeWindows.events.push(altitudeEvents.events[0]);
+void [mixedLevel, missingWeather];
+void [optionalAzimuth, optionalRa];
+// @ts-expect-error Mathematical nodes have no physical topocentric distance.
+celestial.observer.position("meanAscending", civil, { scale: "utc", observer: { latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 } });
+// @ts-expect-error Ellipsoidal height is explicit in metres.
+celestial.observer.position("sun", civil, { scale: "utc", observer: { latitudeDeg: 0, longitudeDeg: 0 } });
+// @ts-expect-error Apparent altitude can be absent.
+const requiredApparent: number = observed.apparentAltitudeDeg;
+void requiredApparent;
 const chartOptions: celestial.ChartSnapshotOptions = {
   scale: "utc", location: { latitudeDeg: 51.5, longitudeDeg: 0 }, system: "placidus", model: undefined,
 };

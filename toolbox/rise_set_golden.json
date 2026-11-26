@@ -1,0 +1,6997 @@
+{
+  "schema": "celestial-calendar/rise-set-parity@1",
+  "provenance": {
+    "source_commit": "ecd3a41c0e9925c11da576bc301ca08470fe27e4",
+    "source_snapshot_sha256": "9363c6c50492e971afae9ccb1baac73c7e2da177a0d4743272b21024470675e0",
+    "generated_on": "Linux x86_64, 2026-11-17",
+    "reference": "Native C++ wrappers compared exactly with C in rise_set_cabi_test.cpp"
+  },
+  "days": [
+    [
+      2000,
+      1,
+      1,
+      40.0,
+      0.0,
+      0.0
+    ],
+    [
+      2025,
+      3,
+      20,
+      51.5,
+      0.0,
+      0.0
+    ],
+    [
+      2025,
+      6,
+      21,
+      67.0,
+      20.0,
+      0.0
+    ],
+    [
+      2025,
+      12,
+      21,
+      -67.0,
+      100.0,
+      0.0
+    ],
+    [
+      2026,
+      11,
+      16,
+      40.0,
+      116.0,
+      0.0
+    ],
+    [
+      2000,
+      1,
+      1,
+      40.0,
+      180.0,
+      1000.0
+    ],
+    [
+      2000,
+      1,
+      1,
+      40.0,
+      -180.0,
+      1000.0
+    ],
+    [
+      2000,
+      1,
+      1,
+      90.0,
+      0.0,
+      0.0
+    ],
+    [
+      2000,
+      1,
+      1,
+      -90.0,
+      0.0,
+      0.0
+    ],
+    [
+      2019,
+      8,
+      27,
+      75.0,
+      0.0,
+      0.0
+    ],
+    [
+      1885,
+      1,
+      2,
+      40.0,
+      0.0,
+      0.0
+    ],
+    [
+      1885,
+      1,
+      3,
+      40.0,
+      0.0,
+      0.0
+    ],
+    [
+      2099,
+      12,
+      30,
+      40.0,
+      0.0,
+      0.0
+    ],
+    [
+      2099,
+      12,
+      31,
+      40.0,
+      0.0,
+      0.0
+    ],
+    [
+      1,
+      1,
+      1,
+      40.0,
+      0.0,
+      0.0
+    ],
+    [
+      32767,
+      12,
+      31,
+      40.0,
+      0.0,
+      0.0
+    ],
+    [
+      2024,
+      2,
+      29,
+      40.0,
+      0.0,
+      0.0
+    ],
+    [
+      2024,
+      12,
+      31,
+      40.0,
+      0.0,
+      0.0
+    ]
+  ],
+  "entries": [
+    {
+      "day_index": 0,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c675dfe0d",
+        "transit_jde_tt": "0x4142b42c8063007d",
+        "set_jde_tt": "0x4142b42c996af3a5",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c5eb7a193",
+        "transit_jde_tt": "0x4142b42c8063007d",
+        "set_jde_tt": "0x4142b42ca2116ea5",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c4cd79532",
+        "transit_jde_tt": "0x4142b42c6ad852e8",
+        "set_jde_tt": "0x4142b42c884968db",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c4ce05f55",
+        "transit_jde_tt": "0x4142b42c6ad852e8",
+        "set_jde_tt": "0x4142b42c8840b2fb",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c64b4549e",
+        "transit_jde_tt": "0x4142b42c7d1bb1ce",
+        "set_jde_tt": "0x4142b42c95803e6d",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c65043848",
+        "transit_jde_tt": "0x4142b42c7d1bb1ce",
+        "set_jde_tt": "0x4142b42c95305ad5",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c571b1539",
+        "transit_jde_tt": "0x4142b42c71a95640",
+        "set_jde_tt": "0x4142b42c8c2dd05d",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c5764e856",
+        "transit_jde_tt": "0x4142b42c71a95640",
+        "set_jde_tt": "0x4142b42c8be40242",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c75a9dcd1",
+        "transit_jde_tt": "0x4142b42c91e1b1ef",
+        "set_jde_tt": "0x4142b42cae239e6c",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c75f0368f",
+        "transit_jde_tt": "0x4142b42c91e1b1ef",
+        "set_jde_tt": "0x4142b42caddd3b3c",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c81ffca27",
+        "transit_jde_tt": "0x4142b42ca4c4297b",
+        "set_jde_tt": "0x4142b42c47de02f2",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c824450ba",
+        "transit_jde_tt": "0x4142b42ca4c4297b",
+        "set_jde_tt": "0x4142b42c47997b89",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c86052b48",
+        "transit_jde_tt": "0x4142b42caa0ae3f7",
+        "set_jde_tt": "0x4142b42c4e6c08d5",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c864b4fe1",
+        "transit_jde_tt": "0x4142b42caa0ae3f7",
+        "set_jde_tt": "0x4142b42c4e25e455",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c724d0b0b",
+        "transit_jde_tt": "0x4142b42c8d38ee71",
+        "set_jde_tt": "0x4142b42ca8255c82",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c72959481",
+        "transit_jde_tt": "0x4142b42c8d38ee71",
+        "set_jde_tt": "0x4142b42ca7dcd2b2",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c6ec6a12b",
+        "transit_jde_tt": "0x4142b42c88f39c03",
+        "set_jde_tt": "0x4142b42ca320e116",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c6f10d5c2",
+        "transit_jde_tt": "0x4142b42c88f39c03",
+        "set_jde_tt": "0x4142b42ca2d6ac5c",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c59100264",
+        "transit_jde_tt": "0x4142b42c75cc168d",
+        "set_jde_tt": "0x4142b42c92880ec0",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 0,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c59556fd0",
+        "transit_jde_tt": "0x4142b42c75cc168d",
+        "set_jde_tt": "0x4142b42c9242a174",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c629604f28c6",
+        "transit_jde_tt": "0x4142c62980c1a7e5",
+        "set_jde_tt": "0x4142c629a14b1bcd",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c629563979d5",
+        "transit_jde_tt": "0x4142c62980c1a7e5",
+        "set_jde_tt": "0x4142c629ab6c886c",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c62942deccf0",
+        "transit_jde_tt": "0x4142c629567f6b61",
+        "set_jde_tt": "0x4142c629698933ae",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c62942ed8443",
+        "transit_jde_tt": "0x4142c629567f6b61",
+        "set_jde_tt": "0x4142c629697a8225",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6295fb277dd",
+        "transit_jde_tt": "0x4142c62982c1fad2",
+        "set_jde_tt": "0x4142c629a5bfe786",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c62960067ff6",
+        "transit_jde_tt": "0x4142c62982c1fad2",
+        "set_jde_tt": "0x4142c629a56c1b25",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6295c5858c2",
+        "transit_jde_tt": "0x4142c62980e1aab9",
+        "set_jde_tt": "0x4142c629a55835e6",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6295cae35e8",
+        "transit_jde_tt": "0x4142c62980e1aab9",
+        "set_jde_tt": "0x4142c629a502a051",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6297b9992b0",
+        "transit_jde_tt": "0x4142c629a89bb0c4",
+        "set_jde_tt": "0x4142c62955e29d41",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6297c0a8f94",
+        "transit_jde_tt": "0x4142c629a89bb0c4",
+        "set_jde_tt": "0x4142c6295571a234",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6296f5af6e9",
+        "transit_jde_tt": "0x4142c6299aa04731",
+        "set_jde_tt": "0x4142c62946318e42",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6296fc38ce1",
+        "transit_jde_tt": "0x4142c6299aa04731",
+        "set_jde_tt": "0x4142c62945c8f7bd",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6296082875f",
+        "transit_jde_tt": "0x4142c6297ebc1ed6",
+        "set_jde_tt": "0x4142c6299cf84f04",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c62960d5c6dc",
+        "transit_jde_tt": "0x4142c6297ebc1ed6",
+        "set_jde_tt": "0x4142c6299ca509ff",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c62969f5f8c5",
+        "transit_jde_tt": "0x4142c6299323cc79",
+        "set_jde_tt": "0x4142c629bc52895b",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6296a56a6de",
+        "transit_jde_tt": "0x4142c6299323cc79",
+        "set_jde_tt": "0x4142c629bbf1d626",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c629611dd5af",
+        "transit_jde_tt": "0x4142c62980c5236e",
+        "set_jde_tt": "0x4142c629a06d49e4",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c629617081f2",
+        "transit_jde_tt": "0x4142c62980c5236e",
+        "set_jde_tt": "0x4142c629a01a9b8d",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c62958b12ead",
+        "transit_jde_tt": "0x4142c6296dbf12c0",
+        "set_jde_tt": "0x4142c62982cd12bb",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 1,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6295919ed88",
+        "transit_jde_tt": "0x4142c6296dbf12c0",
+        "set_jde_tt": "0x4142c629826453d1",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c657f927c32d",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c657f927c32d",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c65833582bc1",
+        "transit_jde_tt": "0x4142c657e39559e5",
+        "set_jde_tt": "0x4142c65816c067bb",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c65833744495",
+        "transit_jde_tt": "0x4142c657e39559e5",
+        "set_jde_tt": "0x4142c65816a3f0f1",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c65801bf79cd",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c65801bf79cd",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6583b1d9b1a",
+        "transit_jde_tt": "0x4142c657e8affd0f",
+        "set_jde_tt": "0x4142c658162f004d",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6583bc84108",
+        "transit_jde_tt": "0x4142c657e8affd0f",
+        "set_jde_tt": "0x4142c65815842655",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c657e502c969",
+        "transit_jde_tt": "0x4142c6581001f68f",
+        "set_jde_tt": "0x4142c6583adb38d3",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c657e59ee843",
+        "transit_jde_tt": "0x4142c6581001f68f",
+        "set_jde_tt": "0x4142c6583a405b6d",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c657fa0cd623",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c657fa0cd623",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6583a534add",
+        "transit_jde_tt": "0x4142c657d9ed5786",
+        "set_jde_tt": "0x4142c657f92ff689",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6583ad71d77",
+        "transit_jde_tt": "0x4142c657d9ed5786",
+        "set_jde_tt": "0x4142c657f8ac1f04",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c658377b7323",
+        "transit_jde_tt": "0x4142c657ed5a63c0",
+        "set_jde_tt": "0x4142c65822e3d192",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c658388ec4b8",
+        "transit_jde_tt": "0x4142c657ed5a63c0",
+        "set_jde_tt": "0x4142c65821d07e9a",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6583985e02c",
+        "transit_jde_tt": "0x4142c657d9ff15a6",
+        "set_jde_tt": "0x4142c657fa1f3d95",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6583a0986fe",
+        "transit_jde_tt": "0x4142c657d9ff15a6",
+        "set_jde_tt": "0x4142c657f99b95d2",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c657c15f0152",
+        "transit_jde_tt": "0x4142c657c62c9863",
+        "set_jde_tt": "0x4142c657caf9a3cd",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 2,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c657c5aaa4b2",
+        "transit_jde_tt": "0x4142c657c62c9863",
+        "set_jde_tt": "0x4142c657c6ae0123",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c6b35c5f8085",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c6b35c5f8085",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c6b361a45d2e",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c6b361a45d2e",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6b39b4bbad4",
+        "transit_jde_tt": "0x4142c6b355daf7e9",
+        "set_jde_tt": "0x4142c6b39082a99c",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6b39d1f9a00",
+        "transit_jde_tt": "0x4142c6b355daf7e9",
+        "set_jde_tt": "0x4142c6b38eaea94f",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c6b35ad770d6",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c6b35ad770d6",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c6b35e462543",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c6b35e462543",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6b39c7b03da",
+        "transit_jde_tt": "0x4142c6b3a508ecd8",
+        "set_jde_tt": "0x4142c6b3ad951529",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6b39df4a193",
+        "transit_jde_tt": "0x4142c6b3a508ecd8",
+        "set_jde_tt": "0x4142c6b3ac1b79ee",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6b357aecc50",
+        "transit_jde_tt": "0x4142c6b37b59d1e1",
+        "set_jde_tt": "0x4142c6b39f02777b",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6b35834beb6",
+        "transit_jde_tt": "0x4142c6b37b59d1e1",
+        "set_jde_tt": "0x4142c6b39e7c9114",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6b383a1d57e",
+        "transit_jde_tt": "0x4142c6b390537e02",
+        "set_jde_tt": "0x4142c6b39d05bd2f",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6b38498db0a",
+        "transit_jde_tt": "0x4142c6b390537e02",
+        "set_jde_tt": "0x4142c6b39c0eb6b6",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6b35ac9d1a0",
+        "transit_jde_tt": "0x4142c6b37c712541",
+        "set_jde_tt": "0x4142c6b39e181e74",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6b35b4dddb1",
+        "transit_jde_tt": "0x4142c6b37c712541",
+        "set_jde_tt": "0x4142c6b39d9413f3",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c6b36928a403",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 3,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c6b36928a403",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c7583aed9263",
+        "transit_jde_tt": "0x4142c758557fbcbd",
+        "set_jde_tt": "0x4142c7587008d43f",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c75832950b4f",
+        "transit_jde_tt": "0x4142c758557fbcbd",
+        "set_jde_tt": "0x4142c75878608acb",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c7585854e621",
+        "transit_jde_tt": "0x4142c758730bbad4",
+        "set_jde_tt": "0x4142c7588e6771a7",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c758585e3873",
+        "transit_jde_tt": "0x4142c758730bbad4",
+        "set_jde_tt": "0x4142c7588e5e15d8",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c758b25af0e3",
+        "transit_jde_tt": "0x4142c7584f564039",
+        "set_jde_tt": "0x4142c7586c27eec1",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c758b2a07114",
+        "transit_jde_tt": "0x4142c7584f564039",
+        "set_jde_tt": "0x4142c7586be28272",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c758ad235f55",
+        "transit_jde_tt": "0x4142c7584aa1ec30",
+        "set_jde_tt": "0x4142c75867cf755a",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c758ad6838f3",
+        "transit_jde_tt": "0x4142c7584aa1ec30",
+        "set_jde_tt": "0x4142c758678a864c",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c758933ae9d1",
+        "transit_jde_tt": "0x4142c758b7f6604c",
+        "set_jde_tt": "0x4142c7585ce81792",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c75893824777",
+        "transit_jde_tt": "0x4142c758b7f6604c",
+        "set_jde_tt": "0x4142c7585ca0bd85",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c7589362abf4",
+        "transit_jde_tt": "0x4142c758b7ba8194",
+        "set_jde_tt": "0x4142c7585c656c7b",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c75893a955ea",
+        "transit_jde_tt": "0x4142c758b7ba8194",
+        "set_jde_tt": "0x4142c7585c1ec33b",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c75865c3de6a",
+        "transit_jde_tt": "0x4142c7588636a858",
+        "set_jde_tt": "0x4142c758a6a8ef51",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c75866070888",
+        "transit_jde_tt": "0x4142c7588636a858",
+        "set_jde_tt": "0x4142c758a665c650",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c758724eed8e",
+        "transit_jde_tt": "0x4142c758991bc990",
+        "set_jde_tt": "0x4142c758bfe83895",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c758729ae75e",
+        "transit_jde_tt": "0x4142c758991bc990",
+        "set_jde_tt": "0x4142c758bf9c40ba",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c75863df2f7d",
+        "transit_jde_tt": "0x4142c75883e02cd0",
+        "set_jde_tt": "0x4142c758a3e0f832",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c758642255b1",
+        "transit_jde_tt": "0x4142c75883e02cd0",
+        "set_jde_tt": "0x4142c758a39dd262",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c75857927381",
+        "transit_jde_tt": "0x4142c758702e68b0",
+        "set_jde_tt": "0x4142c75888ca8468",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 4,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c75857e0efeb",
+        "transit_jde_tt": "0x4142c758702e68b0",
+        "set_jde_tt": "0x4142c758887c07f8",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c275c2b47",
+        "transit_jde_tt": "0x4142b42c405d953f",
+        "set_jde_tt": "0x4142b42c5961cbb1",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c1eb4f81f",
+        "transit_jde_tt": "0x4142b42c405d953f",
+        "set_jde_tt": "0x4142b42c62091b9c",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c8f698160",
+        "transit_jde_tt": "0x4142b42caccab4ae",
+        "set_jde_tt": "0x4142b42c46f7e0f0",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c8f7263d9",
+        "transit_jde_tt": "0x4142b42caccab4ae",
+        "set_jde_tt": "0x4142b42c46ef43ff",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42ca4d90e8b",
+        "transit_jde_tt": "0x4142b42cbd3cd156",
+        "set_jde_tt": "0x4142b42c5563064b",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42ca528fd9d",
+        "transit_jde_tt": "0x4142b42cbd3cd156",
+        "set_jde_tt": "0x4142b42c55132fda",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c97329181",
+        "transit_jde_tt": "0x4142b42cb1b50d19",
+        "set_jde_tt": "0x4142b42c4c2dfdf7",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c977c7f9f",
+        "transit_jde_tt": "0x4142b42cb1b50d19",
+        "set_jde_tt": "0x4142b42c4be44b1f",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42cb593604d",
+        "transit_jde_tt": "0x4142b42c51ecbb3c",
+        "set_jde_tt": "0x4142b42c6e233a86",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42cb5d9a814",
+        "transit_jde_tt": "0x4142b42c51ecbb3c",
+        "set_jde_tt": "0x4142b42c6ddcc55a",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c422bab31",
+        "transit_jde_tt": "0x4142b42c64ef3d8a",
+        "set_jde_tt": "0x4142b42c87b3aa05",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c427030ec",
+        "transit_jde_tt": "0x4142b42c64ef3d8a",
+        "set_jde_tt": "0x4142b42c876f21b6",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c4632cb49",
+        "transit_jde_tt": "0x4142b42c6a3890ff",
+        "set_jde_tt": "0x4142b42c8e3e44fb",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c4678eff8",
+        "transit_jde_tt": "0x4142b42c6a3890ff",
+        "set_jde_tt": "0x4142b42c8df82089",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42cb221f200",
+        "transit_jde_tt": "0x4142b42c4d636500",
+        "set_jde_tt": "0x4142b42c684f2e32",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42cb26a7a22",
+        "transit_jde_tt": "0x4142b42c4d636500",
+        "set_jde_tt": "0x4142b42c6806a310",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42cae9b344d",
+        "transit_jde_tt": "0x4142b42c491eaf50",
+        "set_jde_tt": "0x4142b42c634b99a6",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42caee5680c",
+        "transit_jde_tt": "0x4142b42c491eaf50",
+        "set_jde_tt": "0x4142b42c63016416",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c98e4fbf9",
+        "transit_jde_tt": "0x4142b42cb5a0f0c9",
+        "set_jde_tt": "0x4142b42c52b35287",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 5,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c992a698c",
+        "transit_jde_tt": "0x4142b42cb5a0f0c9",
+        "set_jde_tt": "0x4142b42c526de564",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42ca75f9c20",
+        "transit_jde_tt": "0x4142b42cc06864b9",
+        "set_jde_tt": "0x4142b42cd9744228",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c9eba2042",
+        "transit_jde_tt": "0x4142b42cc06864b9",
+        "set_jde_tt": "0x4142b42ce219de5e",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c8f698160",
+        "transit_jde_tt": "0x4142b42caccab4ae",
+        "set_jde_tt": "0x4142b42c46f7e0f0",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c8f7263d9",
+        "transit_jde_tt": "0x4142b42caccab4ae",
+        "set_jde_tt": "0x4142b42c46ef43ff",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42ca4d90e8b",
+        "transit_jde_tt": "0x4142b42cbd3cd156",
+        "set_jde_tt": "0x4142b42c5563064b",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42ca528fd9d",
+        "transit_jde_tt": "0x4142b42cbd3cd156",
+        "set_jde_tt": "0x4142b42c55132fda",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c97329181",
+        "transit_jde_tt": "0x4142b42cb1b50d19",
+        "set_jde_tt": "0x4142b42c4c2dfdf7",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c977c7f9f",
+        "transit_jde_tt": "0x4142b42cb1b50d19",
+        "set_jde_tt": "0x4142b42c4be44b1f",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42cb593604d",
+        "transit_jde_tt": "0x4142b42c51ecbb3c",
+        "set_jde_tt": "0x4142b42c6e233a86",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42cb5d9a814",
+        "transit_jde_tt": "0x4142b42c51ecbb3c",
+        "set_jde_tt": "0x4142b42c6ddcc55a",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c422bab31",
+        "transit_jde_tt": "0x4142b42c64ef3d8a",
+        "set_jde_tt": "0x4142b42c87b3aa05",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c427030ec",
+        "transit_jde_tt": "0x4142b42c64ef3d8a",
+        "set_jde_tt": "0x4142b42c876f21b6",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c4632cb49",
+        "transit_jde_tt": "0x4142b42c6a3890ff",
+        "set_jde_tt": "0x4142b42c8e3e44fb",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c4678eff8",
+        "transit_jde_tt": "0x4142b42c6a3890ff",
+        "set_jde_tt": "0x4142b42c8df82089",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42cb221f200",
+        "transit_jde_tt": "0x4142b42c4d636500",
+        "set_jde_tt": "0x4142b42c684f2e32",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42cb26a7a22",
+        "transit_jde_tt": "0x4142b42c4d636500",
+        "set_jde_tt": "0x4142b42c6806a310",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42cae9b344d",
+        "transit_jde_tt": "0x4142b42c491eaf50",
+        "set_jde_tt": "0x4142b42c634b99a6",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42caee5680c",
+        "transit_jde_tt": "0x4142b42c491eaf50",
+        "set_jde_tt": "0x4142b42c63016416",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c98e4fbf9",
+        "transit_jde_tt": "0x4142b42cb5a0f0c9",
+        "set_jde_tt": "0x4142b42c52b35287",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 6,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142b42c992a698c",
+        "transit_jde_tt": "0x4142b42cb5a0f0c9",
+        "set_jde_tt": "0x4142b42c526de564",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c8063007d",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c8063007d",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c6ad852e8",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c6ad852e8",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c7d1bb1ce",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c7d1bb1ce",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c71a95640",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c71a95640",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c91e1b1ef",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c91e1b1ef",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42ca4c4297b",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42ca4c4297b",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42caa0ae3f7",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42caa0ae3f7",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c8d38ee71",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c8d38ee71",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c88f39c03",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c88f39c03",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c75cc168d",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 7,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c75cc168d",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c8063007d",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c8063007d",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c6ad852e8",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c6ad852e8",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c7d1bb1ce",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c7d1bb1ce",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c71a95640",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c71a95640",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c91e1b1ef",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c91e1b1ef",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42ca4c4297b",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42ca4c4297b",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42caa0ae3f7",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42caa0ae3f7",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c8d38ee71",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c8d38ee71",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c88f39c03",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c88f39c03",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c75cc168d",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 8,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142b42c75cc168d",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c2314fa20959",
+        "transit_jde_tt": "0x4142c231803e9372",
+        "set_jde_tt": "0x4142c231b0553dc4",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c231803e9372",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c23171031973",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 64,
+        "polar_code": 1,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c23171031973",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 192,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c2317de198a2",
+        "set_jde_tt": "0x4142c231b9150dac",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c231429aaf7b",
+        "transit_jde_tt": "0x4142c2317de198a2",
+        "set_jde_tt": "0x4142c231b67aa655",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c2315189af6a",
+        "transit_jde_tt": "0x4142c23181a7e4c9",
+        "set_jde_tt": "0x4142c231b11dc0c5",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c23152a3e9ac",
+        "transit_jde_tt": "0x4142c23181a7e4c9",
+        "set_jde_tt": "0x4142c231b00f7cae",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c23150809692",
+        "transit_jde_tt": "0x4142c231810c6bef",
+        "set_jde_tt": "0x4142c231b13d399f",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c23151a070cd",
+        "transit_jde_tt": "0x4142c231810c6bef",
+        "set_jde_tt": "0x4142c231b02448dd",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c231a2eedb63",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c231a2eedb63",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c231ae36bdf1",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c231ae36bdf1",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c2319d6dff71",
+        "transit_jde_tt": "0x4142c231552cb0d7",
+        "set_jde_tt": "0x4142c2318c91588d",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c2319f3aa0b1",
+        "transit_jde_tt": "0x4142c231552cb0d7",
+        "set_jde_tt": "0x4142c2318ac4b8c7",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c231abf98446",
+        "transit_jde_tt": "0x4142c231451f90a1",
+        "set_jde_tt": "0x4142c2315dec4ae6",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c231accfe94f",
+        "transit_jde_tt": "0x4142c231451f90a1",
+        "set_jde_tt": "0x4142c2315d15fd71",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c231b0c873ab",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 9,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 64,
+        "polar_code": 2,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x4142c231b0c873ab",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426223e7506170",
+        "transit_jde_tt": "0x41426224006392d2",
+        "set_jde_tt": "0x41426224197a3f9f",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426223dead50e1",
+        "transit_jde_tt": "0x41426224006392d2",
+        "set_jde_tt": "0x41426224221d75c4",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142622423cede52",
+        "transit_jde_tt": "0x41426223c4726ffe",
+        "set_jde_tt": "0x41426223ead8bfdf",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142622423d80922",
+        "transit_jde_tt": "0x41426223c4726ffe",
+        "set_jde_tt": "0x41426223eacf9cbb",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426223e7d4ceab",
+        "transit_jde_tt": "0x414262240190dcab",
+        "set_jde_tt": "0x414262241b5100b1",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426223e81f87e7",
+        "transit_jde_tt": "0x414262240190dcab",
+        "set_jde_tt": "0x414262241b06473f",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426223db55563f",
+        "transit_jde_tt": "0x41426223f4f7d934",
+        "set_jde_tt": "0x414262240e931c19",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426223dba17453",
+        "transit_jde_tt": "0x41426223f4f7d934",
+        "set_jde_tt": "0x414262240e47004d",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426223eafee76c",
+        "transit_jde_tt": "0x4142622403f5923d",
+        "set_jde_tt": "0x414262241cf0ac97",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426223eb4ca431",
+        "transit_jde_tt": "0x4142622403f5923d",
+        "set_jde_tt": "0x414262241ca2eef0",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262243026542c",
+        "transit_jde_tt": "0x41426223d3dcb539",
+        "set_jde_tt": "0x41426223f735b8b7",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426224306b85d9",
+        "transit_jde_tt": "0x41426223d3dcb539",
+        "set_jde_tt": "0x41426223f6f08634",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262241034cb9e",
+        "transit_jde_tt": "0x414262243747d7c8",
+        "set_jde_tt": "0x41426223debb7587",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142622410818588",
+        "transit_jde_tt": "0x414262243747d7c8",
+        "set_jde_tt": "0x41426223de6ebbab",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262243c66085f",
+        "transit_jde_tt": "0x41426223dcc79871",
+        "set_jde_tt": "0x41426223fcd016a0",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262243ca92eef",
+        "transit_jde_tt": "0x41426223dcc79871",
+        "set_jde_tt": "0x41426223fc8cf01f",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142622407a4863a",
+        "transit_jde_tt": "0x414262242cd97864",
+        "set_jde_tt": "0x41426223d26965c9",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142622407ecc51e",
+        "transit_jde_tt": "0x414262242cd97864",
+        "set_jde_tt": "0x41426223d22126fb",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 9,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 10,
+      "target": 9,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262246751c0d1",
+        "transit_jde_tt": "0x41426224806e0797",
+        "set_jde_tt": "0x41426224998e10f9",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262245eb0c584",
+        "transit_jde_tt": "0x41426224806e0797",
+        "set_jde_tt": "0x41426224a22f35e9",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426224aa0a0ede",
+        "transit_jde_tt": "0x4142622449bc2602",
+        "set_jde_tt": "0x414262246f03a011",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426224aa12feba",
+        "transit_jde_tt": "0x4142622449bc2602",
+        "set_jde_tt": "0x414262246efabf1e",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142622466f1b6fc",
+        "transit_jde_tt": "0x4142622480b6e4bb",
+        "set_jde_tt": "0x414262249a7f7120",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426224673c5503",
+        "transit_jde_tt": "0x4142622480b6e4bb",
+        "set_jde_tt": "0x414262249a34d23c",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262245b851234",
+        "transit_jde_tt": "0x414262247515bc76",
+        "set_jde_tt": "0x414262248e9f8306",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262245bd1601f",
+        "transit_jde_tt": "0x414262247515bc76",
+        "set_jde_tt": "0x414262248e53372c",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262246ae5946f",
+        "transit_jde_tt": "0x4142622483e7b6d1",
+        "set_jde_tt": "0x414262249cee70b0",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262246b332f2e",
+        "transit_jde_tt": "0x4142622483e7b6d1",
+        "set_jde_tt": "0x414262249ca0d4fd",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426224afc7d0b0",
+        "transit_jde_tt": "0x41426224537ff592",
+        "set_jde_tt": "0x4142622476da6d71",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426224b00d042b",
+        "transit_jde_tt": "0x41426224537ff592",
+        "set_jde_tt": "0x4142622476953915",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262248fd4ac5a",
+        "transit_jde_tt": "0x41426224b6e7765a",
+        "set_jde_tt": "0x414262245e5ab8dd",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142622490216583",
+        "transit_jde_tt": "0x41426224b6e7765a",
+        "set_jde_tt": "0x414262245e0dffc1",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426224bc0ce7ab",
+        "transit_jde_tt": "0x414262245c6e7969",
+        "set_jde_tt": "0x414262247c76e193",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x41426224bc500e2d",
+        "transit_jde_tt": "0x414262245c6e7969",
+        "set_jde_tt": "0x414262247c33bb19",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262248749f01b",
+        "transit_jde_tt": "0x41426224ac7ea2b4",
+        "set_jde_tt": "0x41426224520e4431",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142622487922e7d",
+        "transit_jde_tt": "0x41426224ac7ea2b4",
+        "set_jde_tt": "0x4142622451c605e4",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262248e66d555",
+        "transit_jde_tt": "0x41426224b0d5fefa",
+        "set_jde_tt": "0x41426224539fce5d",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 11,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x414262248eab085c",
+        "transit_jde_tt": "0x41426224b0d5fefa",
+        "set_jde_tt": "0x41426224535b9b4a",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb81e75bf43d",
+        "transit_jde_tt": "0x4142fb82005905b2",
+        "set_jde_tt": "0x4142fb821958aa7c",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb81deb3bcb1",
+        "transit_jde_tt": "0x4142fb82005905b2",
+        "set_jde_tt": "0x4142fb822200fc2b",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb822ae6f23b",
+        "transit_jde_tt": "0x4142fb81ccb8d339",
+        "set_jde_tt": "0x4142fb81f40774ad",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb822af04cf0",
+        "transit_jde_tt": "0x4142fb81ccb8d339",
+        "set_jde_tt": "0x4142fb81f3fe2614",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb81ea9d1da3",
+        "transit_jde_tt": "0x4142fb8202f1b745",
+        "set_jde_tt": "0x4142fb821b4c4320",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb81eaed3679",
+        "transit_jde_tt": "0x4142fb8202f1b745",
+        "set_jde_tt": "0x4142fb821afc29de",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb81f421f622",
+        "transit_jde_tt": "0x4142fb820f163057",
+        "set_jde_tt": "0x4142fb822a18a1a9",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb81f46ac3f9",
+        "transit_jde_tt": "0x4142fb820f163057",
+        "set_jde_tt": "0x4142fb8229cfcb12",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82025cca03",
+        "transit_jde_tt": "0x4142fb8226360fe4",
+        "set_jde_tt": "0x4142fb81ca41412d",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb8202a2a9ba",
+        "transit_jde_tt": "0x4142fb8226360fe4",
+        "set_jde_tt": "0x4142fb81c9fb5bb4",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb81c5e74065",
+        "transit_jde_tt": "0x4142fb81e3fd440d",
+        "set_jde_tt": "0x4142fb820211e294",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb81c62b3ff3",
+        "transit_jde_tt": "0x4142fb81e3fd440d",
+        "set_jde_tt": "0x4142fb8201cde519",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb81c7bcfad9",
+        "transit_jde_tt": "0x4142fb81e5a37445",
+        "set_jde_tt": "0x4142fb8203894349",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb81c8011ea3",
+        "transit_jde_tt": "0x4142fb81e5a37445",
+        "set_jde_tt": "0x4142fb8203452075",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82008ec2df",
+        "transit_jde_tt": "0x4142fb8222a49393",
+        "set_jde_tt": "0x4142fb81c5138c91",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb8200d2ab26",
+        "transit_jde_tt": "0x4142fb8222a49393",
+        "set_jde_tt": "0x4142fb81c4cfa438",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb8236a1ae5c",
+        "transit_jde_tt": "0x4142fb81d8ecaf36",
+        "set_jde_tt": "0x4142fb81fadd9859",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb8236e57aec",
+        "transit_jde_tt": "0x4142fb81d8ecaf36",
+        "set_jde_tt": "0x4142fb81fa99cb98",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb820a6bad99",
+        "transit_jde_tt": "0x4142fb8229839091",
+        "set_jde_tt": "0x4142fb81c8f57258",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 12,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb820aaf0845",
+        "transit_jde_tt": "0x4142fb8229839091",
+        "set_jde_tt": "0x4142fb81c8b2175a",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82675ffa22",
+        "transit_jde_tt": "0x4142fb828063d9d3",
+        "set_jde_tt": "0x4142fb82996a9580",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb825eb95a16",
+        "transit_jde_tt": "0x4142fb828063d9d3",
+        "set_jde_tt": "0x4142fb82a2115328",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82b16e64f6",
+        "transit_jde_tt": "0x4142fb825158e077",
+        "set_jde_tt": "0x4142fb82769ccb84",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82b1775090",
+        "transit_jde_tt": "0x4142fb825158e077",
+        "set_jde_tt": "0x4142fb827693fc71",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb826ad420b4",
+        "transit_jde_tt": "0x4142fb8283392273",
+        "set_jde_tt": "0x4142fb829ba508da",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb826b24028f",
+        "transit_jde_tt": "0x4142fb8283392273",
+        "set_jde_tt": "0x4142fb829b552672",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb8274128d88",
+        "transit_jde_tt": "0x4142fb828f288b9a",
+        "set_jde_tt": "0x4142fb82aa4d00d1",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82745b145b",
+        "transit_jde_tt": "0x4142fb828f288b9a",
+        "set_jde_tt": "0x4142fb82aa0470a3",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb8282184fd0",
+        "transit_jde_tt": "0x4142fb82a5fed736",
+        "set_jde_tt": "0x4142fb824a16b992",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82825e42f3",
+        "transit_jde_tt": "0x4142fb82a5fed736",
+        "set_jde_tt": "0x4142fb8249d0c0b9",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82459a1e59",
+        "transit_jde_tt": "0x4142fb8263ad2aed",
+        "set_jde_tt": "0x4142fb8281bedb6e",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb8245de201e",
+        "transit_jde_tt": "0x4142fb8263ad2aed",
+        "set_jde_tt": "0x4142fb82817adbae",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82476a2864",
+        "transit_jde_tt": "0x4142fb82654f3549",
+        "set_jde_tt": "0x4142fb8283339d39",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb8247ae4d52",
+        "transit_jde_tt": "0x4142fb82654f3549",
+        "set_jde_tt": "0x4142fb8282ef7939",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb8280356cba",
+        "transit_jde_tt": "0x4142fb82a24b69fb",
+        "set_jde_tt": "0x4142fb8244ba79f2",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb8280795524",
+        "transit_jde_tt": "0x4142fb82a24b69fb",
+        "set_jde_tt": "0x4142fb824476916f",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82b647677a",
+        "transit_jde_tt": "0x4142fb825892b247",
+        "set_jde_tt": "0x4142fb827a83d78b",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142fb82b68b3431",
+        "transit_jde_tt": "0x4142fb825892b247",
+        "set_jde_tt": "0x4142fb827a400aa1",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 9,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 13,
+      "target": 9,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 0,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 0,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 1,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "refraction_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0x0000000000000000",
+        "pressure_hpa": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 1,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "refraction_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0x0000000000000000",
+        "pressure_hpa": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 2,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 2,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 3,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 3,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 4,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 4,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 5,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 5,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 6,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 6,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 7,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 7,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 8,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 8,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 9,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 14,
+      "target": 9,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 0,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 0,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 1,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "refraction_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0x0000000000000000",
+        "pressure_hpa": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 1,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "refraction_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "temperature_c": "0x0000000000000000",
+        "pressure_hpa": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 2,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 2,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 3,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 3,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 4,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 4,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 5,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 5,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 6,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 6,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 7,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 7,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 8,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 8,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 9,
+      "custom": false,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 15,
+      "target": 9,
+      "custom": true,
+      "error": 1,
+      "fields": {
+        "valid": false,
+        "target_code": 0,
+        "source_code": 0,
+        "delta_t_identity_code": 0,
+        "nutation_identity_code": 0,
+        "present_fields": 0,
+        "polar_code": 0,
+        "rise_jde_tt": "0x0000000000000000",
+        "transit_jde_tt": "0x0000000000000000",
+        "set_jde_tt": "0x0000000000000000",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568e3264aeb",
+        "transit_jde_tt": "0x4142c56901343be6",
+        "set_jde_tt": "0x4142c5691f500dac",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568db299ffe",
+        "transit_jde_tt": "0x4142c56901343be6",
+        "set_jde_tt": "0x4142c569275003ac",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c56939d2af5b",
+        "transit_jde_tt": "0x4142c568d18cd431",
+        "set_jde_tt": "0x4142c568ee11f3f9",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c56939dbff37",
+        "transit_jde_tt": "0x4142c568d18cd431",
+        "set_jde_tt": "0x4142c568ee091fb2",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568e42fb859",
+        "transit_jde_tt": "0x4142c56901c67ad2",
+        "set_jde_tt": "0x4142c5691f7a2d80",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568e4747acf",
+        "transit_jde_tt": "0x4142c56901c67ad2",
+        "set_jde_tt": "0x4142c5691f354587",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568ddd1a1e4",
+        "transit_jde_tt": "0x4142c568f8e59299",
+        "set_jde_tt": "0x4142c56914057932",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568de1a360a",
+        "transit_jde_tt": "0x4142c568f8e59299",
+        "set_jde_tt": "0x4142c56913bcdd57",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568dd266337",
+        "transit_jde_tt": "0x4142c568f7c151a9",
+        "set_jde_tt": "0x4142c5691263ee5f",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568dd6fd5e5",
+        "transit_jde_tt": "0x4142c568f7c151a9",
+        "set_jde_tt": "0x4142c569121a7782",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568f0e65955",
+        "transit_jde_tt": "0x4142c569157e012b",
+        "set_jde_tt": "0x4142c5693a1858f2",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568f12d6d43",
+        "transit_jde_tt": "0x4142c569157e012b",
+        "set_jde_tt": "0x4142c56939d13b19",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568e3e16a6a",
+        "transit_jde_tt": "0x4142c569013e61a4",
+        "set_jde_tt": "0x4142c5691e9cfca8",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568e4261746",
+        "transit_jde_tt": "0x4142c569013e61a4",
+        "set_jde_tt": "0x4142c5691e584dbd",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568f2c47a0e",
+        "transit_jde_tt": "0x4142c569185b7326",
+        "set_jde_tt": "0x4142c5693df2d66c",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568f30d8512",
+        "transit_jde_tt": "0x4142c569185b7326",
+        "set_jde_tt": "0x4142c5693da9c9b5",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568e744ebff",
+        "transit_jde_tt": "0x4142c56906b9e6b3",
+        "set_jde_tt": "0x4142c569262f6e2d",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568e7882964",
+        "transit_jde_tt": "0x4142c56906b9e6b3",
+        "set_jde_tt": "0x4142c56925ec2fbf",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568dadd7d48",
+        "transit_jde_tt": "0x4142c568f3cd5ec6",
+        "set_jde_tt": "0x4142c5690cbd6328",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 16,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c568db2afe93",
+        "transit_jde_tt": "0x4142c568f3cd5ec6",
+        "set_jde_tt": "0x4142c5690c6fe1d7",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 0,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601e75eb796",
+        "transit_jde_tt": "0x4142c602006327e2",
+        "set_jde_tt": "0x4142c602196a8467",
+        "h0_deg": "0xbfeaaaaaaaaaaaab"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 0,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 1,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601deb838b7",
+        "transit_jde_tt": "0x4142c602006327e2",
+        "set_jde_tt": "0x4142c60222112183",
+        "h0_deg": "0xc032000000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 1,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 1,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601ebbef963",
+        "transit_jde_tt": "0x4142c6020368a6c0",
+        "set_jde_tt": "0x4142c6021b691534",
+        "temperature_c": "0x402e000000000000",
+        "pressure_hpa": "0x408faa0000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 1,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "source_code": 2,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "refraction_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601ebc9aa7e",
+        "transit_jde_tt": "0x4142c6020368a6c0",
+        "set_jde_tt": "0x4142c6021b5e6605",
+        "temperature_c": "0xc034000000000000",
+        "pressure_hpa": "0x4089000000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 2,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601dee63227",
+        "transit_jde_tt": "0x4142c601f8442919",
+        "set_jde_tt": "0x4142c60211994b8c",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 2,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 2,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601df3311bd",
+        "transit_jde_tt": "0x4142c601f8442919",
+        "set_jde_tt": "0x4142c602114c6da1",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 3,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601f5a9607f",
+        "transit_jde_tt": "0x4142c60211b278bb",
+        "set_jde_tt": "0x4142c6022dcb301a",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 3,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 3,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601f5f01502",
+        "transit_jde_tt": "0x4142c60211b278bb",
+        "set_jde_tt": "0x4142c6022d846ddb",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 4,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c60220e88a64",
+        "transit_jde_tt": "0x4142c601c926e12e",
+        "set_jde_tt": "0x4142c601f0e9c2b9",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 4,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 4,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c602213756bf",
+        "transit_jde_tt": "0x4142c601c926e12e",
+        "set_jde_tt": "0x4142c601f09af58c",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 5,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6020eaa7366",
+        "transit_jde_tt": "0x4142c60235d108a9",
+        "set_jde_tt": "0x4142c601dd5be00d",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 5,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 5,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c6020ef76571",
+        "transit_jde_tt": "0x4142c60235d108a9",
+        "set_jde_tt": "0x4142c601dd0eee28",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 6,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601f9bb8e50",
+        "transit_jde_tt": "0x4142c60217893bd8",
+        "set_jde_tt": "0x4142c60235580c4f",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 6,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 6,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601f9ffc709",
+        "transit_jde_tt": "0x4142c60217893bd8",
+        "set_jde_tt": "0x4142c6023513d1ff",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 7,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c60208904ef5",
+        "transit_jde_tt": "0x4142c6022e85da29",
+        "set_jde_tt": "0x4142c601d4d75e9d",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 7,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 7,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c60208da2f39",
+        "transit_jde_tt": "0x4142c6022e85da29",
+        "set_jde_tt": "0x4142c601d48d7e78",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 8,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601fc1f2200",
+        "transit_jde_tt": "0x4142c6021ba037ce",
+        "set_jde_tt": "0x4142c6023b2187be",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 8,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 8,
+        "source_code": 3,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601fc625b89",
+        "transit_jde_tt": "0x4142c6021ba037ce",
+        "set_jde_tt": "0x4142c6023ade4dc5",
+        "h0_deg": "0x0000000000000000"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 9,
+      "custom": false,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601efb5afe0",
+        "transit_jde_tt": "0x4142c602087c74a5",
+        "set_jde_tt": "0x4142c6022143727d",
+        "h0_deg": "0xbfe2222222222222"
+      }
+    },
+    {
+      "day_index": 17,
+      "target": 9,
+      "custom": true,
+      "error": 0,
+      "fields": {
+        "valid": true,
+        "target_code": 9,
+        "source_code": 4,
+        "delta_t_identity_code": 5,
+        "nutation_identity_code": 2,
+        "present_fields": 224,
+        "polar_code": 0,
+        "rise_jde_tt": "0x4142c601f003aba8",
+        "transit_jde_tt": "0x4142c602087c74a5",
+        "set_jde_tt": "0x4142c60220f576a9",
+        "h0_deg": "0x0000000000000000"
+      }
+    }
+  ]
+}

@@ -49,7 +49,9 @@ def project_version() -> str:
   return match.group(1)
 
 
-def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platform_tags: list[str]) -> str:
+def verify_metadata(
+  archive: zipfile.ZipFile, wheel: Path, version: str, platform_tags: list[str], expected_commit: str | None = None
+) -> str:
   """Verify filename, core metadata, WHEEL tags, and the exact member allowlist."""
   match = re.fullmatch(rf"celestial_calendar-{re.escape(version)}-py3-none-(.+)\.whl", wheel.name)
   assert match is not None, f"unexpected wheel filename: {wheel.name}"
@@ -71,10 +73,14 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
     "celestial_calendar/_models.py",
     "celestial_calendar/_protocol.py",
     "celestial_calendar/_version.py",
+    "celestial_calendar/altitude.py",
     "celestial_calendar/capability.py",
     "celestial_calendar/chart.py",
+    "celestial_calendar/diameter.py",
     "celestial_calendar/events.py",
+    "celestial_calendar/observer.py",
     "celestial_calendar/query.py",
+    "celestial_calendar/rise_set.py",
     "celestial_calendar/py.typed",
     native_member,
     f"{dist_info}/METADATA",
@@ -109,10 +115,14 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
     "_codes.py",
     "_models.py",
     "_protocol.py",
+    "altitude.py",
     "capability.py",
     "chart.py",
+    "diameter.py",
     "events.py",
+    "observer.py",
     "query.py",
+    "rise_set.py",
     "py.typed",
   ):
     assert (
@@ -136,9 +146,16 @@ def verify_metadata(archive: zipfile.ZipFile, wheel: Path, version: str, platfor
   )
   keywords = {value.strip() for value in (metadata["Keywords"] or "").split(",") if value.strip()}
   assert keywords == set(project["keywords"]), "wheel keywords differ from pyproject"
-  assert set(project_urls) == {f"{label}, {url}" for label, url in project["urls"].items()}, (
-    "wheel project URLs differ from pyproject"
+  from toolbox.package_docs import python_urls, render_readme, source_sha
+
+  sha = expected_commit if expected_commit is not None else source_sha(REPO)
+  assert set(project_urls) == {f"{label}, {url}" for label, url in python_urls(sha).items()}, (
+    "wheel project URLs differ from its documentation source"
   )
+  assert metadata["Description-Content-Type"] == "text/markdown"
+  assert metadata.get_payload(decode=True).decode("utf-8") == render_readme(
+    (REPO / "bindings/python/README.md").read_text(encoding="utf-8"), version, sha
+  ), "wheel README differs from its documentation source"
 
   wheel_metadata = BytesParser().parsebytes(archive.read(f"{dist_info}/WHEEL"))
   assert wheel_metadata["Root-Is-Purelib"] == "false", "native wheel cannot be purelib"
@@ -240,10 +257,11 @@ def main() -> None:
   platform_tags = filename_match.group(1).split(".")
   export_names = [entry["name"] for entry in json.loads(MANIFEST.read_text(encoding="utf-8"))["exports"]]
   exports = set(export_names)
-  assert len(export_names) == len(exports) == 38, "C ABI export inventory"
+  assert len(export_names) == len(exports) == 46, "C ABI export inventory"
 
   with zipfile.ZipFile(wheel) as archive, tempfile.TemporaryDirectory() as temporary:
-    native_member = verify_metadata(archive, wheel, version, platform_tags)
+    expected_commit = run("git", "-C", str(REPO), "rev-parse", "HEAD").strip()
+    native_member = verify_metadata(archive, wheel, version, platform_tags, expected_commit)
     archive.extract(native_member, temporary)
     native = Path(temporary) / native_member
     if all("manylinux" in tag for tag in platform_tags):

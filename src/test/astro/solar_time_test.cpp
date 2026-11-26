@@ -352,6 +352,21 @@ TEST(SolarTime, ApparentSolarTimeGolden) {
   }
 }
 
+TEST(SolarTime, ApparentUsesTheUtcClockBeyondTheLeapTable) {
+  // This checks clock composition, not E's accuracy: the existing E oracles cover that separately.
+  const calendar::Datetime utc { util::to_ymd(2100, 6, 1), 0.5 };
+  const double jde_tt = astro::julian_day::utc_to_jde(utc);
+  const double e_seconds = equation_of_time(jde_tt).deg() * SECONDS_OF_TIME_PER_DEGREE;
+  const auto result = apparent(utc, AngleDeg { 0.0 });
+  const auto expected = calendar::add_seconds(utc, e_seconds);
+  ASSERT_EQ(result.ymd, expected.ymd);
+  ASSERT_EQ(result.time_of_day.to_duration(), expected.time_of_day.to_duration());
+
+  const auto ut1 = astro::julian_day::jde_to_ut1(jde_tt);
+  const double gap_seconds = (astro::julian_day::ut1_to_jd(utc) - astro::julian_day::ut1_to_jd(ut1)) * 86400.0;
+  ASSERT_GT(std::abs(gap_seconds), 10.0);
+}
+
 TEST(SolarTime, ApparentRejectsMutatedPre1972Datetime) {
   const calendar::Datetime valid { util::to_ymd(1900, 2, 28), 0.5 };
   const AngleDeg longitude { 0.0 };

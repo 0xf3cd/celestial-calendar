@@ -21,6 +21,11 @@ import {
 import { testChartApi } from "../support/chart_api.mjs";
 import { chartLabel } from "../support/chart_replay.mjs";
 import { testFakeNative } from "../support/fake_native.mjs";
+import { runObserverAcceptance } from "../support/observer_api.mjs";
+import { runDiameterAcceptance } from "../support/diameter_api.mjs";
+import { runAltitudeAcceptance } from "../support/altitude_api.mjs";
+import { runRiseSetAcceptance } from "../support/rise_set_api.mjs";
+import { runPositionEventsAcceptance } from "../support/position_events_api.mjs";
 
 if (process.argv.length !== 3) throw new Error("usage: node public_api_test.mjs <staged index.mjs>");
 
@@ -30,7 +35,7 @@ const heldWasmPath = `${wasmPath}.init-failure-probe`;
 const celestial = await import(entryUrl);
 const declarationPath = fileURLToPath(new URL("./index.d.ts", entryUrl));
 const declarationText = await readFile(declarationPath, "utf8");
-const namespaces = ["time", "sun", "moon", "jieqi", "lunar", "chart"];
+const namespaces = ["time", "sun", "moon", "jieqi", "lunar", "chart", "observer", "diameter", "riseSet", "position", "events"];
 const { C_DECLARATIONS, CHART_CODES } = await import(new URL("./bindings.mjs", entryUrl));
 const manifest = JSON.parse(await readFile(new URL("../abi/manifest.json", import.meta.url), "utf8"));
 assert.equal(manifest.schema, "celestial-calendar/javascript-wasm-abi@2");
@@ -126,7 +131,7 @@ assert(Object.isFrozen(celestial.Jieqi), "Jieqi is frozen");
 
 assert.deepEqual(
   Object.keys(celestial).sort(),
-  ["CelestialError", "Jieqi", "chart", "init", "jieqi", "lunar", "moon", "sun", "time"],
+  ["CelestialError", "Jieqi", "chart", "diameter", "events", "init", "jieqi", "lunar", "moon", "observer", "position", "riseSet", "sun", "time"],
   "public module exports",
 );
 assert.equal("config" in celestial, false);
@@ -152,6 +157,7 @@ assert.deepEqual(
 assert.deepEqual(Object.keys(celestial.jieqi), ["moment", "name"]);
 assert.deepEqual(Object.keys(celestial.lunar), ["supportedYearRange", "yearInfo", "fromGregorian", "toGregorian"]);
 assert.deepEqual(Object.keys(celestial.chart), ["snapshot"]);
+assert(Object.isFrozen(celestial.observer), "observer is frozen");
 
 let edges = 0;
 const edge = (label, action, ErrorType) => {
@@ -160,7 +166,20 @@ const edge = (label, action, ErrorType) => {
 };
 
 const uninitializedCalls = [
+  ["position.ecliptic", [["sun"], 2451545]],
+  ["position.equatorial", [["moon"], 2451545]],
+  ["events.longitudeCrossings", ["mercury", 0, 2460735.5, 2460785.5]],
+  ["events.longitudeStations", ["mercury", 2460735.5, 2460785.5]],
+  ["events.longitudeDifferences", ["moon", "sun", 60, 2460676.5, 2460707.5]],
   ["chart.snapshot", [{ year: 2026, month: 1, day: 1, fraction: 0.5 }, { scale: "utc", location: { latitudeDeg: 51.5, longitudeDeg: 0 }, system: "placidus" }]],
+  ["observer.position", ["sun", { year: 2026, month: 11, day: 7, fraction: 0 }, { scale: "utc", observer: { latitudeDeg: -33.85, longitudeDeg: 151.2, elevationM: 50 } }]],
+  ["observer.altitudeEvents", [{ latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 }, { target: "sun", level: { kind: "geometric", altitudeDeg: 0 }, sense: "above" }, 2451545, 2451546]],
+  ["observer.upperTransits", [{ latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 }, "sun", 2451545, 2451546]],
+  ["observer.observingWindows", [{ latitudeDeg: 0, longitudeDeg: 0, elevationM: 0 }, [], 2451545, 2451546]],
+  ["diameter.query", ["moon", { year: 2026, month: 11, day: 7, fraction: 0 }, { scale: "utc" }]],
+  ["riseSet.solar", [{ year: 2025, month: 1, day: 1 }, { latitudeDeg: 40, longitudeDeg: 0 }]],
+  ["riseSet.lunar", [{ year: 2025, month: 1, day: 1 }, { latitudeDeg: 40, longitudeDeg: 0 }]],
+  ["riseSet.planet", ["mars", { year: 2025, month: 1, day: 1 }, { latitudeDeg: 40, longitudeDeg: 0, elevationM: 0 }]],
   ["time.ut1ToJd", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.ut1ToJde", [{ year: 2000, month: 1, day: 1, fraction: 0.5 }]],
   ["time.jdeToUt1", [2451545.0]],
@@ -217,9 +236,9 @@ try {
   console.error = (...args) => initializationErrors.push(args.join(" "));
   failedInitialization = celestial.init();
   assert.strictEqual(celestial.init(), failedInitialization, "concurrent init shares one promise");
-  checkUninitialized(celestial, "moon.illumination", [2448724.5]);
+  for (const [operation, args] of uninitializedCalls) checkUninitialized(celestial, operation, args);
   await assert.rejects(failedInitialization);
-  checkUninitialized(celestial, "moon.illumination", [2448724.5]);
+  for (const [operation, args] of uninitializedCalls) checkUninitialized(celestial, operation, args);
 } finally {
   console.error = originalConsoleError;
   await rename(heldWasmPath, wasmPath);
@@ -628,6 +647,18 @@ assert.match(lunarError.message, /cannot be represented/);
 
 assert.equal(celestial.jieqi.name(0), "立春", "module survives translated errors");
 happy += await testChartApi(celestial, entryUrl);
+assert.deepEqual(runObserverAcceptance(celestial), { targets: 10, exactPoles: 2, refractionStates: 2 });
+assert.deepEqual(runDiameterAcceptance(celestial), { targets: 10, exactPoles: 2 });
+assert.deepEqual(runAltitudeAcceptance(celestial), { targets: 10, refractionModels: 2, unresolved: 2 });
+const positionEvents = runPositionEventsAcceptance(celestial,
+  JSON.parse(await readFile(new URL("../../../../toolbox/position_events_golden.json", import.meta.url), "utf8")));
+assert.equal(positionEvents.cases, 66);
+assert.equal(positionEvents.nodeEventChecks, 8);
+console.log(`PASS independent positions and longitude events ${JSON.stringify(positionEvents)}`);
+const daily = runRiseSetAcceptance(celestial, JSON.parse(await readFile(new URL("../../../../toolbox/rise_set_golden.json", import.meta.url), "utf8")));
+assert.equal(daily.cases, 360);
+console.log("PASS rise/set native parity", daily);
+console.log("PASS observer public queries, poles, refraction and civil/provider guards");
 assert.equal(happy, 24, "public method denominator");
 assert.equal(edges, 31, "public edge denominator");
 assert.equal(acceptedBoundaries.length, 18, "public acceptance denominator");

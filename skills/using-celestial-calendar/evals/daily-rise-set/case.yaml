@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: daily-rise-set
+runs: 2
+expected_outcome: |
+  A Python program actually obtains Sun, Moon and Mars daily summaries for the
+  supplied UT1 date and site. It reports TT event times, their converted UTC
+  calendar values, nulls for missing events and the separate polar state.
+  It preserves the Sun's transit-centred selection and the Moon/planet UT1-day
+  selection rather than treating all three as local-calendar-day event lists.

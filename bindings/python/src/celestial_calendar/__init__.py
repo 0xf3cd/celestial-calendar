@@ -20,17 +20,23 @@ from datetime import datetime as _datetime
 from enum import Enum as _Enum
 from enum import IntEnum as _IntEnum
 from enum import StrEnum as _StrEnum
+from itertools import islice as _islice
 from operator import index as _index
 from typing import TypeVar as _TypeVar
 
 from . import _abi, _binding, _protocol
 from . import capability as _capability, chart as _chart, events as _events, query as _query
+from . import observer as _observer
+from . import diameter as _diameter
+from . import altitude as _altitude
+from . import rise_set as _rise_set
 from ._codes import constant as _constant, enum_code as _enum_code
 from ._models import DeltaTModel as DeltaTModel
 from ._models import ModelKey as ModelKey
 from ._models import ModelKind as ModelKind
 from ._models import NutationModel as NutationModel
 from ._models import Target as Target
+from ._models import is_planet as _is_planet
 from ._models import selector_code as _selector_code
 from ._protocol import CelestialError as CelestialError
 from ._version import VERSION as __version__
@@ -52,9 +58,32 @@ from .events import LongitudeDifferenceEvent as LongitudeDifferenceEvent
 from .events import LongitudeEvent as LongitudeEvent
 from .events import StationEvent as StationEvent
 from .events import StationMotion as StationMotion
+from .altitude import AltitudeCondition as AltitudeCondition
+from .altitude import AltitudeConditionState as AltitudeConditionState
+from .altitude import AltitudeEvent as AltitudeEvent
+from .altitude import AltitudeEvents as AltitudeEvents
+from .altitude import AltitudeSense as AltitudeSense
+from .altitude import GeometricLevel as GeometricLevel
+from .altitude import ObservingWindow as ObservingWindow
+from .altitude import ObservingWindows as ObservingWindows
+from .altitude import RefractedLevel as RefractedLevel
+from .altitude import UpperTransit as UpperTransit
 from .query import EquatorialPosition as EquatorialPosition
 from .query import HouseQueryResult as HouseQueryResult
 from .query import Position as Position
+from .observer import Observer as Observer
+from .observer import RefractionModel as RefractionModel
+from .observer import RefractionParams as RefractionParams
+from .observer import TopocentricPosition as TopocentricPosition
+from .diameter import ApparentDiameter as ApparentDiameter
+from .diameter import DiameterCentre as DiameterCentre
+from .diameter import RadiusDefinition as RadiusDefinition
+from .rise_set import SolarRiseSet as SolarRiseSet
+from .rise_set import LunarRiseSet as LunarRiseSet
+from .rise_set import PlanetRiseSet as PlanetRiseSet
+from .rise_set import PolarTopology as PolarTopology
+
+_LUNAR_STANDARD_ATMOSPHERE = RefractionParams(RefractionModel.BENNETT)
 
 
 class MoonPhase(_StrEnum):
@@ -184,7 +213,10 @@ class MoonIllumination:
 
 @_dataclass(frozen=True)
 class JieqiMoment:
-  """UT1 civil moment of a Jieqi, not a UTC or east-eight wall date."""
+  """UT1 civil moment of a Jieqi, not a UTC or east-eight wall date.
+
+  For UTC, pass moment_ut1 through ut1_to_jde(), then jde_to_utc().
+  """
 
   jieqi: Jieqi
   moment_ut1: CivilDateTime
@@ -277,6 +309,16 @@ def _location(value: object) -> tuple[float, float]:
   return _finite(value.latitude_deg, "location.latitude_deg"), _finite(value.longitude_deg, "location.longitude_deg")
 
 
+def _observer_site(value: object) -> tuple[float, float, float]:
+  if not isinstance(value, Observer):
+    raise TypeError("observer must be an Observer")
+  return (
+    _finite(value.latitude_deg, "observer.latitude_deg"),
+    _finite(value.longitude_deg, "observer.longitude_deg"),
+    _finite(value.elevation_m, "observer.elevation_m"),
+  )
+
+
 def _result(export: str, operation: str, *args: object) -> object:
   return _protocol.valid(_binding.call(export, *args), operation)
 
@@ -314,23 +356,34 @@ def _coordinate_values(result: object) -> tuple[float, float, float]:
 
 
 def ut1_to_jd(ut1: CivilDateTime) -> float:
-  """Convert a UT1 civil moment to Julian Day."""
+  """Convert a UT1 civil moment to Julian Day.
+
+  Rounding at the end of year 32767 can reach JD 13689325.5. The C++ jd_to_ut1()
+  inverse rejects that rounded value, so a civil roundtrip is not guaranteed.
+  """
   return _number(_result("celestial_ut1_to_jd", "ut1_to_jd", *_civil_datetime(ut1, "ut1")).value, "ut1_to_jd")
 
 
 def ut1_to_jde(ut1: CivilDateTime) -> float:
-  """Convert a UT1 civil moment to TT-based Julian Ephemeris Day using fixed Algo5."""
+  """Convert a UT1 civil moment to TT-based Julian Ephemeris Day using the fixed ΔT model Algo5.
+
+  Input years are in [1, 32767]; the shifted TT instant must also stay representable.
+  """
   return _number(_result("celestial_ut1_to_jde", "ut1_to_jde", *_civil_datetime(ut1, "ut1")).value, "ut1_to_jde")
 
 
 def jde_to_ut1(jde: float) -> CivilDateTime:
-  """Convert TT-based Julian Ephemeris Day to a UT1 civil moment using fixed Algo5."""
+  """Convert finite JDE(TT) in [1867522.5, 13689325.5) to UT1 using the fixed ΔT model Algo5.
+
+  The lower endpoint returns 400-12-31. ut1_to_jde() may return a JDE outside
+  this inverse's input window.
+  """
   result = _result("celestial_jde_to_ut1", "jde_to_ut1", _finite(jde, "jde"))
   return _protocol.decode("jde_to_ut1", _civil_result, result)
 
 
 def utc_to_jde(utc: CivilDateTime) -> float:
-  """Convert UTC civil fields to JDE(TT), using UT1 with fixed Algo5 before 1972.
+  """Convert UTC civil fields to JDE(TT), using UT1 with the fixed ΔT model Algo5 before 1972.
 
   Input years are in [1, 32767]; the shifted TT instant must stay representable.
   Modern dates use the fixed leap-second table, retaining its final offset afterward.
@@ -342,7 +395,7 @@ def utc_to_jde(utc: CivilDateTime) -> float:
 def jde_to_utc(jde: float) -> CivilDateTime:
   """Convert JDE(TT) in [1867522.5, 13689325.5) to UTC civil fields.
 
-  Before 1972 the result uses the UT1 substitute with fixed Algo5; year 400 is possible.
+  Before 1972 the result uses the UT1 substitute with the fixed ΔT model Algo5; year 400 is possible.
   After the table's last entry, its final offset is retained. Leap seconds, leap-step midnight
   round-off and the 1972 model seam do not promise an exact inverse.
   """
@@ -446,7 +499,13 @@ def equation_of_time(jde: float) -> float:
 
 
 def apparent_solar_time(utc: CivilDateTime, longitude_deg: float) -> CivilDateTime:
-  """Convert civil UTC to local apparent solar time; longitude is east-positive degrees."""
+  """Convert civil UTC to local apparent solar time; longitude is east-positive degrees.
+
+  Input years are in [1, 32767]; before 1972 the UTC fields use the UT1 substitute.
+  The returned clock differs from UT1-based apparent solar time by UTC minus UT1.
+  After the last leap-table step, UT1 minus UTC is 69.184 seconds minus Delta T;
+  its magnitude is no longer bounded by 0.9 seconds.
+  """
   return _protocol.decode(
     "apparent_solar_time",
     _civil_result,
@@ -478,7 +537,8 @@ def local_apparent_sidereal_time(jd_ut1: float, longitude_deg: float) -> float:
 def jieqi_moment(year: int, jieqi: Jieqi) -> JieqiMoment:
   """Return a Jieqi's UT1 civil moment in year [401, 32766], not a UTC+8 wall date.
 
-  Establish a time-scale conversion before displaying UTC or an east-eight date.
+  For UTC, pass the returned moment_ut1 through ut1_to_jde(), then jde_to_utc().
+  Apply the display offset to that UTC result for an east-eight date.
   The returned UT1 year may differ from the requested year.
   """
   result = _result("celestial_query_jieqi_moment", "jieqi_moment", _year(year), _enum(jieqi, Jieqi, "jieqi").value)
@@ -678,18 +738,113 @@ def longitude_difference_events(
   )
 
 
+def _altitude_inputs(conditions: _Iterable[AltitudeCondition], operation: str):
+  try:
+    requested = tuple(_islice(conditions, 2049))
+    if len(requested) > 2048:
+      raise CelestialError(operation, "condition list exceeds the native work budget", recorded=False)
+    encoded = (_abi.CelestialAltitudeCondition * len(requested))(
+      *(_altitude.encode_condition(condition) for condition in requested)
+    )
+    return requested, encoded
+  except (MemoryError, OverflowError) as error:
+    raise CelestialError(operation, "cannot allocate altitude input storage", recorded=False) from error
+
+
+def _altitude_records(export: str, prefix: tuple, observer: Observer, start: float, end: float, decoder, *decoder_args):
+  operation = export.removeprefix("celestial_")
+  if not isinstance(observer, Observer):
+    raise TypeError("observer must be an Observer")
+  site = (
+    _finite(observer.latitude_deg, "latitude_deg"),
+    _finite(observer.longitude_deg, "longitude_deg"),
+    _finite(observer.elevation_m, "elevation_m"),
+  )
+  start, end = _finite(start, "start_jde_tt"), _finite(end, "end_jde_tt")
+  try:
+    records = _protocol.count_fill(export, (*prefix, *site, start, end), _abi.CelestialAltitudeRecord, operation)
+    return _protocol.decode(operation, decoder, records, *decoder_args, start, end)
+  except (MemoryError, OverflowError) as error:
+    raise CelestialError(operation, "cannot allocate altitude result storage", recorded=False) from error
+
+
+def altitude_events(
+  observer: Observer, condition: AltitudeCondition, start_jde_tt: float, end_jde_tt: float
+) -> AltitudeEvents:
+  """Return detected centre-altitude crossings and initial state over [start,end) in JDE(TT).
+
+  Sun, Moon and eight planets use fixed ALGO5/IAU1980. Start events are included and
+  already reflected in initially_satisfied; end events are excluded. Sampling can miss events
+  without an error, and no TANGENT events are returned. Detected near contacts, failed refinement
+  or exhausted work raise CelestialError without partial results. Weather outside [-90,60] C
+  or [300,1100] hPa raises ValueError.
+  """
+  requested, inputs = _altitude_inputs((condition,), "altitude_events")
+  return _altitude_records(
+    "celestial_altitude_events",
+    (inputs,),
+    observer,
+    start_jde_tt,
+    end_jde_tt,
+    lambda records, conditions, start, end: _altitude.decode_conditions(records, conditions, start, end, False),
+    requested,
+  )
+
+
+def upper_transits(
+  observer: Observer, target: Target, start_jde_tt: float, end_jde_tt: float
+) -> tuple[UpperTransit, ...]:
+  """Return detected upper meridian passages in [start,end) JDE(TT), or an empty tuple.
+
+  The sampling limits, physical-target, domain and failure contract match altitude_events(). At a geographic
+  pole the meridian is defined by the supplied longitude; no altitude level or weather is used.
+  """
+  checked = _enum(target, Target, "target")
+  return _altitude_records(
+    "celestial_upper_transits",
+    (_enum_code("TARGET", checked),),
+    observer,
+    start_jde_tt,
+    end_jde_tt,
+    _altitude.decode_transits,
+    checked,
+  )
+
+
+def observing_windows(
+  observer: Observer, conditions: _Iterable[AltitudeCondition], start_jde_tt: float, end_jde_tt: float
+) -> ObservingWindows:
+  """Intersect centre-altitude conditions, retaining their states and companion events.
+
+  Windows are maximal positive-duration spans in [start,end) JDE(TT), not strict point
+  sets at isolated equalities. They are reconstructed from detected crossings, so the sampling
+  limits of altitude_events() also apply here. An empty conjunction returns the whole interval.
+  Failure in any condition fails the entire query, even when the intersection would be empty.
+  """
+  requested, inputs = _altitude_inputs(conditions, "observing_windows")
+  return _altitude_records(
+    "celestial_observing_windows",
+    (inputs, len(requested)),
+    observer,
+    start_jde_tt,
+    end_jde_tt,
+    lambda records, conditions, start, end: _altitude.decode_conditions(records, conditions, start, end, True),
+    requested,
+  )
+
+
 def capabilities(operation: CapabilityOperation, subject: Target | None = None) -> tuple[CapabilityRecord, ...]:
   """Return native TT capability records for POSITION, LONGITUDE_RATE, EVENTS or EQUATORIAL.
 
-  subject selects a Target; None selects every target. HOUSES, CHART and DELTA_T
-  raise ValueError. Use house_capability(delta_t_model=...) for civil-house policy
+  subject selects a Target; None selects every target. HOUSES, CHART, DELTA_T, TOPOCENTRIC,
+  APPARENT_DIAMETER and RISE_SET raise ValueError. Use house_capability(delta_t_model=...) for civil-house policy
   and capability_text() for operation-wide descriptions.
   """
   checked = _enum(operation, CapabilityOperation, "operation")
   if checked not in _TARGET_OPERATIONS:
     if checked is CapabilityOperation.HOUSES:
       raise ValueError("use house_capability(delta_t_model=...) for civil-house policy")
-    raise ValueError("use capability_text() for CHART or DELTA_T descriptions")
+    raise ValueError("use capability_text() for operation-wide descriptions")
   targets = tuple(Target) if subject is None else (_enum(subject, Target, "subject"),)
   subject_code = _constant("TARGET_ALL") if subject is None else _enum_code("TARGET", targets[0])
   records = _protocol.count_fill(
@@ -733,8 +888,8 @@ def model_identity_text(key: ModelKey) -> str:
 def capability_text(operation: CapabilityOperation, subject: Target | None = None) -> str:
   """Describe an operation's sources, corrections, defaults and domains.
 
-  Target operations require a concrete Target subject. HOUSES, CHART and DELTA_T
-  require subject=None for operation-wide text; a Target there raises ValueError.
+  Target operations require a concrete Target subject. HOUSES, CHART, DELTA_T, TOPOCENTRIC,
+  APPARENT_DIAMETER and RISE_SET require subject=None for operation-wide text; a Target there raises ValueError.
   Use model_identity_text() for a model key, not a registry ordinal.
   """
   checked = _enum(operation, CapabilityOperation, "operation")
@@ -743,7 +898,7 @@ def capability_text(operation: CapabilityOperation, subject: Target | None = Non
   else:
     if subject is not None:
       _enum(subject, Target, "subject")
-      raise ValueError("subject must be None for HOUSES, CHART and DELTA_T text")
+      raise ValueError("subject must be None for operation-wide text")
     code = _constant("TARGET_ALL")
   return _protocol.sized_string(
     "celestial_capability_text", (_enum_code("OPERATION", checked), code), "capability_text"
@@ -841,7 +996,204 @@ def house_query(
   return decoded
 
 
+def topocentric_position(
+  target: Target,
+  civil_dt: CivilDateTime,
+  scale: CivilScale,
+  observer: Observer,
+  *,
+  delta_t_model: DeltaTModel | ModelKey = DeltaTModel.DEFAULT,
+  refraction: RefractionParams | None = None,
+) -> TopocentricPosition:
+  """Observe one physical target from a fixed WGS84 site at an explicit UTC/UT1 instant.
+
+  UTC begins at 1972-01-01; modelled UT1 and each provider's own position domain apply.
+  No chart/rate window is imposed. Refraction is off by default; unsupported altitude
+  leaves only the apparent-altitude field absent. No added diurnal aberration, polar
+  motion or observer-dependent light-time solve is applied.
+  """
+  checked_target = _enum(target, Target, "target")
+  civil = _civil_datetime(civil_dt, "civil_dt")
+  scale_code = _enum_code("CIVIL_SCALE", _enum(scale, CivilScale, "scale"))
+  if not isinstance(observer, Observer):
+    raise TypeError("observer must be an Observer")
+  latitude = _finite(observer.latitude_deg, "observer.latitude_deg")
+  longitude = _finite(observer.longitude_deg, "observer.longitude_deg")
+  elevation = _finite(observer.elevation_m, "observer.elevation_m")
+  model_code = _selector_code(delta_t_model, ModelKind.DELTA_T, "delta_t_model")
+  refraction_code, temperature, pressure = _constant("REFRACTION_NONE"), 0.0, 0.0
+  if refraction is not None:
+    if not isinstance(refraction, RefractionParams):
+      raise TypeError("refraction must be RefractionParams or None")
+    refraction_code = _enum_code("REFRACTION", _enum(refraction.model, RefractionModel, "refraction.model"))
+    temperature = _finite(refraction.temperature_c, "refraction.temperature_c")
+    pressure = _finite(refraction.pressure_hpa, "refraction.pressure_hpa")
+  result = _result(
+    "celestial_topocentric_position",
+    "topocentric_position",
+    _enum_code("TARGET", checked_target),
+    *civil,
+    scale_code,
+    model_code,
+    latitude,
+    longitude,
+    elevation,
+    refraction_code,
+    temperature,
+    pressure,
+  )
+  decoded = _protocol.decode(
+    "topocentric_position",
+    _observer.decode_position,
+    result,
+    checked_target,
+    refraction is not None,
+    abs(latitude) == 90.0,
+  )
+  _selected_key(decoded.delta_t_model, model_code, "topocentric_position")
+  return decoded
+
+
+def apparent_diameter(
+  target: Target,
+  civil_dt: CivilDateTime,
+  scale: CivilScale,
+  observer: Observer | None = None,
+  *,
+  delta_t_model: DeltaTModel | ModelKey = DeltaTModel.DEFAULT,
+) -> ApparentDiameter:
+  """Return a full spherical disk in arcseconds, geocentric unless an Observer is supplied.
+
+  Uses the existing provider's distance and optional observer translation. Solar radius is
+  nominal, lunar radius mean, planetary radius equatorial; Saturn excludes rings. Provider
+  and Delta T guards apply without a chart/rate window. A resolved inside-target observer
+  is invalid input; unresolved geometry is a computation error.
+  """
+  checked_target = _enum(target, Target, "target")
+  civil = _civil_datetime(civil_dt, "civil_dt")
+  scale_code = _enum_code("CIVIL_SCALE", _enum(scale, CivilScale, "scale"))
+  centre = DiameterCentre.GEOCENTRIC if observer is None else DiameterCentre.TOPOCENTRIC
+  latitude, longitude, elevation = 0.0, 0.0, 0.0
+  if observer is not None:
+    if not isinstance(observer, Observer):
+      raise TypeError("observer must be an Observer or None")
+    latitude = _finite(observer.latitude_deg, "observer.latitude_deg")
+    longitude = _finite(observer.longitude_deg, "observer.longitude_deg")
+    elevation = _finite(observer.elevation_m, "observer.elevation_m")
+
+  model_code = _selector_code(delta_t_model, ModelKind.DELTA_T, "delta_t_model")
+  result = _result(
+    "celestial_apparent_diameter",
+    "apparent_diameter",
+    _enum_code("TARGET", checked_target),
+    *civil,
+    scale_code,
+    model_code,
+    _enum_code("DIAMETER_CENTRE", centre),
+    latitude,
+    longitude,
+    elevation,
+  )
+  decoded = _protocol.decode("apparent_diameter", _diameter.decode_diameter, result, checked_target, centre)
+  _selected_key(decoded.delta_t_model, model_code, "apparent_diameter")
+  return decoded
+
+
+def solar_rise_set(date_ut1: GregorianDate, location: GeoLocation, *, h0_deg: float = -50.0 / 60.0) -> SolarRiseSet:
+  """Return TT events around local solar transit selected by a UT1 date.
+
+  Rise/set can fall outside the input date; ±180° can select transits a day apart.
+  Pass -6, -12 or -18 for twilight; weather parameters are not accepted.
+  """
+  date = _civil_date(date_ut1, "date_ut1")
+  site = _location(location)
+  h0 = _finite(h0_deg, "h0_deg")
+  native = _result("celestial_solar_rise_set", "solar_rise_set", *date, *site, h0)
+  return _protocol.decode("solar_rise_set", _rise_set.decode_solar, native, h0)
+
+
+def lunar_rise_set(
+  date_ut1: GregorianDate,
+  location: GeoLocation,
+  *,
+  refraction: RefractionParams = _LUNAR_STANDARD_ATMOSPHERE,
+) -> LunarRiseSet:
+  """Return representative TT events in [0h,24h) UT1, with None for missing events.
+
+  Uses geocentric coordinates. The threshold is 0.7275 times the Moon's
+  horizontal parallax at midday, minus horizon refraction.
+  Weather accepts finite temperature > -273°C and positive pressure.
+  Of two rises or two sets, the later is returned; of two transits, the earlier.
+  A rise or set exactly at 0h UT1 is returned for neither neighbouring day.
+  """
+  date = _civil_date(date_ut1, "date_ut1")
+  site = _location(location)
+  if not isinstance(refraction, RefractionParams):
+    raise TypeError("refraction must be RefractionParams")
+  model = _enum(refraction.model, RefractionModel, "refraction.model")
+  temperature = _finite(refraction.temperature_c, "temperature_c")
+  pressure = _finite(refraction.pressure_hpa, "pressure_hpa")
+  native = _result(
+    "celestial_lunar_rise_set",
+    "lunar_rise_set",
+    *date,
+    *site,
+    _enum_code("REFRACTION", model),
+    temperature,
+    pressure,
+  )
+  return _protocol.decode(
+    "lunar_rise_set", _rise_set.decode_lunar, native, RefractionParams(model, temperature, pressure)
+  )
+
+
+def planet_rise_set(
+  target: Target, date_ut1: GregorianDate, observer: Observer, *, h0_deg: float = -34.0 / 60.0
+) -> PlanetRiseSet:
+  """Return representative planetary TT events in [0h,24h) UT1 from a WGS84 site.
+
+  The airless topocentric centre includes parallax; standard refraction is in h0.
+  All internal samples must fit the provider's TT domain, including samples
+  outside the day. Query capability_text(CapabilityOperation.EQUATORIAL, target)
+  for that domain. Missing transit is independent of polar topology.
+  """
+  checked_target = _enum(target, Target, "target")
+  if not _is_planet(checked_target):
+    raise ValueError("planet_rise_set requires Mercury through Pluto")
+  date = _civil_date(date_ut1, "date_ut1")
+  site = _observer_site(observer)
+  h0 = _finite(h0_deg, "h0_deg")
+  native = _result(
+    "celestial_planet_rise_set", "planet_rise_set", _enum_code("TARGET", checked_target), *date, *site, h0
+  )
+  return _protocol.decode("planet_rise_set", _rise_set.decode_planet, native, checked_target, h0)
+
+
 __all__ = [
+  "SolarRiseSet",
+  "LunarRiseSet",
+  "PlanetRiseSet",
+  "PolarTopology",
+  "solar_rise_set",
+  "lunar_rise_set",
+  "planet_rise_set",
+  "AltitudeCondition",
+  "AltitudeConditionState",
+  "AltitudeEvent",
+  "AltitudeEvents",
+  "AltitudeSense",
+  "GeometricLevel",
+  "ObservingWindow",
+  "ObservingWindows",
+  "RefractedLevel",
+  "UpperTransit",
+  "altitude_events",
+  "upper_transits",
+  "observing_windows",
+  "ApparentDiameter",
+  "DiameterCentre",
+  "RadiusDefinition",
+  "apparent_diameter",
   "BodyState",
   "CapabilityOperation",
   "CapabilityRecord",
@@ -876,11 +1228,15 @@ __all__ = [
   "MoonIllumination",
   "MoonPhase",
   "NutationModel",
+  "Observer",
   "Position",
+  "RefractionModel",
+  "RefractionParams",
   "StationEvent",
   "StationMotion",
   "SunCoordinate",
   "Target",
+  "TopocentricPosition",
   "__version__",
   "apparent_solar_time",
   "capabilities",
@@ -914,6 +1270,7 @@ __all__ = [
   "sun_apparent_geocentric_coordinate",
   "sun_longitude_crossings",
   "supported_lunar_year_range",
+  "topocentric_position",
   "ut1_to_jd",
   "ut1_to_jde",
   "utc_to_jde",

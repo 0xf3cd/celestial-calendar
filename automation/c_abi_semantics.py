@@ -199,6 +199,9 @@ EXPORT_SEMANTICS = {
         "CELESTIAL_OPERATION_HOUSES",
         "CELESTIAL_OPERATION_CHART",
         "CELESTIAL_OPERATION_DELTA_T",
+        "CELESTIAL_OPERATION_TOPOCENTRIC",
+        "CELESTIAL_OPERATION_APPARENT_DIAMETER",
+        "CELESTIAL_OPERATION_RISE_SET",
       ],
     },
     "recording": True,
@@ -233,4 +236,63 @@ EXPORT_SEMANTICS = {
   },
   "celestial_house_query": {"protocol": {"identity": "resolved-explicit-model-keys"}, "recording": True},
   "celestial_house_capability": {"protocol": {}, "recording": True},
+  "celestial_topocentric_position": {
+    "protocol": {"identity": "resolved-explicit-model-key-and-position-source"},
+    "recording": True,
+  },
+  "celestial_apparent_diameter": {
+    "protocol": {"identity": "resolved-explicit-model-key-position-source-and-radius-definition"},
+    "recording": True,
+  },
+  "celestial_solar_rise_set": {
+    "protocol": {"identity": "solar-transit-centred", "ownership": "owned; absent event slots are zero"},
+    "recording": True,
+  },
+  "celestial_lunar_rise_set": {
+    "protocol": {"identity": "lunar-ut1-day", "ownership": "owned; absent event slots are zero"},
+    "recording": True,
+  },
+  "celestial_planet_rise_set": {
+    "protocol": {"identity": "planetary-ut1-day", "ownership": "owned; absent event slots are zero"},
+    "recording": True,
+  },
+  "celestial_altitude_events": {
+    "protocol": {
+      "kind": "count-fill",
+      "count_parameter": "record_count",
+      "slots_parameter": "slots",
+      "capacity_parameter": "slot_count",
+      "legal_empty": False,
+      "total_must_match": True,
+      "written_policy": "min-total-capacity",
+      "null_slots_requires_zero_capacity": True,
+    },
+    "recording": True,
+  },
+  "celestial_upper_transits": {
+    "protocol": {
+      "kind": "count-fill",
+      "count_parameter": "record_count",
+      "slots_parameter": "slots",
+      "capacity_parameter": "slot_count",
+      "legal_empty": True,
+      "total_must_match": True,
+      "written_policy": "min-total-capacity",
+      "null_slots_requires_zero_capacity": True,
+    },
+    "recording": True,
+  },
+  "celestial_observing_windows": {
+    "protocol": {
+      "kind": "count-fill",
+      "count_parameter": "record_count",
+      "slots_parameter": "slots",
+      "capacity_parameter": "slot_count",
+      "legal_empty": False,
+      "total_must_match": True,
+      "written_policy": "min-total-capacity",
+      "null_slots_requires_zero_capacity": True,
+    },
+    "recording": True,
+  },
 }
